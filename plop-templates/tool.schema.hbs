@@ -1,0 +1,43 @@
+import { z } from 'zod';
+
+/**
+ * Input schema for {{pascalCase name}}Tool
+ * 
+ * TODO: Define your input schema here with proper validation and descriptions
+ * 
+ * Common validation patterns:
+ * - String fields: z.string().min(1).describe('Description')
+ * - Optional fields: z.string().optional().describe('Description')
+ * - Enums: z.enum(['value1', 'value2']).describe('Description')
+ * - Numbers: z.number().min(0).describe('Description')
+ * - Arrays: z.array(z.string()).min(1).describe('Description')
+{{#if (eq toolType 'api-based')}}
+ * 
+ * Mapbox API tool patterns:
+ * - Style IDs: z.string().regex(/^[a-zA-Z0-9_-]+$/).describe('Mapbox style ID')
+ * - Coordinates: z.array(z.number()).length(2).describe('[longitude, latitude]')
+ * - Tokens: z.string().regex(/^pk\.|^sk\./).describe('Mapbox access token')
+{{/if}}
+{{#if (eq toolType 'local')}}
+ * 
+ * Local processing tool patterns:
+ * - File paths: z.string().min(1).describe('File path')
+ * - Coordinates: z.array(z.number()).length(2).describe('[longitude, latitude]')
+ * - GeoJSON: z.union([z.string(), z.object({}).passthrough()]).describe('GeoJSON data')
+{{/if}}
+ */
+export const {{pascalCase name}}Schema = z.object({
+  // TODO: Add your input parameters here
+  // Remove this comment when you add real parameters
+  
+  // Example parameter (remove this and add your own):
+  // name: z.string().min(1).describe('Name of the resource'),
+  // options: z.object({
+  //   format: z.enum(['json', 'text']).optional().describe('Output format')
+  // }).optional().describe('Optional configuration')
+});
+
+/**
+ * Inferred TypeScript type for {{pascalCase name}}Tool input
+ */
+export type {{pascalCase name}}Input = z.infer<typeof {{pascalCase name}}Schema>;

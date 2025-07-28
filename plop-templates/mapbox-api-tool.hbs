@@ -1,0 +1,90 @@
+import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
+import {
+  {{pascalCase name}}Schema,
+  {{pascalCase name}}Input
+} from './{{pascalCase name}}Tool.schema.js';
+
+/**
+ * {{pascalCase name}}Tool - Mapbox API integration tool
+ * 
+ * TODO: Provide a detailed description of what this tool does
+ * 
+ * This tool integrates with Mapbox APIs to provide geospatial functionality.
+ * It handles authentication, request formatting, and response processing
+ * for Mapbox services.
+ * 
+ * @requires MAPBOX_ACCESS_TOKEN - Valid Mapbox access token with appropriate scopes
+ * 
+ * @example
+ * ```typescript
+ * const tool = new {{pascalCase name}}Tool();
+ * const result = await tool.run({ 
+ *   // TODO: Add example input parameters
+ * });
+ * ```
+ * 
+ * @see {@link https://docs.mapbox.com/api/} Mapbox API Documentation
+ */
+export class {{pascalCase name}}Tool extends MapboxApiBasedTool<
+  typeof {{pascalCase name}}Schema
+> {
+  readonly name = '{{snakeCase name}}_tool';
+  readonly description = 'Tool description.'; // TODO: Update with actual description
+
+  constructor() {
+    super({ inputSchema: {{pascalCase name}}Schema });
+  }
+
+  protected async execute(
+    input: {{pascalCase name}}Input
+  ): Promise<{ type: 'text'; text: string }> {
+    try {
+      // TODO: Implement your Mapbox API call here
+      
+      // Example implementation:
+      // const username = MapboxApiBasedTool.getUserNameFromToken();
+      // const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}/${input.styleId}?access_token=${MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN}`;
+      // 
+      // const response = await fetch(url);
+      // 
+      // if (!response.ok) {
+      //   const errorText = await response.text().catch(() => 'Unknown error');
+      //   throw new Error(`Mapbox API request failed: ${response.status} ${response.statusText}. ${errorText}`);
+      // }
+      // 
+      // const data = await response.json();
+      // 
+      // // Validate API response if needed
+      // if (!data || typeof data !== 'object') {
+      //   throw new Error('Invalid response from Mapbox API');
+      // }
+      // 
+      // return {
+      //   type: 'text',
+      //   text: JSON.stringify(data, null, 2)
+      // };
+
+      // Placeholder implementation - replace with actual API call
+      return {
+        type: 'text',
+        text: JSON.stringify({
+          message: 'Tool executed successfully',
+          input,
+          timestamp: new Date().toISOString(),
+          note: 'Replace this with actual Mapbox API call'
+        }, null, 2)
+      };
+    } catch (error) {
+      // Handle different error types
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('{{pascalCase name}}Tool: Network error occurred while connecting to Mapbox API');
+      }
+      
+      if (error instanceof Error) {
+        throw new Error(`{{pascalCase name}}Tool execution failed: ${error.message}`);
+      }
+      
+      throw new Error('{{pascalCase name}}Tool execution failed: Unknown error occurred');
+    }
+  }
+}

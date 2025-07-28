@@ -1,0 +1,66 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Tool Naming Convention should maintain consistent tool list (snapshot test) 1`] = `
+[
+  {
+    "className": "BoundingBoxTool",
+    "description": "Calculates bounding box of given GeoJSON content, returns as [minX, minY, maxX, maxY]",
+    "toolName": "bounding_box_tool",
+  },
+  {
+    "className": "CoordinateConversionTool",
+    "description": "Converts coordinates between WGS84 (longitude/latitude) and EPSG:3857 (Web Mercator) coordinate systems",
+    "toolName": "coordinate_conversion_tool",
+  },
+  {
+    "className": "CountryBoundingBoxTool",
+    "description": "Gets bounding box for a country by its ISO 3166-1 country code, returns as [minX, minY, maxX, maxY].",
+    "toolName": "country_bounding_box_tool",
+  },
+  {
+    "className": "CreateStyleTool",
+    "description": "Create a new Mapbox style",
+    "toolName": "create_style_tool",
+  },
+  {
+    "className": "CreateTokenTool",
+    "description": "Create a new Mapbox access token with specified scopes and optional URL restrictions. Token type (public/secret) is automatically determined by scopes: PUBLIC scopes (styles:tiles, styles:read, fonts:read, datasets:read, vision:read) create public tokens; SECRET scopes create secret tokens that are only visible once upon creation.",
+    "toolName": "create_token_tool",
+  },
+  {
+    "className": "DeleteStyleTool",
+    "description": "Delete a Mapbox style by ID",
+    "toolName": "delete_style_tool",
+  },
+  {
+    "className": "GeojsonPreviewTool",
+    "description": "Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.",
+    "toolName": "geojson_preview_tool",
+  },
+  {
+    "className": "ListStylesTool",
+    "description": "List all styles for a Mapbox account",
+    "toolName": "list_styles_tool",
+  },
+  {
+    "className": "ListTokensTool",
+    "description": "List Mapbox access tokens for the authenticated user with optional filtering and pagination. When using pagination, the "start" parameter must be obtained from the "next_start" field of the previous response (it is not a token ID)",
+    "toolName": "list_tokens_tool",
+  },
+  {
+    "className": "PreviewStyleTool",
+    "description": "Generate preview URL for a Mapbox style using an existing public token",
+    "toolName": "preview_style_tool",
+  },
+  {
+    "className": "RetrieveStyleTool",
+    "description": "Retrieve a specific Mapbox style by ID",
+    "toolName": "retrieve_style_tool",
+  },
+  {
+    "className": "UpdateStyleTool",
+    "description": "Update an existing Mapbox style",
+    "toolName": "update_style_tool",
+  },
+]
+`;

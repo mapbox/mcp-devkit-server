@@ -1,0 +1,72 @@
+import { BaseTool } from '../BaseTool.js';
+import {
+  {{pascalCase name}}Schema,
+  {{pascalCase name}}Input
+} from './{{pascalCase name}}Tool.schema.js';
+
+/**
+ * {{pascalCase name}}Tool - Local processing tool
+ * 
+ * TODO: Provide a detailed description of what this tool does
+ * 
+ * This tool performs local data processing without making external API calls.
+ * It's designed for operations like data transformation, file processing,
+ * calculations, or other computational tasks.
+ * 
+ * @example
+ * ```typescript
+ * const tool = new {{pascalCase name}}Tool();
+ * const result = await tool.run({ 
+ *   // TODO: Add example input parameters
+ * });
+ * ```
+ */
+export class {{pascalCase name}}Tool extends BaseTool<
+  typeof {{pascalCase name}}Schema
+> {
+  readonly name = '{{snakeCase name}}_tool';
+  readonly description = 'Tool description.'; // TODO: Update with actual description
+
+  constructor() {
+    super({ inputSchema: {{pascalCase name}}Schema });
+  }
+
+  protected async execute(
+    input: {{pascalCase name}}Input
+  ): Promise<{ type: 'text'; text: string }> {
+    try {
+      // TODO: Implement your tool logic here
+      // This tool doesn't make API calls
+      // You can process data locally, manipulate files, etc.
+      
+      // Example implementation:
+      // const result = await processData(input);
+      // 
+      // // Validate result if needed
+      // if (!result) {
+      //   throw new Error('Processing failed: No result generated');
+      // }
+      // 
+      // return {
+      //   type: 'text',
+      //   text: JSON.stringify(result, null, 2)
+      // };
+
+      // Placeholder implementation - replace with actual logic
+      return {
+        type: 'text',
+        text: JSON.stringify({
+          message: 'Tool executed successfully',
+          input,
+          timestamp: new Date().toISOString()
+        }, null, 2)
+      };
+    } catch (error) {
+      // Handle specific error types
+      if (error instanceof Error) {
+        throw new Error(`{{pascalCase name}}Tool execution failed: ${error.message}`);
+      }
+      throw new Error('{{pascalCase name}}Tool execution failed: Unknown error occurred');
+    }
+  }
+}
