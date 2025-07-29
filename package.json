@@ -1,13 +1,13 @@
 {
-  "name": "@mapbox/mcp-devkit-server-private",
-  "version": "0.1.1",
+  "name": "@mapbox/mcp-devkit-server",
+  "version": "0.2.1",
   "description": "Mapbox MCP devkit server",
   "main": "dist/index.js",
   "module": "dist/index-esm.js",
   "typings": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "my-mcp-server": "dist/index.js"
+    "mapbox-mcp-devkit": "dist/index.js"
   },
   "scripts": {
     "lint": "eslint \"./src/**/*.{ts,tsx}\"",
@@ -27,11 +27,11 @@
     "*.{js,jsx,ts,tsx}": "eslint --fix",
     "*.{js,jsx,ts,tsx,md,html,css}": "prettier --write"
   },
-  "license": "SEE LICENSE IN LICENSE.md",
-  "homepage": "https://github.com/mapbox/mcp-devkit-server-private#readme",
+  "license": "BSD-3-Clause",
+  "homepage": "https://github.com/mapbox/mcp-devkit-server#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mapbox/mcp-devkit-server-private.git"
+    "url": "https://github.com/mapbox/mcp-devkit-server.git"
   },
   "engines": {
     "node": ">=22"

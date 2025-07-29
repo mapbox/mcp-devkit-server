@@ -41,7 +41,7 @@ Follow the installation instructions at [Claude Code documentation](https://docs
 Add the MCP server directly from the command line:
 
 ```bash
-claude mcp add mapbox-devkit npx @mapbox/mcp-devkit-server-private -e MAPBOX_ACCESS_TOKEN=<YOUR_TOKEN>
+claude mcp add mapbox-devkit npx @mapbox/mcp-devkit-server -e MAPBOX_ACCESS_TOKEN=<YOUR_TOKEN>
 ```
 
 Replace `<YOUR_TOKEN>` with your actual Mapbox access token.
@@ -58,7 +58,7 @@ Add to your Claude Code MCP configuration:
   "mcpServers": {
     "mapbox-devkit": {
       "command": "npx",
-      "args": ["-y", "@mapbox/mcp-devkit-server-private"],
+      "args": ["-y", "@mapbox/mcp-devkit-server"],
       "env": {
         "MAPBOX_ACCESS_TOKEN": "your_token_here"
       }
@@ -193,7 +193,7 @@ Enable verbose error reporting by adding the environment variable:
   "mcpServers": {
     "mapbox-devkit": {
       "command": "npx",
-      "args": ["-y", "@mapbox/mcp-devkit-server-private"],
+      "args": ["-y", "@mapbox/mcp-devkit-server"],
       "env": {
         "MAPBOX_ACCESS_TOKEN": "your_token_here",
         "VERBOSE_ERRORS": "true"
