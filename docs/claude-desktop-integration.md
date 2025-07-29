@@ -47,7 +47,7 @@ See the [Token Requirements](#token-requirements) section below for detailed sco
   "mcpServers": {
     "mapbox-devkit": {
       "command": "npx",
-      "args": ["-y", "@mapbox/mcp-devkit-server-private"],
+      "args": ["-y", "@mapbox/mcp-devkit-server"],
       "env": {
         "MAPBOX_ACCESS_TOKEN": "your_token_here"
       }
@@ -153,7 +153,7 @@ Enable verbose error reporting by adding the environment variable:
   "mcpServers": {
     "mapbox-devkit": {
       "command": "npx",
-      "args": ["-y", "@mapbox/mcp-devkit-server-private"],
+      "args": ["-y", "@mapbox/mcp-devkit-server"],
       "env": {
         "MAPBOX_ACCESS_TOKEN": "your_token_here",
         "VERBOSE_ERRORS": "true"

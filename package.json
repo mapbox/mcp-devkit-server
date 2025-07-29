@@ -1,5 +1,5 @@
 {
-  "name": "@mapbox/mcp-devkit-server-private",
+  "name": "@mapbox/mcp-devkit-server",
   "version": "0.1.1",
   "description": "Mapbox MCP devkit server",
   "main": "dist/index.js",
@@ -28,10 +28,10 @@
     "*.{js,jsx,ts,tsx,md,html,css}": "prettier --write"
   },
   "license": "SEE LICENSE IN LICENSE.md",
-  "homepage": "https://github.com/mapbox/mcp-devkit-server-private#readme",
+  "homepage": "https://github.com/mapbox/mcp-devkit-server#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mapbox/mcp-devkit-server-private.git"
+    "url": "https://github.com/mapbox/mcp-devkit-server.git"
   },
   "engines": {
     "node": ">=22"
