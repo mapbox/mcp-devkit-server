@@ -7,7 +7,7 @@
   "typings": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "my-mcp-server": "dist/index.js"
+    "mapbox-mcp-devkit": "dist/index.js"
   },
   "scripts": {
     "lint": "eslint \"./src/**/*.{ts,tsx}\"",
