@@ -1,0 +1,57 @@
+name: General Issue
+description: Report a bug, request a feature, or propose a task
+title: "[Issue] <brief summary>"
+labels: [needs-triage]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type of Issue
+      description: What kind of issue is being reported?
+      options:
+        - Bug Report
+        - Feature Request
+        - Refactor / Cleanup
+        - Documentation
+        - Question
+    validations:
+      required: true
+
+  - type: input
+    id: context
+    attributes:
+      label: Context or Problem
+      description: What was observed or what problem is this issue addressing?
+      placeholder: e.g., "The tool crashes when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce or Task Description
+      description: Provide a clear sequence of actions to replicate the issue or complete the task.
+      placeholder: |
+        1. Open the app
+        2. Click "Run"
+        3. Observe error message
+    validations:
+      required: false
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Outcome
+      description: What was expected to happen?
+      placeholder: "The tool should complete without errors..."
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional Notes or References
+      description: Include logs, screenshots, or links that support this issue.
+      placeholder: "Logs, screenshots, related issues, design notes..."
+    validations:
+      required: false
