@@ -11,6 +11,42 @@ Get started by integrating with your preferred AI development environment:
 - [Claude Code Integration](./docs/claude-code-integration.md) - Command-line development with Claude
 - [Claude Desktop Integration](./docs/claude-desktop-integration.md) - Desktop application integration
 
+## DXT Package Distribution
+
+This MCP server can be packaged as a DXT (Desktop Extension) file for easy distribution and installation. DXT is a standardized format for distributing local MCP servers, similar to browser extensions.
+
+### Creating the DXT Package
+
+To create a DXT package:
+
+```bash
+# Install the DXT CLI tool
+npm install -g @anthropic-ai/dxt
+
+# Build the server first
+npm run build
+
+# Create the DXT package
+npx @anthropic-ai/dxt pack
+```
+
+This will generate `mcp-devkit-server.dxt` using the configuration in `manifest.json`.
+
+### Installing the DXT Package
+
+Users can install the DXT package by:
+
+1. Opening the `.dxt` file with a compatible application (e.g., Claude Desktop)
+2. Following the installation prompts
+3. Providing their Mapbox access token when prompted
+
+The DXT package includes:
+
+- Pre-built server code (`dist/index.js`)
+- Server metadata and configuration
+- User configuration schema for the Mapbox access token
+- Automatic environment variable setup
+
 ## Getting Your Mapbox Access Token
 
 **A Mapbox access token is required to use this MCP server.**
