@@ -1,6 +1,6 @@
 {
   "name": "@mapbox/mcp-devkit-server",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Mapbox MCP devkit server",
   "main": "dist/index.js",
   "module": "dist/index-esm.js",
@@ -17,10 +17,11 @@
     "format:fix": "prettier --write \"./src/**/*.{ts,tsx,js,json,md}\"",
     "prepare": "husky && node .husky/setup-hooks.js",
     "test": "jest",
-    "build": "npm run prepare && npm run build:esm && npm run build:cjs && npm run generate-version && node scripts/build-helpers.cjs copy-json && node scripts/add-shebang.cjs",
+    "build": "npm run prepare && npm run sync-manifest-version && npm run build:esm && npm run build:cjs && npm run generate-version && node scripts/build-helpers.cjs copy-json && node scripts/add-shebang.cjs",
     "build:esm": "node scripts/build-helpers.cjs esm-package && tsc -p tsconfig.json",
     "build:cjs": "node scripts/build-helpers.cjs cjs-package && tsc -p tsconfig.json",
     "generate-version": "node scripts/build-helpers.cjs generate-version",
+    "sync-manifest-version": "node scripts/build-helpers.cjs sync-manifest-version",
     "dev": "tsc -p tsconfig.json --watch"
   },
   "lint-staged": {
