@@ -1,8 +1,8 @@
 {
   "dxt_version": "0.1",
   "name": "@mapbox/mcp-devkit-server",
-  "display_name": "Mapbox MCP Server",
-  "version": "0.2.1",
+  "display_name": "Mapbox MCP DevKit Server",
+  "version": "0.2.3",
   "description": "Mapbox MCP devkit server",
   "author": {
     "name": "Mapbox, Inc."
@@ -16,7 +16,7 @@
         "${__dirname}/dist/index.js"
       ],
       "env": {
-        "MAPBOX_ACCESS_TOKEN" : "${user_config.MAPBOX_ACCESS_TOKEN}"
+        "MAPBOX_ACCESS_TOKEN": "${user_config.MAPBOX_ACCESS_TOKEN}"
       }
     }
   },

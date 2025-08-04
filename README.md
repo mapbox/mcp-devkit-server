@@ -32,14 +32,6 @@ npx @anthropic-ai/dxt pack
 
 This will generate `mcp-devkit-server.dxt` using the configuration in `manifest.json`.
 
-### Installing the DXT Package
-
-Users can install the DXT package by:
-
-1. Opening the `.dxt` file with a compatible application (e.g., Claude Desktop)
-2. Following the installation prompts
-3. Providing their Mapbox access token when prompted
-
 The DXT package includes:
 
 - Pre-built server code (`dist/index.js`)
