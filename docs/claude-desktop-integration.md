@@ -36,11 +36,33 @@ See the [Token Requirements](#token-requirements) section below for detailed sco
 
 ### Configure Claude Desktop
 
+## Option 1: DXT Package Installation (Recommended)
+
+The easiest way to install this MCP server is using the pre-built DXT package:
+
+**⚠️ Important: Make sure you have the latest version of Claude Desktop installed. DXT support requires recent versions of Claude Desktop to function properly.**
+
+**[📦 Download DXT Package](https://github.com/mapbox/mcp-devkit-server/releases/latest/download/mcp-devkit-server.dxt)**
+
+### Installation Steps
+
+1. **Update Claude Desktop** - [Download the latest version](https://claude.ai/download) if you haven't recently
+2. Download the `.dxt` file from the link above
+3. Open the file with Claude Desktop
+4. Follow the installation prompts
+5. Provide your Mapbox access token when prompted
+
+This method automatically handles the configuration and setup, providing a one-click installation experience.
+
+## Option 2: Manual Configuration
+
+For users who prefer manual configuration or need custom setups, you can configure the server directly:
+
 1. Open Claude Desktop settings
 2. Navigate to the Model Context Protocol section
 3. Modify `claude_desktop_config.json` to add the new server:
 
-#### Option 1: NPM Package (Recommended)
+### NPM Package
 
 ```json
 {
@@ -56,7 +78,7 @@ See the [Token Requirements](#token-requirements) section below for detailed sco
 }
 ```
 
-#### Option 2: Docker Runtime
+### Docker Runtime
 
 ```json
 {
@@ -76,7 +98,7 @@ See the [Token Requirements](#token-requirements) section below for detailed sco
 }
 ```
 
-#### Option 3: Local Development
+### Local Development
 
 If you want to use a local version (need to clone and build from this repo):
 
@@ -94,23 +116,7 @@ If you want to use a local version (need to clone and build from this repo):
 }
 ```
 
-## DXT Installation (Alternative)
-
-As an alternative to manual configuration, Claude Desktop users can install this MCP server using a pre-built DXT package:
-
 **⚠️ Important: Make sure you have the latest version of Claude Desktop installed. DXT support requires recent versions of Claude Desktop to function properly.**
-
-**[📦 Download DXT Package](https://github.com/mapbox/mcp-devkit-server/releases/latest/download/mcp-devkit-server.dxt)**
-
-### Installation Steps
-
-1. **Update Claude Desktop** - [Download the latest version](https://claude.ai/download) if you haven't recently
-2. Download the `.dxt` file from the link above
-3. Open the file with Claude Desktop
-4. Follow the installation prompts
-5. Provide your Mapbox access token when prompted
-
-This method automatically handles the configuration and setup, making it easier for users who prefer a one-click installation experience.
 
 ## Usage Examples
 
