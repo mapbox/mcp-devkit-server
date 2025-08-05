@@ -11,15 +11,18 @@ export class ListStylesTool extends MapboxApiBasedTool<
     super({ inputSchema: ListStylesSchema });
   }
 
-  protected async execute(input: ListStylesInput): Promise<any> {
-    const username = MapboxApiBasedTool.getUserNameFromToken();
+  protected async execute(
+    input: ListStylesInput,
+    accessToken?: string
+  ): Promise<any> {
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
 
     // Build query parameters
     const params = new URLSearchParams();
-    if (!MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN) {
+    if (!accessToken) {
       throw new Error('MAPBOX_ACCESS_TOKEN is not set');
     }
-    params.append('access_token', MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN);
+    params.append('access_token', accessToken);
 
     if (input.limit) {
       params.append('limit', input.limit.toString());

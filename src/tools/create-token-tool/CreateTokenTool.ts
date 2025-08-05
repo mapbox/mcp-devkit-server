@@ -17,13 +17,14 @@ export class CreateTokenTool extends MapboxApiBasedTool<
   }
 
   protected async execute(
-    input: CreateTokenInput
+    input: CreateTokenInput,
+    accessToken?: string
   ): Promise<{ type: 'text'; text: string }> {
-    if (!MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN) {
+    if (!accessToken) {
       throw new Error('MAPBOX_ACCESS_TOKEN is not set');
     }
 
-    const username = MapboxApiBasedTool.getUserNameFromToken();
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
 
     this.log(
       'info',
@@ -47,7 +48,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
       );
     }
 
-    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}tokens/v2/${username}?access_token=${MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN}`;
+    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}tokens/v2/${username}?access_token=${accessToken}`;
 
     const body: {
       note: string;

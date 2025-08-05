@@ -13,13 +13,14 @@ export class ListTokensTool extends MapboxApiBasedTool<
   }
 
   protected async execute(
-    input: ListTokensInput
+    input: ListTokensInput,
+    accessToken?: string
   ): Promise<{ type: 'text'; text: string }> {
-    if (!MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN) {
+    if (!accessToken) {
       throw new Error('MAPBOX_ACCESS_TOKEN is not set');
     }
 
-    const username = MapboxApiBasedTool.getUserNameFromToken();
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
 
     this.log(
       'info',
@@ -28,7 +29,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
 
     // Build initial query parameters
     const params = new URLSearchParams();
-    params.append('access_token', MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN);
+    params.append('access_token', accessToken);
 
     if (input.default !== undefined) {
       params.append('default', String(input.default));
@@ -103,10 +104,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
             // Ensure the next URL includes the access token
             const nextUrl = new URL(links.next);
             if (!nextUrl.searchParams.has('access_token')) {
-              nextUrl.searchParams.append(
-                'access_token',
-                MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN
-              );
+              nextUrl.searchParams.append('access_token', accessToken);
             }
             const nextUrlString = nextUrl.toString();
 

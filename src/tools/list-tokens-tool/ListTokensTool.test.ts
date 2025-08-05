@@ -70,17 +70,31 @@ describe('ListTokensTool', () => {
 
     it('throws error when unable to extract username from token', async () => {
       const originalToken = MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN;
+      const originalEnvToken = process.env.MAPBOX_ACCESS_TOKEN;
 
       try {
         // Set a token without username in payload
         const invalidPayload = Buffer.from(
           JSON.stringify({ sub: 'test' })
         ).toString('base64');
+        const invalidToken = `eyJhbGciOiJIUzI1NiJ9.${invalidPayload}.signature`;
+
         Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', {
-          value: `eyJhbGciOiJIUzI1NiJ9.${invalidPayload}.signature`,
+          value: invalidToken,
           writable: true,
           configurable: true
         });
+        process.env.MAPBOX_ACCESS_TOKEN = invalidToken;
+
+        // Setup fetch mock to prevent actual API calls
+        const fetchMock = setupFetch();
+        fetchMock.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          statusText: 'OK',
+          headers: new Headers(),
+          json: async () => []
+        } as Response);
 
         const toolWithInvalidToken = new ListTokensTool();
         toolWithInvalidToken['log'] = jest.fn();
@@ -100,6 +114,7 @@ describe('ListTokensTool', () => {
           writable: true,
           configurable: true
         });
+        process.env.MAPBOX_ACCESS_TOKEN = originalEnvToken;
       }
     });
   });
