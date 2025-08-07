@@ -14,9 +14,12 @@ export class CreateStyleTool extends MapboxApiBasedTool<
     super({ inputSchema: CreateStyleSchema });
   }
 
-  protected async execute(input: CreateStyleInput): Promise<any> {
-    const username = MapboxApiBasedTool.getUserNameFromToken();
-    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}?access_token=${MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN}`;
+  protected async execute(
+    input: CreateStyleInput,
+    accessToken?: string
+  ): Promise<any> {
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
+    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}?access_token=${accessToken}`;
 
     const payload = {
       name: input.name,

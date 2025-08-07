@@ -14,9 +14,12 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
     super({ inputSchema: UpdateStyleSchema });
   }
 
-  protected async execute(input: UpdateStyleInput): Promise<any> {
-    const username = MapboxApiBasedTool.getUserNameFromToken();
-    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}/${input.styleId}?access_token=${MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN}`;
+  protected async execute(
+    input: UpdateStyleInput,
+    accessToken?: string
+  ): Promise<any> {
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
+    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;
 
     const payload: any = {};
     if (input.name) payload.name = input.name;

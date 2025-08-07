@@ -79,7 +79,7 @@ describe('MapboxApiBasedTool', () => {
         });
 
         expect(() => MapboxApiBasedTool.getUserNameFromToken()).toThrow(
-          'MAPBOX_ACCESS_TOKEN is not set'
+          'No access token provided. Please set MAPBOX_ACCESS_TOKEN environment variable or pass it as an argument.'
         );
       } finally {
         Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', {

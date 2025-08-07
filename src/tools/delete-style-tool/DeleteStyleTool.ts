@@ -14,9 +14,12 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
     super({ inputSchema: DeleteStyleSchema });
   }
 
-  protected async execute(input: DeleteStyleInput): Promise<any> {
-    const username = MapboxApiBasedTool.getUserNameFromToken();
-    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}/${input.styleId}?access_token=${MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN}`;
+  protected async execute(
+    input: DeleteStyleInput,
+    accessToken?: string
+  ): Promise<any> {
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
+    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;
 
     const response = await fetch(url, {
       method: 'DELETE'

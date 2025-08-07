@@ -2,6 +2,7 @@ import {
   McpServer,
   RegisteredTool
 } from '@modelcontextprotocol/sdk/server/mcp';
+import { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { z, ZodTypeAny } from 'zod';
 
 const ContentItemSchema = z.union([
@@ -38,10 +39,15 @@ export abstract class BaseTool<InputSchema extends ZodTypeAny> {
   /**
    * Validates and runs the tool logic.
    */
-  async run(rawInput: unknown): Promise<z.infer<typeof OutputSchema>> {
+  async run(
+    rawInput: unknown,
+    extra?: RequestHandlerExtra<any, any>
+  ): Promise<z.infer<typeof OutputSchema>> {
     try {
       const input = this.inputSchema.parse(rawInput);
-      const result = await this.execute(input);
+      const accessToken =
+        extra?.authInfo?.token || process.env.MAPBOX_ACCESS_TOKEN;
+      const result = await this.execute(input, accessToken);
 
       // Check if result is already a content object (image or text)
       if (
@@ -86,7 +92,8 @@ export abstract class BaseTool<InputSchema extends ZodTypeAny> {
    * Tool logic to be implemented by subclasses.
    */
   protected abstract execute(
-    _input: z.infer<InputSchema>
+    _input: z.infer<InputSchema>,
+    accessToken?: string
   ): Promise<ContentItem | unknown>;
 
   /**
@@ -99,7 +106,7 @@ export abstract class BaseTool<InputSchema extends ZodTypeAny> {
       this.description,
       (this.inputSchema as unknown as z.ZodObject<Record<string, z.ZodTypeAny>>)
         .shape,
-      this.run.bind(this)
+      (args, extra) => this.run(args, extra)
     );
   }
 
