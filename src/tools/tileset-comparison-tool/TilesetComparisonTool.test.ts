@@ -167,7 +167,7 @@ describe('TilesetComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('HTML comparison requires a public token');
+      ).toContain('Secret tokens (sk.*) cannot be used in client-side HTML');
     });
 
     it('should include all map options when provided', async () => {

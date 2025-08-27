@@ -131,80 +131,79 @@ export class TilesetComparisonTool extends BaseTool<
     super({ inputSchema: TilesetComparisonSchema });
   }
 
+  /**
+   * Fetches the first available public token from the user's account
+   */
+  private async fetchPublicToken(): Promise<string | null> {
+    try {
+      const listTokensTool = new ListTokensTool();
+      const tokensResult = await listTokensTool.run({
+        usage: 'pk' // Filter for public tokens only
+      });
+
+      if (!tokensResult.isError) {
+        const firstContent = tokensResult.content[0];
+        if (firstContent.type === 'text') {
+          const tokensData = JSON.parse(firstContent.text);
+          const publicTokens = tokensData.tokens;
+          if (publicTokens && publicTokens.length > 0) {
+            return publicTokens[0].token;
+          }
+        }
+      }
+    } catch {
+      // Return null if fetching fails
+    }
+    return null;
+  }
+
+  /**
+   * Ensures we have a valid public token for client-side HTML usage
+   */
+  private async ensurePublicToken(providedToken?: string): Promise<string> {
+    // If no token provided, try to get one from the account
+    if (!providedToken) {
+      const fetchedToken = await this.fetchPublicToken();
+      if (!fetchedToken) {
+        throw new Error(
+          'No access token provided and no public token found. Please provide a public access token (pk.*).'
+        );
+      }
+      return fetchedToken;
+    }
+
+    // If it's already a public token, use it
+    if (providedToken.startsWith('pk.')) {
+      return providedToken;
+    }
+
+    // If it's a secret token, try to get a public token instead
+    if (providedToken.startsWith('sk.')) {
+      const publicToken = await this.fetchPublicToken();
+      if (!publicToken) {
+        throw new Error(
+          'Secret tokens (sk.*) cannot be used in client-side HTML. ' +
+            'No public token found in your account. Please create a public token or provide one directly.'
+        );
+      }
+      return publicToken;
+    }
+
+    // Unknown token format
+    throw new Error(
+      `Invalid token format. Expected a public token starting with 'pk.' but got '${providedToken.substring(0, 3)}...'. ` +
+        'HTML comparison requires a public token for client-side usage.'
+    );
+  }
+
   protected async execute(
     input: TilesetComparisonInput,
     providedToken?: string
   ): Promise<{ type: 'text'; text: string }> {
-    let accessToken = input.accessToken || providedToken;
-
-    // If no token provided, try to get a public token from the account
-    if (!accessToken) {
-      try {
-        const listTokensTool = new ListTokensTool();
-        const tokensResult = await listTokensTool.run({
-          usage: 'pk' // Filter for public tokens only
-        });
-
-        if (!tokensResult.isError) {
-          const firstContent = tokensResult.content[0];
-          if (firstContent.type === 'text') {
-            const tokensData = JSON.parse(firstContent.text);
-            const publicTokens = tokensData.tokens;
-            if (publicTokens && publicTokens.length > 0) {
-              accessToken = publicTokens[0].token;
-            }
-          }
-        }
-      } catch {
-        // Silently continue, will fail later if no token
-      }
-    }
-
-    if (!accessToken) {
-      throw new Error(
-        'No access token provided and no public token found. Please provide a public access token (pk.*).'
-      );
-    }
-
-    // Ensure the token is a public token (starts with pk.)
-    // Secret tokens (sk.*) cannot be used in client-side HTML
-    if (!accessToken.startsWith('pk.')) {
-      // If a secret token was provided, try to get a public token instead
-      if (accessToken.startsWith('sk.')) {
-        try {
-          const listTokensTool = new ListTokensTool();
-          const tokensResult = await listTokensTool.run({
-            usage: 'pk' // Filter for public tokens only
-          });
-
-          if (!tokensResult.isError) {
-            const firstContent = tokensResult.content[0];
-            if (firstContent.type === 'text') {
-              const tokensData = JSON.parse(firstContent.text);
-              const publicTokens = tokensData.tokens;
-              if (publicTokens && publicTokens.length > 0) {
-                accessToken = publicTokens[0].token;
-              } else {
-                throw new Error(
-                  'A secret token (sk.*) was provided, but HTML comparison requires a public token (pk.*). ' +
-                    'No public token found in your account. Please create a public token first.'
-                );
-              }
-            }
-          }
-        } catch {
-          throw new Error(
-            'A secret token (sk.*) was provided, but HTML comparison requires a public token (pk.*). ' +
-              'Failed to fetch public tokens from your account. Please provide a public token directly.'
-          );
-        }
-      } else {
-        throw new Error(
-          `Invalid token format. Expected a public token starting with 'pk.' but got a token starting with '${accessToken.substring(0, 3)}'. ` +
-            'HTML comparison requires a public token for client-side usage.'
-        );
-      }
-    }
+    // Ensure we have a valid public token
+    const accessToken = await this.ensurePublicToken(
+      input.accessToken || providedToken
+    );
 
     // Process style URLs - if just an ID is provided, convert to full style URL
     const processStyleUrl = (style: string): string => {
