@@ -9,6 +9,7 @@ import { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
 import { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
 import { PreviewStyleTool } from './preview-style-tool/PreviewStyleTool.js';
 import { RetrieveStyleTool } from './retrieve-style-tool/RetrieveStyleTool.js';
+import { TilesetComparisonTool } from './tileset-comparison-tool/TilesetComparisonTool.js';
 import { UpdateStyleTool } from './update-style-tool/UpdateStyleTool.js';
 
 // Central registry of all tools
@@ -24,7 +25,8 @@ export const ALL_TOOLS = [
   new ListTokensTool(),
   new BoundingBoxTool(),
   new CountryBoundingBoxTool(),
-  new CoordinateConversionTool()
+  new CoordinateConversionTool(),
+  new TilesetComparisonTool()
 ] as const;
 
 export type ToolInstance = (typeof ALL_TOOLS)[number];
