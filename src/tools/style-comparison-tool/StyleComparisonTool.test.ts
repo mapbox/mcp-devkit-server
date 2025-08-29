@@ -1,10 +1,8 @@
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
-import { ListTokensTool } from '../list-tokens-tool/ListTokensTool.js';
 import { StyleComparisonTool } from './StyleComparisonTool.js';
 
 describe('StyleComparisonTool', () => {
   let tool: StyleComparisonTool;
-  let mockListTokensTool: jest.SpyInstance;
 
   beforeEach(() => {
     tool = new StyleComparisonTool();
@@ -33,37 +31,19 @@ describe('StyleComparisonTool', () => {
       expect(url).toContain('after=mapbox%2Foutdoors-v12');
     });
 
-    it('should attempt to fetch public token when no token provided', async () => {
-      mockListTokensTool = jest
-        .spyOn(ListTokensTool.prototype, 'run')
-        .mockResolvedValue({
-          isError: false,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                tokens: [
-                  {
-                    token: 'pk.fetched.token',
-                    name: 'Public Token'
-                  }
-                ]
-              })
-            }
-          ]
-        });
-
+    it('should require access token', async () => {
       const input = {
         before: 'mapbox/streets-v11',
         after: 'mapbox/satellite-v9'
+        // Missing accessToken
       };
 
-      const result = await tool.run(input);
+      const result = await tool.run(input as any);
 
-      expect(result.isError).toBe(false);
-      expect(mockListTokensTool).toHaveBeenCalledWith({ usage: 'pk' });
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('access_token=pk.fetched.token');
+      expect(result.isError).toBe(true);
+      expect(
+        (result.content[0] as { type: 'text'; text: string }).text
+      ).toContain('Required');
     });
 
     it('should handle full style URLs', async () => {
@@ -101,54 +81,7 @@ describe('StyleComparisonTool', () => {
       expect(url).toContain('after=testuser%2Fstyle-id-2');
     });
 
-    it('should reject secret tokens and try to fetch public token', async () => {
-      mockListTokensTool = jest
-        .spyOn(ListTokensTool.prototype, 'run')
-        .mockResolvedValue({
-          isError: false,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({
-                tokens: [
-                  {
-                    token: 'pk.fetched.public.token',
-                    name: 'Public Token'
-                  }
-                ]
-              })
-            }
-          ]
-        });
-
-      const input = {
-        before: 'mapbox/streets-v11',
-        after: 'mapbox/outdoors-v12',
-        accessToken: 'sk.secret.token'
-      };
-
-      const result = await tool.run(input);
-
-      expect(result.isError).toBe(false);
-      expect(mockListTokensTool).toHaveBeenCalledWith({ usage: 'pk' });
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('access_token=pk.fetched.public.token');
-      expect(url).not.toContain('sk.secret.token');
-    });
-
-    it('should error when secret token provided and no public token available', async () => {
-      mockListTokensTool = jest
-        .spyOn(ListTokensTool.prototype, 'run')
-        .mockResolvedValue({
-          isError: false,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ tokens: [] })
-            }
-          ]
-        });
-
+    it('should reject secret tokens', async () => {
       const input = {
         before: 'mapbox/streets-v11',
         after: 'mapbox/outdoors-v12',
@@ -160,25 +93,17 @@ describe('StyleComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Secret tokens (sk.*) cannot be used for style comparison');
+      ).toContain('Invalid token type');
+      expect(
+        (result.content[0] as { type: 'text'; text: string }).text
+      ).toContain('Secret tokens (sk.*) cannot be exposed');
     });
 
-    it('should return error when no token available', async () => {
-      mockListTokensTool = jest
-        .spyOn(ListTokensTool.prototype, 'run')
-        .mockResolvedValue({
-          isError: false,
-          content: [
-            {
-              type: 'text',
-              text: JSON.stringify({ tokens: [] })
-            }
-          ]
-        });
-
+    it('should reject invalid token formats', async () => {
       const input = {
         before: 'mapbox/streets-v11',
-        after: 'mapbox/outdoors-v12'
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'invalid.token'
       };
 
       const result = await tool.run(input);
@@ -186,7 +111,7 @@ describe('StyleComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('No access token provided');
+      ).toContain('Invalid token type');
     });
 
     it('should return error for style ID without valid username in token', async () => {
@@ -227,6 +152,113 @@ describe('StyleComparisonTool', () => {
       // Check that forward slashes are URL encoded
       expect(url).toContain('before=user-name%2Fstyle-id-1');
       expect(url).toContain('after=user-name%2Fstyle-id-2');
+    });
+
+    it('should include nocache parameter when noCache is true', async () => {
+      const input = {
+        before: 'mapbox/streets-v11',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token',
+        noCache: true
+      };
+
+      const result = await tool.run(input);
+
+      expect(result.isError).toBe(false);
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('nocache=true');
+    });
+
+    it('should not include nocache parameter when noCache is false or undefined', async () => {
+      const input = {
+        before: 'mapbox/streets-v11',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token',
+        noCache: false
+      };
+
+      const result = await tool.run(input);
+
+      expect(result.isError).toBe(false);
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).not.toContain('nocache');
+
+      // Test with undefined (default)
+      const inputWithoutNoCache = {
+        before: 'mapbox/streets-v11',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token'
+      };
+
+      const result2 = await tool.run(inputWithoutNoCache);
+      expect(result2.isError).toBe(false);
+      const url2 = (result2.content[0] as { type: 'text'; text: string }).text;
+      expect(url2).not.toContain('nocache');
+    });
+
+    it('should include hash fragment with map position when coordinates are provided', async () => {
+      const input = {
+        before: 'mapbox/streets-v11',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token',
+        zoom: 5.72,
+        latitude: 9.503,
+        longitude: -67.473
+      };
+
+      const result = await tool.run(input);
+
+      expect(result.isError).toBe(false);
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('#5.72/9.503/-67.473');
+    });
+
+    it('should not include hash fragment when coordinates are incomplete', async () => {
+      // Only zoom provided
+      const input1 = {
+        before: 'mapbox/streets-v11',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token',
+        zoom: 10
+      };
+
+      const result1 = await tool.run(input1);
+      expect(result1.isError).toBe(false);
+      const url1 = (result1.content[0] as { type: 'text'; text: string }).text;
+      expect(url1).not.toContain('#');
+
+      // Only latitude and longitude, no zoom
+      const input2 = {
+        before: 'mapbox/streets-v11',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token',
+        latitude: 40.7128,
+        longitude: -74.006
+      };
+
+      const result2 = await tool.run(input2);
+      expect(result2.isError).toBe(false);
+      const url2 = (result2.content[0] as { type: 'text'; text: string }).text;
+      expect(url2).not.toContain('#');
+    });
+
+    it('should handle both nocache and map position together', async () => {
+      const input = {
+        before: 'mapbox/streets-v11',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token',
+        noCache: true,
+        zoom: 12,
+        latitude: 37.7749,
+        longitude: -122.4194
+      };
+
+      const result = await tool.run(input);
+
+      expect(result.isError).toBe(false);
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('nocache=true');
+      expect(url).toContain('#12/37.7749/-122.4194');
     });
   });
 
