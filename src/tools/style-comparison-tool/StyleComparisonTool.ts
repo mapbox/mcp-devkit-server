@@ -74,11 +74,6 @@ export class StyleComparisonTool extends BaseTool<
     params.append('before', beforeStyleId);
     params.append('after', afterStyleId);
 
-    // Add nocache parameter if requested
-    if (input.noCache === true) {
-      params.append('nocache', 'true');
-    }
-
     // Build base URL
     let url = `https://agent.mapbox.com/tools/style-compare?${params.toString()}`;
 

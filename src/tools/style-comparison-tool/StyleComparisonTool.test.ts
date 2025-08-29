@@ -154,48 +154,6 @@ describe('StyleComparisonTool', () => {
       expect(url).toContain('after=user-name%2Fstyle-id-2');
     });
 
-    it('should include nocache parameter when noCache is true', async () => {
-      const input = {
-        before: 'mapbox/streets-v11',
-        after: 'mapbox/outdoors-v12',
-        accessToken: 'pk.test.token',
-        noCache: true
-      };
-
-      const result = await tool.run(input);
-
-      expect(result.isError).toBe(false);
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('nocache=true');
-    });
-
-    it('should not include nocache parameter when noCache is false or undefined', async () => {
-      const input = {
-        before: 'mapbox/streets-v11',
-        after: 'mapbox/outdoors-v12',
-        accessToken: 'pk.test.token',
-        noCache: false
-      };
-
-      const result = await tool.run(input);
-
-      expect(result.isError).toBe(false);
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).not.toContain('nocache');
-
-      // Test with undefined (default)
-      const inputWithoutNoCache = {
-        before: 'mapbox/streets-v11',
-        after: 'mapbox/outdoors-v12',
-        accessToken: 'pk.test.token'
-      };
-
-      const result2 = await tool.run(inputWithoutNoCache);
-      expect(result2.isError).toBe(false);
-      const url2 = (result2.content[0] as { type: 'text'; text: string }).text;
-      expect(url2).not.toContain('nocache');
-    });
-
     it('should include hash fragment with map position when coordinates are provided', async () => {
       const input = {
         before: 'mapbox/streets-v11',
@@ -240,25 +198,6 @@ describe('StyleComparisonTool', () => {
       expect(result2.isError).toBe(false);
       const url2 = (result2.content[0] as { type: 'text'; text: string }).text;
       expect(url2).not.toContain('#');
-    });
-
-    it('should handle both nocache and map position together', async () => {
-      const input = {
-        before: 'mapbox/streets-v11',
-        after: 'mapbox/outdoors-v12',
-        accessToken: 'pk.test.token',
-        noCache: true,
-        zoom: 12,
-        latitude: 37.7749,
-        longitude: -122.4194
-      };
-
-      const result = await tool.run(input);
-
-      expect(result.isError).toBe(false);
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('nocache=true');
-      expect(url).toContain('#12/37.7749/-122.4194');
     });
   });
 

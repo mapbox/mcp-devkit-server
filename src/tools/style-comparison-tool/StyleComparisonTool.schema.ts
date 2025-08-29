@@ -16,13 +16,6 @@ export const StyleComparisonSchema = z.object({
     .describe(
       'Mapbox public access token (required, must start with pk.* and have styles:read permission). Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs. Please use a public token or create one with styles:read permission.'
     ),
-  noCache: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe(
-      'Set to true if either style has been recently updated to bypass caching and see the latest changes immediately. Set to false (default) to use cached versions for better performance. Only use true during development when you need to see style updates.'
-    ),
   zoom: z
     .number()
     .optional()
