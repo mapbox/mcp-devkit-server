@@ -58,9 +58,9 @@ exports[`Tool Naming Convention should maintain consistent tool list (snapshot t
     "toolName": "retrieve_style_tool",
   },
   {
-    "className": "TilesetComparisonTool",
-    "description": "Generate an HTML file for comparing two Mapbox styles side-by-side using mapbox-gl-compare",
-    "toolName": "tileset_comparison_tool",
+    "className": "StyleComparisonTool",
+    "description": "Generate a comparison URL for comparing two Mapbox styles side-by-side",
+    "toolName": "style_comparison_tool",
   },
   {
     "className": "UpdateStyleTool",

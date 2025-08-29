@@ -1,13 +1,13 @@
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import { ListTokensTool } from '../list-tokens-tool/ListTokensTool.js';
-import { TilesetComparisonTool } from './TilesetComparisonTool.js';
+import { StyleComparisonTool } from './StyleComparisonTool.js';
 
-describe('TilesetComparisonTool', () => {
-  let tool: TilesetComparisonTool;
+describe('StyleComparisonTool', () => {
+  let tool: StyleComparisonTool;
   let mockListTokensTool: jest.SpyInstance;
 
   beforeEach(() => {
-    tool = new TilesetComparisonTool();
+    tool = new StyleComparisonTool();
   });
 
   afterEach(() => {
@@ -15,29 +15,22 @@ describe('TilesetComparisonTool', () => {
   });
 
   describe('run', () => {
-    it('should generate HTML with provided access token', async () => {
+    it('should generate comparison URL with provided access token', async () => {
       const input = {
         before: 'mapbox/streets-v11',
         after: 'mapbox/outdoors-v12',
-        accessToken: 'pk.test.token',
-        title: 'Street vs Outdoors Comparison',
-        center: [-122.4194, 37.7749] as [number, number],
-        zoom: 12
+        accessToken: 'pk.test.token'
       };
 
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
       expect(result.content[0].type).toBe('text');
-      const html = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(html).toContain('<!DOCTYPE html>');
-      expect(html).toContain('mapbox-gl-compare');
-      expect(html).toContain('pk.test.token');
-      expect(html).toContain('mapbox://styles/mapbox/streets-v11');
-      expect(html).toContain('mapbox://styles/mapbox/outdoors-v12');
-      expect(html).toContain('Street vs Outdoors Comparison');
-      expect(html).toContain('center: [-122.4194, 37.7749]');
-      expect(html).toContain('zoom: 12');
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('https://agent.mapbox.com/tools/style-compare');
+      expect(url).toContain('access_token=pk.test.token');
+      expect(url).toContain('before=mapbox%2Fstreets-v11');
+      expect(url).toContain('after=mapbox%2Foutdoors-v12');
     });
 
     it('should attempt to fetch public token when no token provided', async () => {
@@ -69,8 +62,8 @@ describe('TilesetComparisonTool', () => {
 
       expect(result.isError).toBe(false);
       expect(mockListTokensTool).toHaveBeenCalledWith({ usage: 'pk' });
-      const html = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(html).toContain('pk.fetched.token');
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('access_token=pk.fetched.token');
     });
 
     it('should handle full style URLs', async () => {
@@ -83,9 +76,9 @@ describe('TilesetComparisonTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const html = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(html).toContain('mapbox://styles/mapbox/streets-v11');
-      expect(html).toContain('mapbox://styles/mapbox/outdoors-v12');
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('before=mapbox%2Fstreets-v11');
+      expect(url).toContain('after=mapbox%2Foutdoors-v12');
     });
 
     it('should handle just style IDs with valid public token', async () => {
@@ -103,9 +96,9 @@ describe('TilesetComparisonTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const html = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(html).toContain('mapbox://styles/testuser/style-id-1');
-      expect(html).toContain('mapbox://styles/testuser/style-id-2');
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('before=testuser%2Fstyle-id-1');
+      expect(url).toContain('after=testuser%2Fstyle-id-2');
     });
 
     it('should reject secret tokens and try to fetch public token', async () => {
@@ -138,9 +131,9 @@ describe('TilesetComparisonTool', () => {
 
       expect(result.isError).toBe(false);
       expect(mockListTokensTool).toHaveBeenCalledWith({ usage: 'pk' });
-      const html = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(html).toContain('pk.fetched.public.token');
-      expect(html).not.toContain('sk.secret.token');
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('access_token=pk.fetched.public.token');
+      expect(url).not.toContain('sk.secret.token');
     });
 
     it('should error when secret token provided and no public token available', async () => {
@@ -167,28 +160,7 @@ describe('TilesetComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Secret tokens (sk.*) cannot be used in client-side HTML');
-    });
-
-    it('should include all map options when provided', async () => {
-      const input = {
-        before: 'mapbox/streets-v11',
-        after: 'mapbox/outdoors-v12',
-        accessToken: 'pk.test.token',
-        center: [-74.006, 40.7128] as [number, number],
-        zoom: 10,
-        bearing: 45,
-        pitch: 60
-      };
-
-      const result = await tool.run(input);
-
-      expect(result.isError).toBe(false);
-      const html = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(html).toContain('center: [-74.006, 40.7128]');
-      expect(html).toContain('zoom: 10');
-      expect(html).toContain('bearing: 45');
-      expect(html).toContain('pitch: 60');
+      ).toContain('Secret tokens (sk.*) cannot be used for style comparison');
     });
 
     it('should return error when no token available', async () => {
@@ -241,26 +213,28 @@ describe('TilesetComparisonTool', () => {
       ).toContain('Could not determine username');
     });
 
-    it('should not include overlay when title is not provided', async () => {
+    it('should properly encode URL parameters', async () => {
       const input = {
-        before: 'mapbox/streets-v11',
-        after: 'mapbox/outdoors-v12',
+        before: 'user-name/style-id-1',
+        after: 'user-name/style-id-2',
         accessToken: 'pk.test.token'
       };
 
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const html = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(html).not.toContain('class="map-overlay"');
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      // Check that forward slashes are URL encoded
+      expect(url).toContain('before=user-name%2Fstyle-id-1');
+      expect(url).toContain('after=user-name%2Fstyle-id-2');
     });
   });
 
   describe('metadata', () => {
     it('should have correct name and description', () => {
-      expect(tool.name).toBe('tileset_comparison_tool');
+      expect(tool.name).toBe('style_comparison_tool');
       expect(tool.description).toBe(
-        'Generate an HTML file for comparing two Mapbox styles side-by-side using mapbox-gl-compare'
+        'Generate a comparison URL for comparing two Mapbox styles side-by-side'
       );
     });
   });
