@@ -13,6 +13,10 @@ export const StyleComparisonSchema = z.object({
     ),
   accessToken: z
     .string()
+    .startsWith(
+      'pk.',
+      'Invalid token type. Style comparison requires a public token (pk.*) that can be used in browser URLs. Secret tokens (sk.*) cannot be exposed in client-side applications. Please provide a public token with styles:read permission.'
+    )
     .describe(
       'Mapbox public access token (required, must start with pk.* and have styles:read permission). Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs. Please use a public token or create one with styles:read permission.'
     ),

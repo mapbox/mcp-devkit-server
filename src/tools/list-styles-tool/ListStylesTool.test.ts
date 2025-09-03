@@ -1,6 +1,6 @@
 // Use a token with valid JWT format for tests
 process.env.MAPBOX_ACCESS_TOKEN =
-  'eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+  'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
 import {
   setupFetch,
@@ -17,7 +17,9 @@ describe('ListStylesTool', () => {
     it('should have correct name and description', () => {
       const tool = new ListStylesTool();
       expect(tool.name).toBe('list_styles_tool');
-      expect(tool.description).toBe('List all styles for a Mapbox account');
+      expect(tool.description).toBe(
+        'List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.'
+      );
     });
 
     it('should have correct input schema', () => {

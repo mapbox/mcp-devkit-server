@@ -17,19 +17,6 @@ export class StyleComparisonTool extends BaseTool<
   }
 
   /**
-   * Validates that the token is a public token
-   */
-  private validatePublicToken(token: string): void {
-    if (!token.startsWith('pk.')) {
-      throw new Error(
-        `Invalid token type. Style comparison requires a public token (pk.*) that can be used in browser URLs. ` +
-          `Secret tokens (sk.*) cannot be exposed in client-side applications. ` +
-          `Please provide a public token with styles:read permission.`
-      );
-    }
-  }
-
-  /**
    * Processes style input to extract username/styleId format
    */
   private processStyleId(style: string, accessToken: string): string {
@@ -61,9 +48,6 @@ export class StyleComparisonTool extends BaseTool<
   protected async execute(
     input: StyleComparisonInput
   ): Promise<{ type: 'text'; text: string }> {
-    // Validate that we have a public token
-    this.validatePublicToken(input.accessToken);
-
     // Process style IDs to get username/styleId format
     const beforeStyleId = this.processStyleId(input.before, input.accessToken);
     const afterStyleId = this.processStyleId(input.after, input.accessToken);

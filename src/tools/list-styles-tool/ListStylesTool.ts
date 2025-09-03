@@ -5,7 +5,8 @@ export class ListStylesTool extends MapboxApiBasedTool<
   typeof ListStylesSchema
 > {
   name = 'list_styles_tool';
-  description = 'List all styles for a Mapbox account';
+  description =
+    'List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.';
 
   constructor() {
     super({ inputSchema: ListStylesSchema });

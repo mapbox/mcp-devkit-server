@@ -39,7 +39,7 @@ exports[`Tool Naming Convention should maintain consistent tool list (snapshot t
   },
   {
     "className": "ListStylesTool",
-    "description": "List all styles for a Mapbox account",
+    "description": "List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.",
     "toolName": "list_styles_tool",
   },
   {
