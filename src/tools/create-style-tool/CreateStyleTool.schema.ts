@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { stringSchema, mapboxStyleSchema } from '../../schemas/common.js';
 
 export const CreateStyleSchema = z.object({
-  name: z.string().describe('Name for the new style'),
-  style: z.record(z.any()).describe('Mapbox style specification object')
+  name: stringSchema('New name for the style'),
+  style: mapboxStyleSchema()
 });
 
 export type CreateStyleInput = z.infer<typeof CreateStyleSchema>;

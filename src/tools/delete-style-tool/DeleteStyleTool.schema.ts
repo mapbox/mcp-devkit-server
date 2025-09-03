@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { stringSchema } from '../../schemas/common.js';
 
 export const DeleteStyleSchema = z.object({
-  styleId: z.string().describe('Style ID to delete')
+  styleId: stringSchema('Style ID to delete')
 });
 
 export type DeleteStyleInput = z.infer<typeof DeleteStyleSchema>;

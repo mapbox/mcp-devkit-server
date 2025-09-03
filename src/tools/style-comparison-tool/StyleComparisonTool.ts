@@ -19,18 +19,25 @@ export class StyleComparisonTool extends BaseTool<
   /**
    * Processes style input to extract username/styleId format
    */
-  private processStyleId(style: string, accessToken: string): string {
+  private processStyleId(
+    style: string | undefined,
+    accessToken?: string
+  ): string {
     // If it's a full URL, extract the username/styleId part
-    if (style.startsWith('mapbox://styles/')) {
+    if (style?.startsWith('mapbox://styles/')) {
       return style.replace('mapbox://styles/', '');
     }
 
     // If it contains a slash, assume it's already username/styleId format
-    if (style.includes('/')) {
+    if (style?.includes('/')) {
       return style;
     }
 
     // If it's just a style ID, try to get username from the token
+    if (!style) {
+      throw new Error('Style is required');
+    }
+
     try {
       const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
       return `${username}/${style}`;

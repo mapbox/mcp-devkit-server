@@ -1,43 +1,42 @@
 import { z } from 'zod';
+import {
+  latitudeSchema,
+  longitudeSchema,
+  limitSchema,
+  stringSchema,
+  numberSchema,
+  booleanSchema,
+  enumSchema
+} from '../../schemas/common.js';
 
 export const TilequerySchema = z.object({
-  tilesetId: z
-    .string()
-    .optional()
-    .default('mapbox.mapbox-streets-v8')
-    .describe('Tileset ID to query (default: mapbox.mapbox-streets-v8)'),
-  longitude: z
-    .number()
-    .min(-180)
-    .max(180)
-    .describe('Longitude coordinate to query'),
-  latitude: z
-    .number()
-    .min(-90)
-    .max(90)
-    .describe('Latitude coordinate to query'),
-  radius: z
-    .number()
-    .min(0)
-    .optional()
-    .default(0)
-    .describe('Radius in meters to search for features (default: 0)'),
-  limit: z
-    .number()
-    .min(1)
-    .max(50)
-    .optional()
-    .default(5)
-    .describe('Number of features to return (1-50, default: 5)'),
-  dedupe: z
-    .boolean()
-    .optional()
-    .default(true)
-    .describe('Whether to deduplicate identical features (default: true)'),
-  geometry: z
-    .enum(['polygon', 'linestring', 'point'])
-    .optional()
-    .describe('Filter results by geometry type'),
+  tilesetId: stringSchema(
+    'Tileset ID to query (default: mapbox.mapbox-streets-v8)',
+    true
+  ).default('mapbox.mapbox-streets-v8'),
+  longitude: longitudeSchema('Longitude coordinate to query'),
+  latitude: latitudeSchema('Latitude coordinate to query'),
+  radius: numberSchema(
+    0,
+    undefined,
+    'Radius in meters to search for features (default: 0)',
+    true
+  ).default(0),
+  limit: limitSchema(
+    1,
+    50,
+    'Number of features to return (1-50, default: 5)'
+  ).default(5),
+  dedupe: booleanSchema(
+    'Whether to deduplicate identical features (default: true)',
+    true,
+    true
+  ),
+  geometry: enumSchema(
+    ['polygon', 'linestring', 'point'],
+    'Filter results by geometry type',
+    true
+  ),
   layers: z
     .array(z.string())
     .optional()

@@ -28,7 +28,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
     );
 
     // Check if any secret scopes are being used
-    const hasSecretScopes = input.scopes.some((scope) =>
+    const hasSecretScopes = input.scopes?.some((scope) =>
       SECRET_SCOPES.includes(scope as (typeof SECRET_SCOPES)[number])
     );
 
@@ -52,8 +52,8 @@ export class CreateTokenTool extends MapboxApiBasedTool<
       allowedUrls?: string[];
       expires?: string;
     } = {
-      note: input.note,
-      scopes: input.scopes
+      note: input.note as string,
+      scopes: input.scopes || []
     };
 
     if (input.allowedUrls) {
