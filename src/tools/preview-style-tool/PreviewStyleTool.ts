@@ -1,13 +1,11 @@
+import { BaseTool } from '../BaseTool.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
-import { ListTokensTool } from '../list-tokens-tool/ListTokensTool.js';
 import {
   PreviewStyleSchema,
   PreviewStyleInput
 } from './PreviewStyleTool.schema.js';
 
-export class PreviewStyleTool extends MapboxApiBasedTool<
-  typeof PreviewStyleSchema
-> {
+export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   readonly name = 'preview_style_tool';
   readonly description =
     'Generate preview URL for a Mapbox style using an existing public token';
@@ -17,37 +15,19 @@ export class PreviewStyleTool extends MapboxApiBasedTool<
   }
 
   protected async execute(
-    input: PreviewStyleInput,
-    accessToken?: string
+    input: PreviewStyleInput
   ): Promise<{ type: 'text'; text: string }> {
-    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
-
-    // Get list of tokens to find a public token
-    const listTokensTool = new ListTokensTool();
-    const tokensResult = await listTokensTool.run({
-      usage: 'pk' // Filter for public tokens only
-    });
-
-    if (tokensResult.isError) {
-      throw new Error('Failed to retrieve public tokens');
-    }
-
-    // Extract tokens from the response
-    const firstContent = tokensResult.content[0];
-    if (firstContent.type !== 'text') {
-      throw new Error('Unexpected response format from list tokens');
-    }
-    const tokensData = JSON.parse(firstContent.text);
-    const publicTokens = tokensData.tokens;
-
-    if (!publicTokens || publicTokens.length === 0) {
+    // Validate that the provided token is a public token
+    if (!input.accessToken.startsWith('pk.')) {
       throw new Error(
-        'No public tokens found. Please create a public token first.'
+        'Invalid access token. Only public tokens (starting with pk.*) are allowed for preview URLs. Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs.'
       );
     }
 
-    // Use the first available public token
-    const publicToken = publicTokens[0].token;
+    const username = MapboxApiBasedTool.getUserNameFromToken(input.accessToken);
+
+    // Use the user-provided public token
+    const publicToken = input.accessToken;
 
     // Build URL for the embeddable HTML endpoint
     const params = new URLSearchParams();

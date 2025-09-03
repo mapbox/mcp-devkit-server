@@ -1,43 +1,14 @@
 // Use a token with valid JWT format for tests
 process.env.MAPBOX_ACCESS_TOKEN =
-  'eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+  'pk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
-import { ListTokensTool } from '../list-tokens-tool/ListTokensTool.js';
 import { PreviewStyleTool } from './PreviewStyleTool.js';
 
 describe('PreviewStyleTool', () => {
-  let mockListTokensTool: jest.SpyInstance;
+  const TEST_ACCESS_TOKEN =
+    'pk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
-  beforeEach(() => {
-    // Mock the ListTokensTool.run method
-    mockListTokensTool = jest
-      .spyOn(ListTokensTool.prototype, 'run')
-      .mockResolvedValue({
-        isError: false,
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify({
-              tokens: [
-                {
-                  id: 'cktest123',
-                  note: 'Public token for testing',
-                  usage: 'pk',
-                  token:
-                    'pk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.public_token',
-                  scopes: ['styles:read', 'fonts:read']
-                }
-              ],
-              count: 1
-            })
-          }
-        ]
-      });
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+  // No setup needed since we use user-provided tokens directly
 
   describe('tool metadata', () => {
     it('should have correct name and description', () => {
@@ -54,8 +25,11 @@ describe('PreviewStyleTool', () => {
     });
   });
 
-  it('fetches public token and returns preview URL', async () => {
-    const result = await new PreviewStyleTool().run({ styleId: 'test-style' });
+  it('uses user-provided public token and returns preview URL', async () => {
+    const result = await new PreviewStyleTool().run({
+      styleId: 'test-style',
+      accessToken: TEST_ACCESS_TOKEN
+    });
 
     expect(result.isError).toBe(false);
     expect(result.content[0]).toMatchObject({
@@ -64,16 +38,12 @@ describe('PreviewStyleTool', () => {
         '/styles/v1/test-user/test-style.html?access_token=pk.'
       )
     });
-
-    // Verify that ListTokensTool was called with correct parameters
-    expect(mockListTokensTool).toHaveBeenCalledWith({
-      usage: 'pk'
-    });
   });
 
   it('includes styleId in URL', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'my-custom-style'
+      styleId: 'my-custom-style',
+      accessToken: TEST_ACCESS_TOKEN
     });
 
     expect(result.content[0]).toMatchObject({
@@ -85,6 +55,7 @@ describe('PreviewStyleTool', () => {
   it('includes title parameter when provided', async () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
+      accessToken: TEST_ACCESS_TOKEN,
       title: true
     });
 
@@ -97,6 +68,7 @@ describe('PreviewStyleTool', () => {
   it('includes zoomwheel parameter when provided', async () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
+      accessToken: TEST_ACCESS_TOKEN,
       zoomwheel: false
     });
 
@@ -108,7 +80,8 @@ describe('PreviewStyleTool', () => {
 
   it('includes fresh parameter for secure access', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style'
+      styleId: 'test-style',
+      accessToken: TEST_ACCESS_TOKEN
     });
 
     expect(result.content[0]).toMatchObject({
@@ -117,51 +90,42 @@ describe('PreviewStyleTool', () => {
     });
   });
 
-  it('handles token listing failure', async () => {
-    mockListTokensTool.mockResolvedValueOnce({
-      isError: true,
-      content: [
-        {
-          type: 'text',
-          text: 'Token listing failed'
-        }
-      ]
+  it('rejects secret tokens', async () => {
+    const result = await new PreviewStyleTool().run({
+      styleId: 'test-style',
+      accessToken:
+        'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.secret_token'
     });
-
-    const result = await new PreviewStyleTool().run({ styleId: 'test-style' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0]).toMatchObject({
       type: 'text',
-      text: expect.stringContaining('Failed to retrieve public tokens')
+      text: expect.stringContaining(
+        'Invalid access token. Only public tokens (starting with pk.*) are allowed'
+      )
     });
   });
 
-  it('handles no public tokens found', async () => {
-    mockListTokensTool.mockResolvedValueOnce({
-      isError: false,
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({
-            tokens: [],
-            count: 0
-          })
-        }
-      ]
+  it('rejects temporary tokens', async () => {
+    const result = await new PreviewStyleTool().run({
+      styleId: 'test-style',
+      accessToken: 'tk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.temp_token'
     });
-
-    const result = await new PreviewStyleTool().run({ styleId: 'test-style' });
 
     expect(result.isError).toBe(true);
     expect(result.content[0]).toMatchObject({
       type: 'text',
-      text: expect.stringContaining('No public tokens found')
+      text: expect.stringContaining(
+        'Invalid access token. Only public tokens (starting with pk.*) are allowed'
+      )
     });
   });
 
   it('returns URL on success', async () => {
-    const result = await new PreviewStyleTool().run({ styleId: 'test-style' });
+    const result = await new PreviewStyleTool().run({
+      styleId: 'test-style',
+      accessToken: TEST_ACCESS_TOKEN
+    });
 
     expect(result.isError).toBe(false);
     expect(result.content).toHaveLength(1);
