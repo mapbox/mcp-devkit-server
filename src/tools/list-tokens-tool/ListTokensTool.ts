@@ -16,6 +16,10 @@ export class ListTokensTool extends MapboxApiBasedTool<
     input: ListTokensInput,
     accessToken?: string
   ): Promise<{ type: 'text'; text: string }> {
+    if (!accessToken) {
+      throw new Error('Access token is required');
+    }
+
     const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
 
     this.log(
