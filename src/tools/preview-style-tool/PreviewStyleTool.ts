@@ -17,9 +17,10 @@ export class PreviewStyleTool extends MapboxApiBasedTool<
   }
 
   protected async execute(
-    input: PreviewStyleInput
+    input: PreviewStyleInput,
+    accessToken?: string
   ): Promise<{ type: 'text'; text: string }> {
-    const username = MapboxApiBasedTool.getUserNameFromToken();
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
 
     // Get list of tokens to find a public token
     const listTokensTool = new ListTokensTool();
