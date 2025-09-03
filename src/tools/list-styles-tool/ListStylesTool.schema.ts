@@ -5,7 +5,7 @@ export const ListStylesSchema = z.object({
     .number()
     .optional()
     .describe(
-      'Maximum number of styles to return (recommended: 10-50 to avoid token limits, default: no limit)'
+      'Maximum number of styles to return (recommended: 5-10 to avoid token limits, default: no limit)'
     ),
   start: z
     .string()
