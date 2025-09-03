@@ -2,31 +2,11 @@
 process.env.MAPBOX_ACCESS_TOKEN =
   'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
-import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import { PreviewStyleTool } from './PreviewStyleTool.js';
 
 describe('PreviewStyleTool', () => {
   const TEST_ACCESS_TOKEN =
-    'pk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
-
-  beforeEach(() => {
-    // Mock getUserNameFromToken to handle pk. prefixed tokens
-    jest
-      .spyOn(MapboxApiBasedTool, 'getUserNameFromToken')
-      .mockImplementation((token) => {
-        // If token starts with pk., we expect it to be a prefixed token
-        if (token && token.startsWith('pk.')) {
-          // For test token, return 'test-user'
-          return 'test-user';
-        }
-        // For non-prefixed tokens, return 'test-user' as well
-        return 'test-user';
-      });
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
-  });
+    'pk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
   describe('tool metadata', () => {
     it('should have correct name and description', () => {
