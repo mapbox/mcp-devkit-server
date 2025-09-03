@@ -17,13 +17,6 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   protected async execute(
     input: PreviewStyleInput
   ): Promise<{ type: 'text'; text: string }> {
-    // Validate that the provided token is a public token
-    if (!input.accessToken.startsWith('pk.')) {
-      throw new Error(
-        'Invalid access token. Only public tokens (starting with pk.*) are allowed for preview URLs. Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs.'
-      );
-    }
-
     const username = MapboxApiBasedTool.getUserNameFromToken(input.accessToken);
 
     // Use the user-provided public token
