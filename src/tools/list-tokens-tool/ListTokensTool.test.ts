@@ -61,7 +61,7 @@ describe('ListTokensTool', () => {
 
     it('validates usage enum values', async () => {
       const result = await tool.run({
-        usage: 'invalid' as unknown as 'pk' | 'sk' | 'tk'
+        usage: 'invalid' as unknown as 'pk'
       });
 
       expect(result.isError).toBe(true);
@@ -217,8 +217,8 @@ describe('ListTokensTool', () => {
         {
           id: 'cktest789',
           note: 'Token 3',
-          usage: 'sk',
-          token: 'sk.eyJ1IjoidGVzdHVzZXIifQ.test789',
+          usage: 'pk',
+          token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
           modified: '2023-03-01T00:00:00.000Z'
@@ -260,8 +260,8 @@ describe('ListTokensTool', () => {
         {
           id: 'cktest789',
           note: 'Token 3',
-          usage: 'sk',
-          token: 'sk.eyJ1IjoidGVzdHVzZXIifQ.test789',
+          usage: 'pk',
+          token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
           modified: '2023-03-01T00:00:00.000Z'
@@ -294,8 +294,8 @@ describe('ListTokensTool', () => {
         {
           id: 'cktest789',
           note: 'Token 3',
-          usage: 'sk',
-          token: 'sk.eyJ1IjoidGVzdHVzZXIifQ.test789',
+          usage: 'pk',
+          token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
           modified: '2023-03-01T00:00:00.000Z'
@@ -328,8 +328,8 @@ describe('ListTokensTool', () => {
         {
           id: 'cktest789',
           note: 'Token 3',
-          usage: 'sk',
-          token: 'sk.eyJ1IjoidGVzdHVzZXIifQ.test789',
+          usage: 'pk',
+          token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
           modified: '2023-03-01T00:00:00.000Z'
@@ -372,8 +372,8 @@ describe('ListTokensTool', () => {
         {
           id: 'cktest789',
           note: 'Token 3',
-          usage: 'sk',
-          token: 'sk.eyJ1IjoidGVzdHVzZXIifQ.test789',
+          usage: 'pk',
+          token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
           modified: '2023-03-01T00:00:00.000Z'
@@ -398,14 +398,13 @@ describe('ListTokensTool', () => {
     it('filters by token usage type', async () => {
       const mockTokens = [
         {
-          id: 'tktest123',
-          note: 'Temporary token',
-          usage: 'tk',
-          token: 'tk.eyJ1IjoidGVzdHVzZXIifQ.temp123',
+          id: 'pktest123',
+          note: 'Public token',
+          usage: 'pk',
+          token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.pub123',
           scopes: ['styles:read'],
           created: '2023-04-01T00:00:00.000Z',
-          modified: '2023-04-01T00:00:00.000Z',
-          expires: '2023-04-01T01:00:00.000Z'
+          modified: '2023-04-01T00:00:00.000Z'
         }
       ];
 
@@ -416,16 +415,16 @@ describe('ListTokensTool', () => {
         json: async () => mockTokens
       } as Response);
 
-      const result = await tool.run({ usage: 'tk' });
+      const result = await tool.run({ usage: 'pk' });
 
       expect(result.isError).toBe(false);
       const responseData = JSON.parse((result.content[0] as TextContent).text);
       expect(responseData.tokens).toHaveLength(1);
-      expect(responseData.tokens[0].usage).toBe('tk');
+      expect(responseData.tokens[0].usage).toBe('pk');
 
       // Verify the usage parameter was included
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining('usage=tk'),
+        expect.stringContaining('usage=pk'),
         expect.any(Object)
       );
     });

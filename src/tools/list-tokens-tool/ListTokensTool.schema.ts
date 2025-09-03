@@ -16,10 +16,7 @@ export const ListTokensSchema = z.object({
     .optional()
     .describe('Sort tokens by created or modified timestamp'),
   start: z.string().optional().describe('Token ID to start pagination from'),
-  usage: z
-    .enum(['pk', 'sk', 'tk'])
-    .optional()
-    .describe('Filter by token type: pk (public), sk (secret), tk (temporary)')
+  usage: z.enum(['pk']).optional().describe('Filter by token type: pk (public)')
 });
 
 export type ListTokensInput = z.infer<typeof ListTokensSchema>;

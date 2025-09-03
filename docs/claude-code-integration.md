@@ -119,7 +119,7 @@ Once configured, you can use natural language to interact with Mapbox developmen
 ### Token Management
 
 - "Create a new token for my web app with styles:read and fonts:read permissions"
-- "List all my secret tokens"
+- "List all my public tokens"
 - "Show me my default public token"
 
 ### GeoJSON Processing
