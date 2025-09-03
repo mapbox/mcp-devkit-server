@@ -24,7 +24,7 @@ exports[`Tool Naming Convention should maintain consistent tool list (snapshot t
   },
   {
     "className": "CreateTokenTool",
-    "description": "Create a new Mapbox access token with specified scopes and optional URL restrictions. Token type (public/secret) is automatically determined by scopes: PUBLIC scopes (styles:tiles, styles:read, fonts:read, datasets:read, vision:read) create public tokens; SECRET scopes create secret tokens that are only visible once upon creation.",
+    "description": "Create a new Mapbox public access token with specified scopes and optional URL restrictions.",
     "toolName": "create_token_tool",
   },
   {

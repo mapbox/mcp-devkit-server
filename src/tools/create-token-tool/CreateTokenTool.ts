@@ -1,8 +1,7 @@
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   CreateTokenSchema,
-  CreateTokenInput,
-  SECRET_SCOPES
+  CreateTokenInput
 } from './CreateTokenTool.schema.js';
 
 export class CreateTokenTool extends MapboxApiBasedTool<
@@ -10,7 +9,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
 > {
   readonly name = 'create_token_tool';
   readonly description =
-    'Create a new Mapbox access token with specified scopes and optional URL restrictions. Token type (public/secret) is automatically determined by scopes: PUBLIC scopes (styles:tiles, styles:read, fonts:read, datasets:read, vision:read) create public tokens; SECRET scopes create secret tokens that are only visible once upon creation.';
+    'Create a new Mapbox public access token with specified scopes and optional URL restrictions.';
 
   constructor() {
     super({ inputSchema: CreateTokenSchema });
@@ -24,25 +23,8 @@ export class CreateTokenTool extends MapboxApiBasedTool<
 
     this.log(
       'info',
-      `CreateTokenTool: Starting token creation with note: "${input.note}", scopes: ${JSON.stringify(input.scopes)}`
+      `CreateTokenTool: Creating public token with note: "${input.note}", scopes: ${JSON.stringify(input.scopes)}`
     );
-
-    // Check if any secret scopes are being used
-    const hasSecretScopes = input.scopes.some((scope) =>
-      SECRET_SCOPES.includes(scope as (typeof SECRET_SCOPES)[number])
-    );
-
-    if (hasSecretScopes) {
-      this.log(
-        'info',
-        'CreateTokenTool: Creating a SECRET token due to secret scopes. This token will only be visible once upon creation.'
-      );
-    } else {
-      this.log(
-        'info',
-        'CreateTokenTool: Creating a PUBLIC token (only public scopes detected).'
-      );
-    }
 
     const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}tokens/v2/${username}?access_token=${accessToken}`;
 

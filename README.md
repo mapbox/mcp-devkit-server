@@ -107,7 +107,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - **DeleteStyleTool**: Requires `styles:write` scope
 - **PreviewStyleTool**: Requires `tokens:read` scope (to list tokens) and at least one public token with `styles:read` scope
 
-**Note:** The username is automatically extracted from the JWT token payload. Secret tokens (sk.\*) are required for write operations.
+**Note:** The username is automatically extracted from the JWT token payload.
 
 **Example prompts:**
 
@@ -130,30 +130,13 @@ Create a new Mapbox access token with specified scopes and optional URL restrict
 
 **Available Scopes:**
 
-Public scopes (can be used with public tokens):
+Available scopes for public tokens:
 
 - `styles:tiles` - Read styles as raster tiles
 - `styles:read` - Read styles
 - `fonts:read` - Read fonts
 - `datasets:read` - Read datasets
 - `vision:read` - Read Vision API
-
-Secret scopes (will create a secret token, visible only once):
-
-- `scopes:list` - List available scopes
-- `map:read`, `map:write` - Read/write map configurations
-- `user:read`, `user:write` - Read/write user data
-- `uploads:read`, `uploads:list`, `uploads:write` - Manage uploads
-- `fonts:list`, `fonts:write` - List/write fonts
-- `styles:list`, `styles:write`, `styles:download`, `styles:protect` - Manage styles
-- `tokens:read`, `tokens:write` - Read/write tokens
-- `datasets:list`, `datasets:write` - List/write datasets
-- `tilesets:list`, `tilesets:read`, `tilesets:write` - Manage tilesets
-- `downloads:read` - Read downloads
-- `vision:download` - Download Vision data
-- `navigation:download` - Download navigation data
-- `offline:read`, `offline:write` - Read/write offline data
-- `user-feedback:read` - Read user feedback
 
 **Example:**
 
@@ -168,7 +151,7 @@ Secret scopes (will create a secret token, visible only once):
 **Example prompts:**
 
 - "Create a new Mapbox token for my web app with styles:read and fonts:read permissions"
-- "Generate a temporary token that expires in 30 minutes with styles:tiles and vision:read scopes"
+- "Generate a token that expires in 30 minutes with styles:tiles and vision:read scopes"
 - "Create a restricted token that only works on https://myapp.com with styles:read, fonts:read, and datasets:read"
 
 #### list-tokens
@@ -181,7 +164,7 @@ List Mapbox access tokens for the authenticated user with optional filtering and
 - `limit` (number, optional): Maximum number of tokens to return per page (1-100)
 - `sortby` (string, optional): Sort tokens by "created" or "modified" timestamp
 - `start` (string, optional): The token ID after which to start the listing (when provided, auto-pagination is disabled)
-- `usage` (string, optional): Filter by token type: "pk" (public), "sk" (secret), or "tk" (temporary)
+- `usage` (string, optional): Filter by token type: "pk" (public)
 
 **Pagination behavior:**
 
@@ -194,17 +177,17 @@ List Mapbox access tokens for the authenticated user with optional filtering and
 {
   "limit": 10,
   "sortby": "created",
-  "usage": "sk"
+  "usage": "pk"
 }
 ```
 
 **Example prompts:**
 
 - "List all my Mapbox tokens"
-- "Show me my secret tokens sorted by creation date"
+- "Show me my public tokens sorted by creation date"
 - "Find my default public token"
 - "List the 5 most recently modified tokens"
-- "Show all temporary tokens in my account"
+- "Show all public tokens in my account"
 
 ### Local processing tools
 

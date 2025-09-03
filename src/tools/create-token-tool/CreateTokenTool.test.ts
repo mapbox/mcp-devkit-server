@@ -30,7 +30,7 @@ describe('CreateTokenTool', () => {
     it('should have correct name and description', () => {
       expect(tool.name).toBe('create_token_tool');
       expect(tool.description).toBe(
-        'Create a new Mapbox access token with specified scopes and optional URL restrictions. Token type (public/secret) is automatically determined by scopes: PUBLIC scopes (styles:tiles, styles:read, fonts:read, datasets:read, vision:read) create public tokens; SECRET scopes create secret tokens that are only visible once upon creation.'
+        'Create a new Mapbox public access token with specified scopes and optional URL restrictions.'
       );
     });
 
@@ -219,11 +219,11 @@ describe('CreateTokenTool', () => {
       ]);
     });
 
-    it('creates a temporary token with expiration', async () => {
+    it('creates a token with expiration', async () => {
       const expiresAt = '2024-12-31T23:59:59.000Z';
       const mockResponse = {
-        token: 'tk.eyJ1IjoidGVzdHVzZXIiLCJhIjoiY2xwMTIzNDU2In0.test',
-        note: 'Temporary token',
+        token: 'pk.eyJ1IjoidGVzdHVzZXIiLCJhIjoiY2xwMTIzNDU2In0.test',
+        note: 'Token with expiration',
         id: 'cktest789',
         scopes: ['styles:read'],
         created: '2024-01-01T00:00:00.000Z',
@@ -238,7 +238,7 @@ describe('CreateTokenTool', () => {
       } as Response);
 
       const result = await tool.run({
-        note: 'Temporary token',
+        note: 'Token with expiration',
         scopes: ['styles:read'],
         expires: expiresAt
       });
@@ -253,36 +253,6 @@ describe('CreateTokenTool', () => {
       expect(requestBody.expires).toEqual(expiresAt);
     });
 
-    it('logs warning when creating token with secret scopes', async () => {
-      const mockResponse = {
-        token: 'sk.eyJ1IjoidGVzdHVzZXIiLCJhIjoiY2xwMTIzNDU2In0.secret',
-        note: 'Secret token',
-        id: 'cksecret123',
-        scopes: ['tokens:write', 'styles:write'],
-        created: '2024-01-01T00:00:00.000Z',
-        modified: '2024-01-01T00:00:00.000Z'
-      };
-
-      const fetchMock = setupFetch();
-      fetchMock.mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse
-      } as Response);
-
-      const result = await tool.run({
-        note: 'Secret token',
-        scopes: ['tokens:write', 'styles:write']
-      });
-
-      expect(result.isError).toBe(false);
-
-      // Verify the warning was logged
-      expect(tool['log']).toHaveBeenCalledWith(
-        'info',
-        'CreateTokenTool: Creating a SECRET token due to secret scopes. This token will only be visible once upon creation.'
-      );
-    });
-
     it('handles API errors gracefully', async () => {
       const fetchMock = setupFetch();
       fetchMock.mockResolvedValueOnce({
@@ -295,7 +265,7 @@ describe('CreateTokenTool', () => {
 
       const result = await tool.run({
         note: 'Test token',
-        scopes: ['tokens:write']
+        scopes: ['styles:read']
       });
 
       expect(result.isError).toBe(true);
