@@ -93,10 +93,12 @@ describe('StyleComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Invalid token type');
+      ).toContain('Invalid access token');
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Secret tokens (sk.*) cannot be exposed');
+      ).toContain(
+        'Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs'
+      );
     });
 
     it('should reject invalid token formats', async () => {
@@ -111,7 +113,7 @@ describe('StyleComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Invalid token type');
+      ).toContain('Invalid access token');
     });
 
     it('should return error for style ID without valid username in token', async () => {

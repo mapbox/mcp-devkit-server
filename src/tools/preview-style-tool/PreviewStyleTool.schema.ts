@@ -1,26 +1,15 @@
 import { z } from 'zod';
+import {
+  publicAccessTokenSchema,
+  stringSchema,
+  booleanSchema
+} from '../../schemas/common.js';
 
 export const PreviewStyleSchema = z.object({
-  styleId: z.string().describe('Style ID to preview'),
-  accessToken: z
-    .string()
-    .startsWith(
-      'pk.',
-      'Invalid access token. Only public tokens (starting with pk.*) are allowed for preview URLs. Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs.'
-    )
-    .describe(
-      'Mapbox public access token (required, must start with pk.* and have styles:read permission). Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs. Please use an existing public token or get one from list_tokens_tool or create one with create_token_tool with styles:read permission.'
-    ),
-  title: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe('Show title in the preview'),
-  zoomwheel: z
-    .boolean()
-    .optional()
-    .default(true)
-    .describe('Enable zoom wheel control')
+  styleId: stringSchema('Style ID to preview'),
+  accessToken: publicAccessTokenSchema(),
+  title: booleanSchema('Show title in the preview', true, false),
+  zoomwheel: booleanSchema('Enable zoom wheel control', true, true)
 });
 
 export type PreviewStyleInput = z.infer<typeof PreviewStyleSchema>;

@@ -1,18 +1,16 @@
 import { z } from 'zod';
+import { limitSchema, stringSchema } from '../../schemas/common.js';
 
 export const ListStylesSchema = z.object({
-  limit: z
-    .number()
-    .optional()
-    .describe(
-      'Maximum number of styles to return (recommended: 5-10 to avoid token limits, default: no limit)'
-    ),
-  start: z
-    .string()
-    .optional()
-    .describe(
-      'Start token for pagination (use the "start" value from previous response)'
-    )
+  limit: limitSchema(
+    1,
+    500,
+    'Maximum number of styles to return (recommended: 5-10 to avoid token limits, default: no limit)'
+  ),
+  start: stringSchema(
+    'Start token for pagination (use the "start" value from previous response)',
+    true
+  )
 });
 
 export type ListStylesInput = z.infer<typeof ListStylesSchema>;

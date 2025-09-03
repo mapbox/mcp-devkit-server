@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { stringSchema, arraySchema } from '../../schemas/common.js';
 
 // Public scopes that can be used with public tokens
 const PUBLIC_SCOPES = [
@@ -44,22 +45,20 @@ const SECRET_SCOPES = [
 const ALL_SCOPES = [...PUBLIC_SCOPES, ...SECRET_SCOPES] as const;
 
 export const CreateTokenSchema = z.object({
-  note: z.string().describe('Description of the token'),
-  scopes: z
-    .array(z.enum(ALL_SCOPES))
-    .describe(
-      'Array of scopes/permissions for the token. PUBLIC scopes (styles:tiles, styles:read, fonts:read, datasets:read, vision:read) create a public token. SECRET scopes (all others) create a secret token. If any secret scope is included, the entire token becomes secret and will only be visible once upon creation.'
-    ),
-  allowedUrls: z
-    .array(z.string())
-    .optional()
-    .describe('Optional array of URLs where the token can be used (max 100)'),
-  expires: z
-    .string()
-    .optional()
-    .describe(
-      'Optional expiration time in ISO 8601 format (maximum 1 hour in the future)'
-    )
+  note: stringSchema('Description of the token'),
+  scopes: arraySchema(
+    z.enum(ALL_SCOPES),
+    'Array of scopes/permissions for the token. PUBLIC scopes (styles:tiles, styles:read, fonts:read, datasets:read, vision:read) create a public token. SECRET scopes (all others) create a secret token. If any secret scope is included, the entire token becomes secret and will only be visible once upon creation.'
+  ),
+  allowedUrls: arraySchema(
+    z.string(),
+    'Optional array of URLs where the token can be used (max 100)',
+    true
+  ),
+  expires: stringSchema(
+    'Optional expiration time in ISO 8601 format (maximum 1 hour in the future)',
+    true
+  )
 });
 
 export type CreateTokenInput = z.infer<typeof CreateTokenSchema>;
