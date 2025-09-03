@@ -1,6 +1,6 @@
 // Use a token with valid JWT format for tests
 process.env.MAPBOX_ACCESS_TOKEN =
-  'eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+  'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
 import {
   setupFetch,

@@ -1,6 +1,6 @@
 // Use a token with valid JWT format for tests
 process.env.MAPBOX_ACCESS_TOKEN =
-  'eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+  'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import { PreviewStyleTool } from './PreviewStyleTool.js';
