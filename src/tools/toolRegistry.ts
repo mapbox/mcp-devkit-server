@@ -10,6 +10,7 @@ import { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
 import { PreviewStyleTool } from './preview-style-tool/PreviewStyleTool.js';
 import { RetrieveStyleTool } from './retrieve-style-tool/RetrieveStyleTool.js';
 import { StyleComparisonTool } from './style-comparison-tool/StyleComparisonTool.js';
+import { StyleHelperTool } from './style-helper-tool/StyleHelperTool.js';
 import { TilequeryTool } from './tilequery-tool/TilequeryTool.js';
 import { UpdateStyleTool } from './update-style-tool/UpdateStyleTool.js';
 
@@ -21,6 +22,7 @@ export const ALL_TOOLS = [
   new UpdateStyleTool(),
   new DeleteStyleTool(),
   new PreviewStyleTool(),
+  new StyleHelperTool(),
   new GeojsonPreviewTool(),
   new CreateTokenTool(),
   new ListTokensTool(),
