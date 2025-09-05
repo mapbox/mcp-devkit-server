@@ -19,108 +19,126 @@ What are the latest Mapbox APIs available for developers? I want to make sure I'
 ```
 
 ```
-Show me all current Mapbox services and SDKs available for developers.
+I need the most up-to-date official Mapbox documentation. Can you provide a complete overview?
 ```
 
 ```
-I need the most up-to-date Mapbox documentation for my project planning.
+Please show me all current Mapbox services and APIs using the latest documentation.
 ```
 
-### 2. Development Planning
+### 2. Development Planning (More Direct Approach)
 
 ```
-I'm building a location-based mobile application. What Mapbox tools and APIs should I consider for my tech stack?
-```
-
-```
-Help me understand the complete Mapbox developer platform - what options do I have?
+Can you get the latest official Mapbox documentation and help me understand what developer tools are available?
 ```
 
 ```
-What mapping solutions does Mapbox offer? I need to choose the right approach for my web application.
+I need current information from Mapbox documentation about their complete developer platform.
+```
+
+```
+Please use the most recent Mapbox documentation to show me all mapping solutions they offer.
 ```
 
 ### 3. Learning & Research
 
 ```
-Give me a comprehensive overview of Mapbox's current product ecosystem.
+Using the latest Mapbox documentation, give me a comprehensive overview of their current product ecosystem.
 ```
 
 ```
-What are Mapbox's navigation and routing capabilities? Please provide current details.
+I need up-to-date official information about Mapbox's navigation and routing capabilities.
 ```
 
 ```
-Explain the differences between Mapbox web SDKs and mobile SDKs.
+Please check the current Mapbox documentation and explain the differences between their web and mobile SDKs.
 ```
 
 ```
-I'm new to Mapbox development. Can you give me an overview of their documentation and resources?
+I'm new to Mapbox. Can you get the latest official documentation and give me an overview of their resources?
 ```
 
 ### 4. Architecture Decisions
 
 ```
-For a real estate application with interactive maps and address search, what Mapbox APIs would be most relevant?
+Can you check the latest Mapbox documentation and tell me what APIs are available for real estate applications with maps and search?
 ```
 
 ```
-I need to implement mapping, geocoding, and turn-by-turn routing. What are my Mapbox options?
+I need current Mapbox documentation about mapping, geocoding, and routing options. What's available?
 ```
 
 ```
-Compare Mapbox solutions for web applications versus mobile app implementations.
+Using the latest official Mapbox documentation, compare their web versus mobile solutions.
 ```
 
 ```
-I'm building a logistics platform. What Mapbox services should I evaluate?
+Please get the most recent Mapbox documentation and show me services relevant for logistics platforms.
 ```
 
 ### 5. Latest Information Requests
 
 ```
-What's new in the Mapbox ecosystem? I want to make sure I'm aware of all current offerings.
+What's new in the Mapbox ecosystem? Please use the latest official documentation to show me all current offerings.
 ```
 
 ```
-Are there any recent additions to Mapbox's API collection that I should know about?
+Can you get the most recent Mapbox documentation and tell me about any recent additions to their APIs?
 ```
 
 ```
-Give me a current state overview of Mapbox developer tools and services.
+I need the current state of Mapbox developer tools - please check their latest documentation.
 ```
 
 ```
-I last used Mapbox 2 years ago. What has changed and what new services are available?
+I last used Mapbox 2 years ago. Can you get the latest documentation and show me what has changed?
 ```
 
 ## 🎪 Interactive Demo Session
 
-Try this complete conversation flow:
+### More Effective Examples (Based on Real Testing):
 
-**You:** "I'm planning a food delivery app with real-time tracking and route optimization. What current Mapbox services would be relevant?"
+**Try these prompts that are more likely to trigger the documentation tool:**
 
-**Expected AI behavior:**
+**Example 1:**
 
-1. The AI should use `get_latest_mapbox_docs_tool`
-2. Provide specific recommendations based on current Mapbox offerings
-3. Include relevant APIs like Navigation SDK, Directions API, etc.
+```
+What are the latest Mapbox APIs available for developers? I want to make sure I'm using the most current information.
+```
 
-**Follow-up:** "Can you give me more details about the Navigation SDK options?"
+**Example 2:**
 
-**Expected AI behavior:**
+```
+I need the most up-to-date Mapbox documentation for my project. Can you show me all current services available?
+```
 
-1. Reference the already-fetched documentation
-2. Provide specific details about iOS/Android Navigation SDKs
-3. Include links to relevant documentation
+**Example 3:**
 
-> **📝 Note**: The actual behavior may vary depending on your MCP client and AI model. Some models might:
->
-> - Choose web search instead of the documentation tool
-> - Use the tool but focus on different aspects of the documentation
-> - Require more specific prompting to trigger the desired tool selection
->
-> If the tool isn't being selected, try using more explicit language like "I need the most current official information" or "please use the latest documentation."
+```
+Please use the latest official Mapbox documentation to tell me about their navigation capabilities.
+```
+
+### Less Effective Examples:
+
+❌ **"I'm planning a food delivery app with real-time tracking and route optimization. What current Mapbox services would be relevant?"**
+
+- _Problem_: Too project-specific, may trigger general knowledge response
+
+❌ **"What Mapbox APIs should I use for my app?"**
+
+- _Problem_: Too general, may trigger web search
+
+❌ **"How do I implement Mapbox in React?"**
+
+- _Problem_: Implementation-focused, may trigger general coding help
+
+### Why Some Examples Work Better:
+
+✅ **Direct documentation requests**: "latest Mapbox documentation", "current APIs available"
+✅ **Emphasis on currency**: "most current information", "up-to-date"  
+✅ **Official source requests**: "official Mapbox documentation", "latest official information"
+
+> **📝 Real-World Note**: Based on testing, prompts that explicitly request documentation or emphasize getting the latest official information have higher success rates for triggering the documentation tool.
 
 ## 🔍 What Makes These Prompts Effective
 
@@ -153,19 +171,19 @@ These prompts work because they:
 ### Complex Project Planning
 
 ```
-I need to architect a complete geospatial solution with mapping, search, routing, and analytics. Based on the latest Mapbox offerings, what would be the optimal combination of services?
+Can you get the latest Mapbox documentation and help me architect a geospatial solution with mapping, search, routing, and analytics? I need to know what services are currently available.
 ```
 
 ### Competitive Analysis
 
 ```
-I'm evaluating Mapbox versus other mapping platforms. What are all the current Mapbox capabilities I should consider in my analysis?
+I'm evaluating Mapbox versus other platforms. Please use the most current official Mapbox documentation to show me all their capabilities for my analysis.
 ```
 
 ### Migration Planning
 
 ```
-We're currently using [other platform]. What are all the Mapbox services that could replace our current functionality?
+We're migrating from another platform. Can you check the latest Mapbox documentation and show me all services that could replace our current functionality?
 ```
 
 ## 💡 Pro Tips
