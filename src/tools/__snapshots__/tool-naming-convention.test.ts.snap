@@ -38,6 +38,11 @@ exports[`Tool Naming Convention should maintain consistent tool list (snapshot t
     "toolName": "geojson_preview_tool",
   },
   {
+    "className": "GetMapboxDocSourceTool",
+    "description": "Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search.",
+    "toolName": "get_latest_mapbox_docs_tool",
+  },
+  {
     "className": "ListStylesTool",
     "description": "List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.",
     "toolName": "list_styles_tool",

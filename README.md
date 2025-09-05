@@ -4,18 +4,37 @@ A Model Context Protocol (MCP) server that provides AI assistants with direct ac
 
 ![Mapbox MCP DevKit Server Demo](./assets/mcp_server_devkit.gif)
 
-## Integration with Developer Tools
+## Table of Contents
+
+- [Quick Start](#quick-start)
+  - [Integration with Developer Tools](#integration-with-developer-tools)
+  - [DXT Package Distribution](#dxt-package-distribution)
+  - [Getting Your Mapbox Access Token](#getting-your-mapbox-access-token)
+- [Tools](#tools)
+  - [Documentation Tools](#documentation-tools)
+  - [Style Management Tools](#style-management-tools)
+  - [Token Management Tools](#token-management-tools)
+  - [Local Processing Tools](#local-processing-tools)
+- [Development](#development)
+  - [Testing](#testing)
+  - [Inspecting Server](#inspecting-server)
+  - [Creating New Tools](#creating-new-tools)
+  - [Environment Variables](#environment-variables)
+
+## Quick Start
+
+### Integration with Developer Tools
 
 Get started by integrating with your preferred AI development environment:
 
 - [Claude Code Integration](./docs/claude-code-integration.md) - Command-line development with Claude
 - [Claude Desktop Integration](./docs/claude-desktop-integration.md) - Desktop application integration
 
-## DXT Package Distribution
+### DXT Package Distribution
 
 This MCP server can be packaged as a DXT (Desktop Extension) file for easy distribution and installation. DXT is a standardized format for distributing local MCP servers, similar to browser extensions.
 
-### Creating the DXT Package
+#### Creating the DXT Package
 
 To create a DXT package:
 
@@ -39,7 +58,7 @@ The DXT package includes:
 - User configuration schema for the Mapbox access token
 - Automatic environment variable setup
 
-## Getting Your Mapbox Access Token
+### Getting Your Mapbox Access Token
 
 **A Mapbox access token is required to use this MCP server.**
 
@@ -59,9 +78,24 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 
 ## Tools
 
-### Mapbox API tools
+### Documentation Tools
 
-#### Style Management Tools
+**get_latest_mapbox_docs_tool** - Access the latest official Mapbox documentation directly from the source. This tool fetches comprehensive, up-to-date information about all Mapbox APIs, SDKs, and developer resources from docs.mapbox.com/llms.txt.
+
+
+**Example prompts:**
+
+- "What are the latest Mapbox APIs available for developers?"
+- "Show me all current Mapbox services and SDKs"
+- "I need up-to-date Mapbox documentation for my project"
+- "What mapping solutions does Mapbox offer for my tech stack?"
+- "Give me an overview of Mapbox's navigation and routing capabilities"
+- "Compare Mapbox web SDKs versus mobile SDKs"
+- "What's new in the Mapbox ecosystem?"
+
+📖 **[See more examples and interactive demo →](./docs/mapbox-docs-tool-demo.md)**
+
+### Style Management Tools
 
 Complete set of tools for managing Mapbox styles via the Styles API:
 
@@ -115,7 +149,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - "Please generate a preview link for this style"
 - "Can you change the background to snow style?"
 
-#### Token Management Tools
+### Token Management Tools
 
 #### create-token
 
@@ -189,7 +223,7 @@ List Mapbox access tokens for the authenticated user with optional filtering and
 - "List the 5 most recently modified tokens"
 - "Show all public tokens in my account"
 
-### Local processing tools
+### Local Processing Tools
 
 #### GeoJSON Preview tool (Beta)
 
@@ -315,11 +349,11 @@ An array of four numbers representing the bounding box: `[minX, minY, maxX, maxY
 - "Calculate the bounding box of this GeoJSON file" (then upload a .geojson file)
 - "What's the bounding box for the coordinates in the uploaded parks.geojson file?"
 
-# Development
+## Development
 
-## Testing
+### Testing
 
-### Tool Snapshot Tests
+#### Tool Snapshot Tests
 
 The project includes snapshot tests to ensure tool integrity and prevent accidental additions or removals of tools. These tests automatically discover all tools and create a snapshot of their metadata.
 
@@ -360,9 +394,9 @@ npm test -- --updateSnapshot
 
 **Important**: Only update snapshots when you have intentionally added, removed, or modified tools. Unexpected snapshot failures indicate accidental changes to the tool structure.
 
-## Inspecting server
+### Inspecting Server
 
-### Using Node.js
+#### Using Node.js
 
 ```sh
 # Build
@@ -372,7 +406,7 @@ npm run build
 npx @modelcontextprotocol/inspector node dist/index.js
 ```
 
-### Using Docker
+#### Using Docker
 
 ```sh
 # Build the Docker image
@@ -382,7 +416,7 @@ docker build -t mapbox-mcp-devkit .
 npx @modelcontextprotocol/inspector docker run -i --rm --env MAPBOX_ACCESS_TOKEN="YOUR_TOKEN" mapbox-mcp-devkit
 ```
 
-## Create new tool
+### Creating New Tools
 
 ```sh
 npx plop create-tool
@@ -432,9 +466,9 @@ src/tools/your-tool-name-tool/
 - Consistent with existing tools in the project
 - Enhanced TypeScript type safety
 
-## Environment Variables
+### Environment Variables
 
-### VERBOSE_ERRORS
+#### VERBOSE_ERRORS
 
 Set `VERBOSE_ERRORS=true` to get detailed error messages from the MCP server. This is useful for debugging issues when integrating with MCP clients.
 
