@@ -63,6 +63,11 @@ exports[`Tool Naming Convention should maintain consistent tool list (snapshot t
     "toolName": "style_comparison_tool",
   },
   {
+    "className": "StyleHelperTool",
+    "description": "Interactive helper for creating custom Mapbox styles with specific features and colors",
+    "toolName": "style_helper_tool",
+  },
+  {
     "className": "TilequeryTool",
     "description": "Query vector and raster data from Mapbox tilesets at geographic coordinates",
     "toolName": "tilequery_tool",
