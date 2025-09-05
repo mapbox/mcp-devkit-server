@@ -2,6 +2,8 @@
 
 This demo showcases the `get_latest_mapbox_docs_tool` and provides example prompts that will trigger the AI assistant to use this tool instead of web search.
 
+> **⚠️ Important Note**: Different MCP clients (Claude Desktop, Claude Code, etc.) and different LLM models may exhibit varying behavior when selecting tools. The examples below are demonstrations of intended behavior and may not work identically across all environments. Tool selection depends on the specific AI model's training, the MCP client implementation, and system prompts used.
+
 ## 🎯 Tool Overview
 
 The `get_latest_mapbox_docs_tool` automatically fetches the latest official Mapbox documentation from `docs.mapbox.com/llms.txt`. This ensures AI assistants always have access to current, authoritative information about Mapbox APIs and services.
@@ -112,6 +114,14 @@ Try this complete conversation flow:
 2. Provide specific details about iOS/Android Navigation SDKs
 3. Include links to relevant documentation
 
+> **📝 Note**: The actual behavior may vary depending on your MCP client and AI model. Some models might:
+>
+> - Choose web search instead of the documentation tool
+> - Use the tool but focus on different aspects of the documentation
+> - Require more specific prompting to trigger the desired tool selection
+>
+> If the tool isn't being selected, try using more explicit language like "I need the most current official information" or "please use the latest documentation."
+
 ## 🔍 What Makes These Prompts Effective
 
 These prompts work because they:
@@ -166,6 +176,30 @@ We're currently using [other platform]. What are all the Mapbox services that co
 4. **Avoid specific tool names**: Let the AI choose the right tool naturally
 5. **Context matters**: Mention your project needs to get relevant filtering
 
+### 🔧 **Troubleshooting Tool Selection**
+
+If the AI is not using the documentation tool:
+
+- **Be more explicit**: "I need official Mapbox documentation" or "Please use the latest source"
+- **Emphasize currency**: "Make sure you have the most current information"
+- **Request authority**: "I want authoritative information directly from Mapbox"
+- **Try rephrasing**: Different models respond to different prompt styles
+- **Check your MCP setup**: Ensure the tool is properly registered and available
+
+### 🌐 **Environment Considerations**
+
+**Claude Desktop vs Claude Code**: Different interfaces may have varying tool selection behaviors.
+
+**Model Versions**: Newer models may be better at tool selection than older ones.
+
+**System Prompts**: Some MCP clients may have system prompts that influence tool selection preferences.
+
 ---
 
-_This demo file is designed to help developers and AI assistants make the most of the Mapbox Documentation Tool. The prompts are crafted to naturally trigger the correct tool selection while providing valuable, current information._
+## 📋 **Disclaimer**
+
+_This demo file provides **examples and suggestions** for using the Mapbox Documentation Tool. The prompts are crafted to **ideally** trigger correct tool selection, but actual behavior **will vary** across different MCP clients, AI models, and system configurations._
+
+_**Results may vary**: Tool selection depends on many factors including model training, client implementation, and system prompts. These examples show **intended behavior** rather than guaranteed outcomes._
+
+_Use these examples as **starting points** and adjust your prompts based on your specific environment and the AI assistant's responses._
