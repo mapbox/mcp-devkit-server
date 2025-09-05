@@ -13,8 +13,12 @@ describe('GetMapboxDocSourceTool', () => {
   });
 
   it('should have correct name and description', () => {
-    expect(tool.name).toBe('get_mapbox_doc_source_tool');
-    expect(tool.description).toContain('Fetch and return Mapbox documentation');
+    expect(tool.name).toBe('get_latest_mapbox_docs_tool');
+    expect(tool.description).toContain(
+      'Get the latest official Mapbox documentation'
+    );
+    expect(tool.description).toContain('Always up-to-date');
+    expect(tool.description).toContain('instead of web search');
   });
 
   it('should successfully fetch documentation content', async () => {

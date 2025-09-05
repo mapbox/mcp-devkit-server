@@ -39,8 +39,8 @@ exports[`Tool Naming Convention should maintain consistent tool list (snapshot t
   },
   {
     "className": "GetMapboxDocSourceTool",
-    "description": "Fetch and return Mapbox documentation source collection content from llms.txt",
-    "toolName": "get_mapbox_doc_source_tool",
+    "description": "Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search.",
+    "toolName": "get_latest_mapbox_docs_tool",
   },
   {
     "className": "ListStylesTool",

@@ -7,9 +7,9 @@ import {
 export class GetMapboxDocSourceTool extends BaseTool<
   typeof GetMapboxDocSourceSchema
 > {
-  name = 'get_mapbox_doc_source_tool';
+  name = 'get_latest_mapbox_docs_tool';
   description =
-    'Fetch and return Mapbox documentation source collection content from llms.txt';
+    'Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search.';
 
   constructor() {
     super({ inputSchema: GetMapboxDocSourceSchema });

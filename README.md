@@ -189,6 +189,32 @@ List Mapbox access tokens for the authenticated user with optional filtering and
 - "List the 5 most recently modified tokens"
 - "Show all public tokens in my account"
 
+#### get_latest_mapbox_docs_tool
+
+Access the latest official Mapbox documentation directly from the source. This tool fetches comprehensive, up-to-date information about all Mapbox APIs, SDKs, and developer resources from docs.mapbox.com/llms.txt.
+
+**Parameters:** None required
+
+**Example:**
+
+```json
+{}
+```
+
+**Returns:** Complete Mapbox documentation including all current APIs, SDKs, tools, and developer resources. Always up-to-date and more reliable than web search results.
+
+**Example prompts:**
+
+- "What are the latest Mapbox APIs available for developers?"
+- "Show me all current Mapbox services and SDKs"
+- "I need up-to-date Mapbox documentation for my project"
+- "What mapping solutions does Mapbox offer for my tech stack?"
+- "Give me an overview of Mapbox's navigation and routing capabilities"
+- "Compare Mapbox web SDKs versus mobile SDKs"
+- "What's new in the Mapbox ecosystem?"
+
+📖 **[See more examples and interactive demo →](./docs/mapbox-docs-tool-demo.md)**
+
 ### Local processing tools
 
 #### GeoJSON Preview tool (Beta)
