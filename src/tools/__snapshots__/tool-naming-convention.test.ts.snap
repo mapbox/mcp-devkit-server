@@ -38,6 +38,11 @@ exports[`Tool Naming Convention should maintain consistent tool list (snapshot t
     "toolName": "geojson_preview_tool",
   },
   {
+    "className": "GetMapboxDocSourceTool",
+    "description": "Fetch and return Mapbox documentation source collection content from llms.txt",
+    "toolName": "get_mapbox_doc_source_tool",
+  },
+  {
     "className": "ListStylesTool",
     "description": "List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.",
     "toolName": "list_styles_tool",
