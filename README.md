@@ -23,18 +23,18 @@ A Model Context Protocol (MCP) server that provides AI assistants with direct ac
 
 ## Quick Start
 
-## Integration with Developer Tools
+### Integration with Developer Tools
 
 Get started by integrating with your preferred AI development environment:
 
 - [Claude Code Integration](./docs/claude-code-integration.md) - Command-line development with Claude
 - [Claude Desktop Integration](./docs/claude-desktop-integration.md) - Desktop application integration
 
-## DXT Package Distribution
+### DXT Package Distribution
 
 This MCP server can be packaged as a DXT (Desktop Extension) file for easy distribution and installation. DXT is a standardized format for distributing local MCP servers, similar to browser extensions.
 
-### Creating the DXT Package
+#### Creating the DXT Package
 
 To create a DXT package:
 
@@ -58,7 +58,7 @@ The DXT package includes:
 - User configuration schema for the Mapbox access token
 - Automatic environment variable setup
 
-## Getting Your Mapbox Access Token
+### Getting Your Mapbox Access Token
 
 **A Mapbox access token is required to use this MCP server.**
 
@@ -80,19 +80,8 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 
 ### Documentation Tools
 
-#### get_latest_mapbox_docs_tool
+**get_latest_mapbox_docs_tool** - Access the latest official Mapbox documentation directly from the source. This tool fetches comprehensive, up-to-date information about all Mapbox APIs, SDKs, and developer resources from docs.mapbox.com/llms.txt.
 
-Access the latest official Mapbox documentation directly from the source. This tool fetches comprehensive, up-to-date information about all Mapbox APIs, SDKs, and developer resources from docs.mapbox.com/llms.txt.
-
-**Parameters:** None required
-
-**Example:**
-
-```json
-{}
-```
-
-**Returns:** Complete Mapbox documentation including all current APIs, SDKs, tools, and developer resources. Always up-to-date and more reliable than web search results.
 
 **Example prompts:**
 
