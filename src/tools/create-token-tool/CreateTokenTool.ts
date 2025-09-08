@@ -1,3 +1,4 @@
+import { fetchClient } from 'src/utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   CreateTokenSchema,
@@ -11,7 +12,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
   readonly description =
     'Create a new Mapbox public access token with specified scopes and optional URL restrictions.';
 
-  constructor() {
+  constructor(private fetchImpl: typeof fetch = fetchClient) {
     super({ inputSchema: CreateTokenSchema });
   }
 
@@ -50,7 +51,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
     }
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchImpl(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

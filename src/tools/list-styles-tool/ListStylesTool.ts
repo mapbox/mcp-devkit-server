@@ -1,3 +1,4 @@
+import { fetchClient } from 'src/utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import { ListStylesSchema, ListStylesInput } from './ListStylesTool.schema.js';
 
@@ -8,7 +9,7 @@ export class ListStylesTool extends MapboxApiBasedTool<
   description =
     'List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.';
 
-  constructor() {
+  constructor(private fetchImpl: typeof fetch = fetchClient) {
     super({ inputSchema: ListStylesSchema });
   }
 
@@ -35,7 +36,7 @@ export class ListStylesTool extends MapboxApiBasedTool<
 
     const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}?${params.toString()}`;
 
-    const response = await fetch(url);
+    const response = await this.fetchImpl(url);
 
     if (!response.ok) {
       throw new Error(

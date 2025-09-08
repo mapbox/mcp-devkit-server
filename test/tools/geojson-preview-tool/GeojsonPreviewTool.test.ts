@@ -1,8 +1,9 @@
-import { GeojsonPreviewTool } from './GeojsonPreviewTool.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { GeojsonPreviewTool } from '../../../src/tools/geojson-preview-tool/GeojsonPreviewTool.js';
 
 describe('GeojsonPreviewTool', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('tool metadata', () => {
@@ -14,10 +15,10 @@ describe('GeojsonPreviewTool', () => {
       );
     });
 
-    it('should have correct input schema', () => {
-      const {
-        GeojsonPreviewSchema
-      } = require('./GeojsonPreviewTool.schema.ts');
+    it('should have correct input schema', async () => {
+      const { GeojsonPreviewSchema } = await import(
+        '../../../src/tools/geojson-preview-tool/GeojsonPreviewTool.schema.js'
+      );
       expect(GeojsonPreviewSchema).toBeDefined();
     });
   });

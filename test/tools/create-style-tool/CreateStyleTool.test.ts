@@ -1,16 +1,16 @@
-// Use a token with valid JWT format for tests
 process.env.MAPBOX_ACCESS_TOKEN =
   'eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   setupFetch,
   assertHeadersSent
-} from '../../utils/requestUtils.test-helpers.js';
-import { CreateStyleTool } from './CreateStyleTool.js';
+} from '../../utils/fetchRequestUtils.js';
+import { CreateStyleTool } from '../../../src/tools/create-style-tool/CreateStyleTool.js';
 
 describe('CreateStyleTool', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('tool metadata', () => {
@@ -20,19 +20,21 @@ describe('CreateStyleTool', () => {
       expect(tool.description).toBe('Create a new Mapbox style');
     });
 
-    it('should have correct input schema', () => {
-      const { CreateStyleSchema } = require('./CreateStyleTool.schema.ts');
+    it('should have correct input schema', async () => {
+      const { CreateStyleSchema } = await import(
+        '../../../src/tools/create-style-tool/CreateStyleTool.schema.js'
+      );
       expect(CreateStyleSchema).toBeDefined();
     });
   });
 
   it('sends custom header', async () => {
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       json: async () => ({ id: 'new-style-id', name: 'Test Style' })
     });
 
-    await new CreateStyleTool().run({
+    await new CreateStyleTool(fetch).run({
       name: 'Test Style',
       style: { version: 8, sources: {}, layers: [] }
     });
@@ -40,13 +42,13 @@ describe('CreateStyleTool', () => {
   });
 
   it('handles fetch errors gracefully', async () => {
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: false,
       status: 400,
       statusText: 'Bad Request'
     });
 
-    const result = await new CreateStyleTool().run({
+    const result = await new CreateStyleTool(fetch).run({
       name: 'Test Style',
       style: { version: 8, sources: {}, layers: [] }
     });

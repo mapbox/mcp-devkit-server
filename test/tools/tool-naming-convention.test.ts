@@ -1,9 +1,14 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { BaseTool } from './BaseTool.js';
+import { describe, it, expect } from 'vitest';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { BaseTool } from '../../src/tools/BaseTool.js';
+import { pathToFileURL } from 'node:url';
 
 async function discoverTools(): Promise<any[]> {
-  const toolsDir = __dirname;
+  const toolsDir = path.resolve(
+    new URL('.', import.meta.url).pathname,
+    '../../src/tools'
+  );
   const tools: any[] = [];
 
   // Find all directories that end with '-tool'
@@ -16,16 +21,15 @@ async function discoverTools(): Promise<any[]> {
   for (const toolDir of toolDirectories) {
     const allFiles = fs.readdirSync(path.join(toolsDir, toolDir));
     const toolFiles = allFiles.filter(
-      (file) =>
-        file.endsWith('.ts') &&
-        !file.endsWith('.test.ts') &&
-        file.includes('Tool')
+      (file) => file.endsWith('.ts') && file.includes('Tool')
     );
 
     // Import all tool files in the directory
     for (const toolFile of toolFiles) {
       try {
-        const modulePath = `./${toolDir}/${toolFile.replace('.ts', '.js')}`;
+        const modulePath = pathToFileURL(
+          path.join(toolsDir, toolDir, toolFile.replace('.ts', '.js'))
+        ).href;
         const module = await import(modulePath);
 
         // Find all exported tool classes

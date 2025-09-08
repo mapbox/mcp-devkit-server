@@ -1,3 +1,4 @@
+import { fetchClient } from 'src/utils/fetchRequest.js';
 import { BaseTool } from '../BaseTool.js';
 import {
   GetMapboxDocSourceSchema,
@@ -11,15 +12,16 @@ export class GetMapboxDocSourceTool extends BaseTool<
   description =
     'Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search.';
 
-  constructor() {
+  constructor(private fetchImpl: typeof fetch = fetchClient) {
     super({ inputSchema: GetMapboxDocSourceSchema });
   }
 
   protected async execute(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _input: GetMapboxDocSourceInput
   ): Promise<{ type: 'text'; text: string }> {
     try {
-      const response = await fetch('https://docs.mapbox.com/llms.txt');
+      const response = await this.fetchImpl('https://docs.mapbox.com/llms.txt');
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

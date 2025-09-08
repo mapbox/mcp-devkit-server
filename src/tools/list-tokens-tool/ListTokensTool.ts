@@ -1,3 +1,4 @@
+import { fetchClient } from 'src/utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import { ListTokensSchema, ListTokensInput } from './ListTokensTool.schema.js';
 
@@ -8,7 +9,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
   readonly description =
     'List Mapbox access tokens for the authenticated user with optional filtering and pagination. When using pagination, the "start" parameter must be obtained from the "next_start" field of the previous response (it is not a token ID)';
 
-  constructor() {
+  constructor(private fetchImpl: typeof fetch = fetchClient) {
     super({ inputSchema: ListTokensSchema });
   }
 
@@ -64,7 +65,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
         this.log('info', `ListTokensTool: Fetching page ${pageCount}`);
         this.log('debug', `ListTokensTool: Fetching URL: ${url}`);
 
-        const response = await fetch(url, {
+        const response = await this.fetchImpl(url, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'

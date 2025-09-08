@@ -5,3 +5,10 @@ dist/
 .env
 .env.local
 .env.*.local
+
+# tshy
+.tshy/
+.tshy-build/
+
+# Test results
+test-results.xml

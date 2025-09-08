@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true
+  },
+  "include": ["src", "test/tools/MapboxApiBasedTool.test.ts", "test/tools/preview-style-tool/PreviewStyleTool.test.ts", "test/tools/tool-naming-convention.test.ts"]
+}

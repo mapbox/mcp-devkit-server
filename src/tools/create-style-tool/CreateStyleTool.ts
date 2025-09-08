@@ -1,3 +1,4 @@
+import { fetchClient } from 'src/utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   CreateStyleSchema,
@@ -10,7 +11,7 @@ export class CreateStyleTool extends MapboxApiBasedTool<
   name = 'create_style_tool';
   description = 'Create a new Mapbox style';
 
-  constructor() {
+  constructor(private fetchImpl: typeof fetch = fetchClient) {
     super({ inputSchema: CreateStyleSchema });
   }
 
@@ -26,7 +27,7 @@ export class CreateStyleTool extends MapboxApiBasedTool<
       ...input.style
     };
 
-    const response = await fetch(url, {
+    const response = await this.fetchImpl(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
