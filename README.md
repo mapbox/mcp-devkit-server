@@ -58,6 +58,14 @@ The DXT package includes:
 - User configuration schema for the Mapbox access token
 - Automatic environment variable setup
 
+### Hosted MCP Endpoint
+
+For quick access, you can use our hosted MCP endpoint:
+
+**Endpoint**: https://mcp-devkit.mapbox.com/mcp
+
+For detailed setup instructions for different clients and API usage, see the [Hosted MCP Server Guide](https://github.com/mapbox/mcp-server/blob/main/docs/hosted-mcp-guide.md). Note: This guide references the standard MCP endpoint - you'll need to update the endpoint URL to use the devkit endpoint above.
+
 ### Getting Your Mapbox Access Token
 
 **A Mapbox access token is required to use this MCP server.**
@@ -81,7 +89,6 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 ### Documentation Tools
 
 **get_latest_mapbox_docs_tool** - Access the latest official Mapbox documentation directly from the source. This tool fetches comprehensive, up-to-date information about all Mapbox APIs, SDKs, and developer resources from docs.mapbox.com/llms.txt.
-
 
 **Example prompts:**
 
