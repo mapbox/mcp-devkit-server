@@ -53,7 +53,7 @@ The following tools are available in the Mapbox MCP Devkit Server:
 ### Node.js
 
 ```bash
-node dist/index.js --enable-tools list_styles_tool,create_style_tool,preview_style_tool
+node dist/esm/index.js --enable-tools list_styles_tool,create_style_tool,preview_style_tool
 ```
 
 ### NPX
@@ -78,7 +78,7 @@ In your Claude Desktop configuration file:
     "mapbox-devkit": {
       "command": "node",
       "args": [
-        "/path/to/mcp-devkit-server/dist/index.js",
+        "/path/to/mcp-devkit-server/dist/esm/index.js",
         "--enable-tools",
         "list_styles_tool,create_style_tool,preview_style_tool"
       ],
@@ -95,19 +95,19 @@ In your Claude Desktop configuration file:
 ### Enable only read-only tools (safe mode)
 
 ```bash
-node dist/index.js --enable-tools list_styles_tool,retrieve_style_tool,list_tokens_tool,preview_style_tool
+node dist/esm/index.js --enable-tools list_styles_tool,retrieve_style_tool,list_tokens_tool,preview_style_tool
 ```
 
 ### Enable only style management tools
 
 ```bash
-node dist/index.js --enable-tools list_styles_tool,create_style_tool,retrieve_style_tool,update_style_tool,delete_style_tool,preview_style_tool
+node dist/esm/index.js --enable-tools list_styles_tool,create_style_tool,retrieve_style_tool,update_style_tool,delete_style_tool,preview_style_tool
 ```
 
 ### Disable dangerous operations
 
 ```bash
-node dist/index.js --disable-tools delete_style_tool,create_token_tool
+node dist/esm/index.js --disable-tools delete_style_tool,create_token_tool
 ```
 
 ## Notes

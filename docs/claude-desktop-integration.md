@@ -107,7 +107,7 @@ If you want to use a local version (need to clone and build from this repo):
   "mcpServers": {
     "mapbox-devkit": {
       "command": "/path/to/your/node",
-      "args": ["/path/to/mapbox-mcp-devkit/dist/index.js"],
+      "args": ["/path/to/mapbox-mcp-devkit/dist/esm/index.js"],
       "env": {
         "MAPBOX_ACCESS_TOKEN": "your_token_here"
       }

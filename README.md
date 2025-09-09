@@ -6,20 +6,32 @@ A Model Context Protocol (MCP) server that provides AI assistants with direct ac
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
-  - [Integration with Developer Tools](#integration-with-developer-tools)
-  - [DXT Package Distribution](#dxt-package-distribution)
-  - [Getting Your Mapbox Access Token](#getting-your-mapbox-access-token)
-- [Tools](#tools)
-  - [Documentation Tools](#documentation-tools)
-  - [Style Management Tools](#style-management-tools)
-  - [Token Management Tools](#token-management-tools)
-  - [Local Processing Tools](#local-processing-tools)
-- [Development](#development)
-  - [Testing](#testing)
-  - [Inspecting Server](#inspecting-server)
-  - [Creating New Tools](#creating-new-tools)
-  - [Environment Variables](#environment-variables)
+- [Mapbox Developer MCP Server](#mapbox-developer-mcp-server)
+  - [Table of Contents](#table-of-contents)
+  - [Quick Start](#quick-start)
+    - [Integration with Developer Tools](#integration-with-developer-tools)
+    - [DXT Package Distribution](#dxt-package-distribution)
+      - [Creating the DXT Package](#creating-the-dxt-package)
+    - [Getting Your Mapbox Access Token](#getting-your-mapbox-access-token)
+  - [Tools](#tools)
+    - [Documentation Tools](#documentation-tools)
+    - [Style Management Tools](#style-management-tools)
+    - [Token Management Tools](#token-management-tools)
+      - [create-token](#create-token)
+      - [list-tokens](#list-tokens)
+    - [Local Processing Tools](#local-processing-tools)
+      - [GeoJSON Preview tool (Beta)](#geojson-preview-tool-beta)
+      - [Coordinate Conversion tool](#coordinate-conversion-tool)
+      - [Bounding Box tool](#bounding-box-tool)
+  - [Development](#development)
+    - [Testing](#testing)
+      - [Tool Snapshot Tests](#tool-snapshot-tests)
+    - [Inspecting Server](#inspecting-server)
+      - [Using Node.js](#using-nodejs)
+      - [Using Docker](#using-docker)
+    - [Creating New Tools](#creating-new-tools)
+    - [Environment Variables](#environment-variables)
+      - [VERBOSE_ERRORS](#verbose_errors)
 
 ## Quick Start
 
@@ -53,7 +65,7 @@ This will generate `mcp-devkit-server.dxt` using the configuration in `manifest.
 
 The DXT package includes:
 
-- Pre-built server code (`dist/index.js`)
+- Pre-built server code (`dist/esm/index.js`)
 - Server metadata and configuration
 - User configuration schema for the Mapbox access token
 - Automatic environment variable setup
@@ -81,7 +93,6 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 ### Documentation Tools
 
 **get_latest_mapbox_docs_tool** - Access the latest official Mapbox documentation directly from the source. This tool fetches comprehensive, up-to-date information about all Mapbox APIs, SDKs, and developer resources from docs.mapbox.com/llms.txt.
-
 
 **Example prompts:**
 
@@ -368,7 +379,7 @@ The project includes snapshot tests to ensure tool integrity and prevent acciden
 1. **Adding a new tool**: After creating a new tool, run the test with snapshot update flag:
 
    ```sh
-   npm test -- src/tools/tool-naming-convention.test.ts --updateSnapshot
+   npm test -- test/tools/tool-naming-convention.test.ts --updateSnapshot
    ```
 
 2. **Removing a tool**: After removing a tool, update the snapshot:
@@ -403,7 +414,7 @@ npm test -- --updateSnapshot
 npm run build
 
 # Inspect
-npx @modelcontextprotocol/inspector node dist/index.js
+npx @modelcontextprotocol/inspector node dist/esm/index.js
 ```
 
 #### Using Docker

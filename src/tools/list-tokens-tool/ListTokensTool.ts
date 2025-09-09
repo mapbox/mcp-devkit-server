@@ -1,4 +1,4 @@
-import { fetchClient } from 'src/utils/fetchRequest.js';
+import { fetchClient } from '../../utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import { ListTokensSchema, ListTokensInput } from './ListTokensTool.schema.js';
 
