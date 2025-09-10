@@ -27,7 +27,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
       `CreateTokenTool: Creating public token with note: "${input.note}", scopes: ${JSON.stringify(input.scopes)}`
     );
 
-    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}tokens/v2/${username}?access_token=${accessToken}`;
+    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}tokens/v2/${username}?access_token=${accessToken}`;
 
     const body: {
       note: string;

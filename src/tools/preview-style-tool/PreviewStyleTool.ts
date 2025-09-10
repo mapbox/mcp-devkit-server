@@ -41,7 +41,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     const hashFragment =
       hashParams.length > 0 ? `#${hashParams.join('/')}` : '';
 
-    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}/${input.styleId}.html?${params.toString()}${hashFragment}`;
+    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}.html?${params.toString()}${hashFragment}`;
 
     return {
       type: 'text',

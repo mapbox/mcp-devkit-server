@@ -33,10 +33,15 @@ describe('MapboxApiBasedTool', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    vi.stubEnv(
-      'MAPBOX_ACCESS_TOKEN',
-      `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`
-    );
+    const mockToken = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
+    vi.stubEnv('mapboxAccessToken', mockToken);
+
+    // Reset the static property to pick up the new environment variable
+    Object.defineProperty(MapboxApiBasedTool, 'mapboxAccessToken', {
+      value: mockToken,
+      writable: true,
+      configurable: true
+    });
 
     testTool = new TestTool();
     // Mock the log method to test that errors are properly logged
@@ -56,7 +61,7 @@ describe('MapboxApiBasedTool', () => {
         JSON.stringify({ u: 'myusername' })
       ).toString('base64');
       const spy = vi
-        .spyOn(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', 'get')
+        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
         .mockReturnValue(`eyJhbGciOiJIUzI1NiJ9.${testPayload}.signature`);
 
       const username = MapboxApiBasedTool.getUserNameFromToken();
@@ -67,7 +72,7 @@ describe('MapboxApiBasedTool', () => {
 
     it('throws error when token is not set', () => {
       const spy = vi
-        .spyOn(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', 'get')
+        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
         .mockReturnValue(undefined);
 
       expect(() => MapboxApiBasedTool.getUserNameFromToken()).toThrow(
@@ -79,7 +84,7 @@ describe('MapboxApiBasedTool', () => {
 
     it('throws error when token has invalid format', () => {
       const spy = vi
-        .spyOn(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', 'get')
+        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
         .mockReturnValue('invalid-token-format');
 
       expect(() => MapboxApiBasedTool.getUserNameFromToken()).toThrow(
@@ -95,7 +100,7 @@ describe('MapboxApiBasedTool', () => {
       ).toString('base64');
 
       const spy = vi
-        .spyOn(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', 'get')
+        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
         .mockReturnValue(`eyJhbGciOiJIUzI1NiJ9.${invalidPayload}.signature`);
 
       expect(() => MapboxApiBasedTool.getUserNameFromToken()).toThrow(
@@ -109,7 +114,7 @@ describe('MapboxApiBasedTool', () => {
   describe('JWT token validation', () => {
     it('throws an error when the token is not in a valid JWT format', async () => {
       const spy = vi
-        .spyOn(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', 'get')
+        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
         .mockReturnValue('invalid-token-format');
 
       // Create a new instance with the modified token
@@ -163,7 +168,7 @@ describe('MapboxApiBasedTool', () => {
   describe('username extraction from token', () => {
     it('throws error for invalid JWT format', () => {
       const spy = vi
-        .spyOn(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', 'get')
+        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
         .mockReturnValue('invalid-token');
 
       expect(() => {
@@ -178,7 +183,7 @@ describe('MapboxApiBasedTool', () => {
         'eyJhbGciOiJIUzI1NiJ9.eyJhIjoidGVzdC1hcGkifQ.signature';
 
       const spy = vi
-        .spyOn(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', 'get')
+        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
         .mockReturnValue(tokenWithoutUsername);
 
       expect(() => {

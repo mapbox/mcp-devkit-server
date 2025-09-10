@@ -1,12 +1,16 @@
-process.env.MAPBOX_ACCESS_TOKEN =
-  'eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
-
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import {
   setupFetch,
   assertHeadersSent
 } from '../../utils/fetchRequestUtils.js';
 import { CreateStyleTool } from '../../../src/tools/create-style-tool/CreateStyleTool.js';
+
+const mockToken =
+  'eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+
+beforeAll(() => {
+  process.env.MAPBOX_ACCESS_TOKEN = mockToken;
+});
 
 describe('CreateStyleTool', () => {
   afterEach(() => {

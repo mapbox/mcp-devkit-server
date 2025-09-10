@@ -1,17 +1,20 @@
-// Set environment variables before any imports
-// Create a token with username in the payload
-const payload = Buffer.from(JSON.stringify({ u: 'testuser' })).toString(
-  'base64'
-);
-process.env.MAPBOX_ACCESS_TOKEN = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
-
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect, afterEach, vi, beforeAll } from 'vitest';
 import {
   setupFetch,
   assertHeadersSent
 } from '../../utils/fetchRequestUtils.js';
 import { MapboxApiBasedTool } from '../../../src/tools/MapboxApiBasedTool.js';
 import { ListTokensTool } from '../../../src/tools/list-tokens-tool/ListTokensTool.js';
+
+// Create a token with username in the payload
+const payload = Buffer.from(JSON.stringify({ u: 'testuser' })).toString(
+  'base64'
+);
+const mockToken = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
+
+beforeAll(() => {
+  process.env.MAPBOX_ACCESS_TOKEN = mockToken;
+});
 
 type TextContent = { type: 'text'; text: string };
 
@@ -87,12 +90,7 @@ describe('ListTokensTool', () => {
         ).toString('base64');
         const invalidToken = `eyJhbGciOiJIUzI1NiJ9.${invalidPayload}.signature`;
 
-        Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', {
-          value: invalidToken,
-          writable: true,
-          configurable: true
-        });
-        process.env.MAPBOX_ACCESS_TOKEN = invalidToken;
+        vi.stubEnv('MAPBOX_ACCESS_TOKEN', invalidToken);
 
         // Setup fetch mock to prevent actual API calls
         const { mockFetch, fetch } = setupFetch();
@@ -116,12 +114,10 @@ describe('ListTokensTool', () => {
         );
       } finally {
         // Restore
-        Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', {
-          value: originalToken,
-          writable: true,
-          configurable: true
-        });
-        process.env.MAPBOX_ACCESS_TOKEN = originalEnvToken;
+        vi.unstubAllEnvs();
+        if (originalEnvToken) {
+          vi.stubEnv('MAPBOX_ACCESS_TOKEN', originalEnvToken);
+        }
       }
     });
   });
@@ -488,11 +484,7 @@ describe('ListTokensTool', () => {
 
       try {
         // Temporarily modify the static property
-        Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_API_ENDPOINT', {
-          value: 'https://api.staging.mapbox.com/',
-          writable: true,
-          configurable: true
-        });
+        vi.stubEnv('MAPBOX_API_ENDPOINT', 'https://api.staging.mapbox.com/');
 
         const mockTokens: object[] = [];
 
@@ -513,11 +505,10 @@ describe('ListTokensTool', () => {
         );
       } finally {
         // Restore
-        Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_API_ENDPOINT', {
-          value: originalEndpoint,
-          writable: true,
-          configurable: true
-        });
+        vi.unstubAllEnvs();
+        if (originalEndpoint) {
+          vi.stubEnv('MAPBOX_API_ENDPOINT', originalEndpoint);
+        }
       }
     });
 

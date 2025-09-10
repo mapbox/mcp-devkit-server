@@ -34,7 +34,7 @@ export class ListStylesTool extends MapboxApiBasedTool<
       params.append('start', input.start);
     }
 
-    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}?${params.toString()}`;
+    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}?${params.toString()}`;
 
     const response = await this.fetchImpl(url);
 

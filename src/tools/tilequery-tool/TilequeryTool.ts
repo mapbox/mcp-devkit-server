@@ -16,7 +16,7 @@ export class TilequeryTool extends MapboxApiBasedTool<typeof TilequerySchema> {
   ): Promise<any> {
     const { tilesetId, longitude, latitude, ...queryParams } = input;
     const url = new URL(
-      `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}v4/${tilesetId}/tilequery/${longitude},${latitude}.json`
+      `${MapboxApiBasedTool.mapboxApiEndpoint}v4/${tilesetId}/tilequery/${longitude},${latitude}.json`
     );
 
     if (queryParams.radius !== undefined) {

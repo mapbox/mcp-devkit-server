@@ -49,7 +49,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
     }
 
     let url: string | null =
-      `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}tokens/v2/${username}?${params.toString()}`;
+      `${MapboxApiBasedTool.mapboxApiEndpoint}tokens/v2/${username}?${params.toString()}`;
     const allTokens: unknown[] = [];
     let pageCount = 0;
     let nextPageUrl: string | null = null;

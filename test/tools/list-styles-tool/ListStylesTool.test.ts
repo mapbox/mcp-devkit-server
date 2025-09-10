@@ -1,13 +1,15 @@
-// Use a token with valid JWT format for tests
-process.env.MAPBOX_ACCESS_TOKEN =
-  'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
-
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import {
   setupFetch,
   assertHeadersSent
 } from '../../utils/fetchRequestUtils.js';
 import { ListStylesTool } from '../../../src/tools/list-styles-tool/ListStylesTool.js';
+
+const mockToken = 'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+
+beforeAll(() => {
+  process.env.MAPBOX_ACCESS_TOKEN = mockToken;
+});
 
 describe('ListStylesTool', () => {
   afterEach(() => {
