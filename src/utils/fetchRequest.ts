@@ -21,12 +21,12 @@ export class PolicyPipeline {
     this.policies.push(policy);
   }
 
-  removePolicy(policy: FetchPolicy) {
-    this.policies = this.policies.filter((p) => p !== policy);
-  }
-
-  removePolicyById(id: string) {
-    this.policies = this.policies.filter((p) => p.id !== id);
+  removePolicy(policyOrId: FetchPolicy | string) {
+    if (typeof policyOrId === 'string') {
+      this.policies = this.policies.filter((p) => p.id !== policyOrId);
+    } else {
+      this.policies = this.policies.filter((p) => p !== policyOrId);
+    }
   }
 
   findPolicyById(id: string): FetchPolicy | undefined {

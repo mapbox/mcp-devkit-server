@@ -248,7 +248,7 @@ describe('PolicyPipeline', () => {
       expect(policy.id).toBe(customId);
     });
 
-    it('removes policies by ID', () => {
+    it('removes policies by ID using removePolicy', () => {
       const pipeline = new PolicyPipeline();
       const policy1 = new UserAgentPolicy('Agent1', 'policy-1');
       const policy2 = new RetryPolicy(3, 200, 2000, 'policy-2');
@@ -258,7 +258,31 @@ describe('PolicyPipeline', () => {
       pipeline.usePolicy(policy2);
       pipeline.usePolicy(policy3);
 
-      pipeline.removePolicyById('policy-2');
+      pipeline.removePolicy('policy-2'); // Remove by ID string
+
+      const policies = pipeline.listPolicies();
+      expect(policies).toHaveLength(2);
+      expect(policies[0]).toBe(policy1);
+      expect(policies[1]).toBe(policy3);
+    });
+
+    it('removePolicy supports both policy instance and ID string', () => {
+      const pipeline = new PolicyPipeline();
+      const policy1 = new UserAgentPolicy('Agent1', 'policy-1');
+      const policy2 = new RetryPolicy(3, 200, 2000, 'policy-2');
+      const policy3 = new UserAgentPolicy('Agent3', 'policy-3');
+      const policy4 = new UserAgentPolicy('Agent4', 'policy-4');
+
+      pipeline.usePolicy(policy1);
+      pipeline.usePolicy(policy2);
+      pipeline.usePolicy(policy3);
+      pipeline.usePolicy(policy4);
+
+      // Remove by policy instance
+      pipeline.removePolicy(policy2);
+
+      // Remove by ID string
+      pipeline.removePolicy('policy-4');
 
       const policies = pipeline.listPolicies();
       expect(policies).toHaveLength(2);
