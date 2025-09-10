@@ -89,7 +89,6 @@ describe('CreateTokenTool', () => {
     });
 
     it('throws error when unable to extract username from token', async () => {
-      const originalToken = MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN;
       const originalEnvToken = process.env.MAPBOX_ACCESS_TOKEN;
 
       try {
@@ -304,7 +303,7 @@ describe('CreateTokenTool', () => {
     });
 
     it('uses custom API endpoint when provided', async () => {
-      const originalEndpoint = MapboxApiBasedTool.MAPBOX_API_ENDPOINT;
+      const originalEndpoint = MapboxApiBasedTool.mapboxApiEndpoint;
 
       try {
         // Temporarily modify the static property

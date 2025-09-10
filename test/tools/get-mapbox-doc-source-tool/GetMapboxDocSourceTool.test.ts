@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { GetMapboxDocSourceTool } from '../../../src/tools/get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
 import { setupFetch } from 'test/utils/fetchRequestUtils.js';
 
