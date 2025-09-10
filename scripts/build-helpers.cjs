@@ -1,7 +1,7 @@
 // Cross-platform build helper script
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+const { execSync } = require('node:child_process');
 
 // Create directory recursively (cross-platform equivalent of mkdir -p)
 function mkdirp(dirPath) {
@@ -9,18 +9,6 @@ function mkdirp(dirPath) {
   if (!fs.existsSync(absolutePath)) {
     fs.mkdirSync(absolutePath, { recursive: true });
   }
-}
-
-// Create ESM package.json
-function createEsmPackage() {
-  mkdirp('dist/esm');
-  fs.writeFileSync('dist/esm/package.json', JSON.stringify({ type: 'module' }, null, 2));
-}
-
-// Create CJS package.json
-function createCjsPackage() {
-  mkdirp('dist/cjs');
-  fs.writeFileSync('dist/cjs/package.json', JSON.stringify({ type: 'commonjs' }, null, 2));
 }
 
 // Generate version info
@@ -39,7 +27,10 @@ function generateVersion() {
     version
   };
   
-  fs.writeFileSync('dist/version.json', JSON.stringify(versionInfo, null, 2));
+  fs.writeFileSync('dist/esm/version.json', JSON.stringify(versionInfo, null, 2));
+  fs.writeFileSync('dist/commonjs/version.json', JSON.stringify(versionInfo, null, 2));
+  
+  console.log('Generated version.json:', versionInfo);
 }
 
 // Sync version from package.json to manifest.json
@@ -56,8 +47,9 @@ function syncManifestVersion() {
 // Copy JSON files to dist
 function copyJsonFiles() {
   const srcDir = 'src';
-  const destDir = 'dist';
-  
+  const destDirCjs = 'dist/commonjs';
+  const destDirEsm = 'dist/esm';
+
   function copyJsonRecursive(srcPath, destPath) {
     const items = fs.readdirSync(srcPath);
     
@@ -73,20 +65,15 @@ function copyJsonFiles() {
       }
     });
   }
-  
-  copyJsonRecursive(srcDir, destDir);
+
+  copyJsonRecursive(srcDir, destDirCjs);
+  copyJsonRecursive(srcDir, destDirEsm);
 }
 
 // Process command line arguments
 const command = process.argv[2];
 
 switch (command) {
-  case 'esm-package':
-    createEsmPackage();
-    break;
-  case 'cjs-package':
-    createCjsPackage();
-    break;
   case 'generate-version':
     generateVersion();
     break;

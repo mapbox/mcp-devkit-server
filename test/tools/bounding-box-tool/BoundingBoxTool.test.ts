@@ -1,6 +1,5 @@
-// Set environment variables before any imports
-
-import { BoundingBoxTool } from './BoundingBoxTool.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { BoundingBoxTool } from '../../../src/tools/bounding-box-tool/BoundingBoxTool.js';
 
 type TextContent = { type: 'text'; text: string };
 
@@ -267,8 +266,10 @@ describe('BoundingBoxTool', () => {
       );
     });
 
-    it('should have correct input schema', () => {
-      const { BoundingBoxSchema } = require('./BoundingBoxTool.schema.js');
+    it('should have correct input schema', async () => {
+      const { BoundingBoxSchema } = await import(
+        '../../../src/tools/bounding-box-tool/BoundingBoxTool.schema.js'
+      );
       expect(BoundingBoxSchema).toBeDefined();
       expect(BoundingBoxSchema.shape.geojson).toBeDefined();
     });

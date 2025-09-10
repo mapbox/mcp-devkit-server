@@ -1,47 +1,54 @@
-// Set environment variables before any imports
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
+import {
+  setupFetch,
+  assertHeadersSent
+} from '../../utils/fetchRequestUtils.js';
+import { MapboxApiBasedTool } from '../../../src/tools/MapboxApiBasedTool.js';
+import { CreateTokenTool } from '../../../src/tools/create-token-tool/CreateTokenTool.js';
+
 // Create a token with username in the payload
 const payload = Buffer.from(JSON.stringify({ u: 'testuser' })).toString(
   'base64'
 );
-process.env.MAPBOX_ACCESS_TOKEN = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
+const mockToken = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
 
-import {
-  setupFetch,
-  assertHeadersSent
-} from '../../utils/requestUtils.test-helpers.js';
-import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
-import { CreateTokenTool } from './CreateTokenTool.js';
+beforeAll(() => {
+  process.env.MAPBOX_ACCESS_TOKEN = mockToken;
+});
 
 type TextContent = { type: 'text'; text: string };
 
 describe('CreateTokenTool', () => {
-  let tool: CreateTokenTool;
-
-  beforeEach(() => {
-    tool = new CreateTokenTool();
-    tool['log'] = jest.fn();
-  });
-
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
+
+  function createTokenTool(fetchImpl?: typeof fetch) {
+    const instance = new CreateTokenTool(fetchImpl);
+    instance['log'] = vi.fn();
+    return instance;
+  }
 
   describe('tool metadata', () => {
     it('should have correct name and description', () => {
+      const tool = createTokenTool();
       expect(tool.name).toBe('create_token_tool');
       expect(tool.description).toBe(
         'Create a new Mapbox public access token with specified scopes and optional URL restrictions.'
       );
     });
 
-    it('should have correct input schema', () => {
-      const { CreateTokenSchema } = require('./CreateTokenTool.schema.js');
+    it('should have correct input schema', async () => {
+      const { CreateTokenSchema } = await import(
+        '../../../src/tools/create-token-tool/CreateTokenTool.schema.js'
+      );
       expect(CreateTokenSchema).toBeDefined();
     });
   });
 
   describe('validation', () => {
     it('validates required input fields', async () => {
+      const tool = createTokenTool();
       const result = await tool.run({});
 
       expect(result.isError).toBe(true);
@@ -51,6 +58,8 @@ describe('CreateTokenTool', () => {
     });
 
     it('validates allowedUrls array length', async () => {
+      const tool = createTokenTool();
+
       const urls = new Array(101).fill('https://example.com');
 
       const result = await tool.run({
@@ -66,6 +75,8 @@ describe('CreateTokenTool', () => {
     });
 
     it('validates invalid scopes', async () => {
+      const tool = createTokenTool();
+
       const result = await tool.run({
         note: 'Test token',
         scopes: ['invalid:scope' as unknown as string]
@@ -88,16 +99,11 @@ describe('CreateTokenTool', () => {
         ).toString('base64');
         const invalidToken = `eyJhbGciOiJIUzI1NiJ9.${invalidPayload}.signature`;
 
-        Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', {
-          value: invalidToken,
-          writable: true,
-          configurable: true
-        });
-        process.env.MAPBOX_ACCESS_TOKEN = invalidToken;
+        vi.stubEnv('MAPBOX_ACCESS_TOKEN', invalidToken);
 
         // Setup fetch mock to prevent actual API calls
-        const fetchMock = setupFetch();
-        fetchMock.mockResolvedValueOnce({
+        const { fetch, mockFetch } = setupFetch();
+        mockFetch.mockResolvedValueOnce({
           ok: true,
           status: 200,
           statusText: 'OK',
@@ -105,8 +111,8 @@ describe('CreateTokenTool', () => {
           json: async () => ({ token: 'test-token' })
         } as Response);
 
-        const toolWithInvalidToken = new CreateTokenTool();
-        toolWithInvalidToken['log'] = jest.fn();
+        const toolWithInvalidToken = new CreateTokenTool(fetch);
+        toolWithInvalidToken['log'] = vi.fn();
 
         const result = await toolWithInvalidToken.run({
           note: 'Test token',
@@ -121,12 +127,10 @@ describe('CreateTokenTool', () => {
         );
       } finally {
         // Restore
-        Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_ACCESS_TOKEN', {
-          value: originalToken,
-          writable: true,
-          configurable: true
-        });
-        process.env.MAPBOX_ACCESS_TOKEN = originalEnvToken;
+        vi.unstubAllEnvs();
+        if (originalEnvToken) {
+          vi.stubEnv('MAPBOX_ACCESS_TOKEN', originalEnvToken);
+        }
       }
     });
   });
@@ -142,11 +146,13 @@ describe('CreateTokenTool', () => {
         modified: '2024-01-01T00:00:00.000Z'
       };
 
-      const fetchMock = setupFetch();
-      fetchMock.mockResolvedValueOnce({
+      const { fetch, mockFetch } = setupFetch();
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse
       } as Response);
+
+      const tool = createTokenTool(fetch);
 
       const result = await tool.run({
         note: 'Test token',
@@ -165,7 +171,7 @@ describe('CreateTokenTool', () => {
       });
 
       // Verify the request
-      expect(fetchMock).toHaveBeenCalledWith(
+      expect(mockFetch).toHaveBeenCalledWith(
         `https://api.mapbox.com/tokens/v2/testuser?access_token=eyJhbGciOiJIUzI1NiJ9.${payload}.signature`,
         {
           method: 'POST',
@@ -180,7 +186,7 @@ describe('CreateTokenTool', () => {
       );
 
       // Verify User-Agent header was sent
-      assertHeadersSent(fetchMock);
+      assertHeadersSent(mockFetch);
     });
 
     it('creates a token with allowed URLs', async () => {
@@ -194,11 +200,13 @@ describe('CreateTokenTool', () => {
         allowedUrls: ['https://example.com', 'https://app.example.com']
       };
 
-      const fetchMock = setupFetch();
-      fetchMock.mockResolvedValueOnce({
+      const { mockFetch, fetch } = setupFetch();
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse
       } as Response);
+
+      const tool = createTokenTool(fetch);
 
       const result = await tool.run({
         note: 'Restricted token',
@@ -211,7 +219,7 @@ describe('CreateTokenTool', () => {
       expect(responseData.allowedUrls).toEqual(mockResponse.allowedUrls);
 
       // Verify the request body included allowedUrls
-      const lastCall = fetchMock.mock.calls[0];
+      const lastCall = mockFetch.mock.calls[0];
       const requestBody = JSON.parse(lastCall[1].body as string);
       expect(requestBody.allowedUrls).toEqual([
         'https://example.com',
@@ -231,11 +239,13 @@ describe('CreateTokenTool', () => {
         expires: expiresAt
       };
 
-      const fetchMock = setupFetch();
-      fetchMock.mockResolvedValueOnce({
+      const { mockFetch, fetch } = setupFetch();
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: async () => mockResponse
       } as Response);
+
+      const tool = createTokenTool(fetch);
 
       const result = await tool.run({
         note: 'Token with expiration',
@@ -248,20 +258,22 @@ describe('CreateTokenTool', () => {
       expect(responseData.expires).toEqual(expiresAt);
 
       // Verify the request body included expires
-      const lastCall = fetchMock.mock.calls[0];
+      const lastCall = mockFetch.mock.calls[0];
       const requestBody = JSON.parse(lastCall[1].body as string);
       expect(requestBody.expires).toEqual(expiresAt);
     });
 
     it('handles API errors gracefully', async () => {
-      const fetchMock = setupFetch();
-      fetchMock.mockResolvedValueOnce({
+      const { mockFetch, fetch } = setupFetch();
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
         text: async () =>
           '{"message": "Token does not have required scopes", "code": "TokenScopesInvalid"}'
       } as Response);
+
+      const tool = createTokenTool(fetch);
 
       const result = await tool.run({
         note: 'Test token',
@@ -275,8 +287,10 @@ describe('CreateTokenTool', () => {
     });
 
     it('handles network errors', async () => {
-      const fetchMock = setupFetch();
-      fetchMock.mockRejectedValueOnce(new Error('Network error'));
+      const { mockFetch, fetch } = setupFetch();
+      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+
+      const tool = createTokenTool(fetch);
 
       const result = await tool.run({
         note: 'Test token',
@@ -294,14 +308,7 @@ describe('CreateTokenTool', () => {
 
       try {
         // Temporarily modify the static property
-        Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_API_ENDPOINT', {
-          value: 'https://api.staging.mapbox.com/',
-          writable: true,
-          configurable: true
-        });
-
-        const toolWithCustomEndpoint = new CreateTokenTool();
-        toolWithCustomEndpoint['log'] = jest.fn();
+        vi.stubEnv('MAPBOX_API_ENDPOINT', 'https://api.staging.mapbox.com/');
 
         const mockResponse = {
           token: 'pk.test',
@@ -312,28 +319,30 @@ describe('CreateTokenTool', () => {
           modified: '2024-01-01T00:00:00.000Z'
         };
 
-        const fetchMock = setupFetch();
-        fetchMock.mockResolvedValueOnce({
+        const { mockFetch, fetch } = setupFetch();
+        mockFetch.mockResolvedValueOnce({
           ok: true,
           json: async () => mockResponse
         } as Response);
+
+        const toolWithCustomEndpoint = new CreateTokenTool(fetch);
+        toolWithCustomEndpoint['log'] = vi.fn();
 
         await toolWithCustomEndpoint.run({
           note: 'Test token',
           scopes: ['styles:read']
         });
 
-        expect(fetchMock).toHaveBeenCalledWith(
+        expect(mockFetch).toHaveBeenCalledWith(
           expect.stringContaining('https://api.staging.mapbox.com/tokens/v2/'),
           expect.any(Object)
         );
       } finally {
         // Restore
-        Object.defineProperty(MapboxApiBasedTool, 'MAPBOX_API_ENDPOINT', {
-          value: originalEndpoint,
-          writable: true,
-          configurable: true
-        });
+        vi.unstubAllEnvs();
+        if (originalEndpoint) {
+          vi.stubEnv('MAPBOX_API_ENDPOINT', originalEndpoint);
+        }
       }
     });
   });

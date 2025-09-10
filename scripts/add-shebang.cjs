@@ -1,20 +1,21 @@
 const fs = require('fs');
 const path = require('path');
 
-const distPath = path.join(__dirname, '..', 'dist', 'index.js');
+const filePathCJS = path.resolve(__dirname, '../dist/commonjs/index.js');
+const filePathESM = path.resolve(__dirname, '../dist/esm/index.js');
+addShebang(filePathCJS);
+addShebang(filePathESM);
 
-// Read the file
-let content = fs.readFileSync(distPath, 'utf8');
+function addShebang(filePath) {
+  const shebang = '#!/usr/bin/env node\n';
 
-// Add shebang if not already present
-if (!content.startsWith('#!/usr/bin/env node')) {
-  content = '#!/usr/bin/env node\n' + content;
-  fs.writeFileSync(distPath, content);
-  
-  // Make the file executable
-  fs.chmodSync(distPath, '755');
-  
-  console.log('Added shebang to dist/index.js');
-} else {
-  console.log('Shebang already present in dist/index.js');
+  let content = fs.readFileSync(filePath, 'utf-8');
+
+  if (!content.startsWith(shebang)) {
+    content = shebang + content;
+    fs.writeFileSync(filePath, content);
+    console.log(`Shebang added to ${filePath}`);
+  } else {
+    console.log(`Shebang already exists in ${filePath}`);
+  }
 }

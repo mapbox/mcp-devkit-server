@@ -5,9 +5,13 @@ import { BaseTool, OutputSchema } from './BaseTool.js';
 export abstract class MapboxApiBasedTool<
   InputSchema extends ZodTypeAny
 > extends BaseTool<InputSchema> {
-  static readonly MAPBOX_ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
-  static readonly MAPBOX_API_ENDPOINT =
-    process.env.MAPBOX_API_ENDPOINT || 'https://api.mapbox.com/';
+  static get mapboxAccessToken() {
+    return process.env.MAPBOX_ACCESS_TOKEN;
+  }
+
+  static get mapboxApiEndpoint() {
+    return process.env.MAPBOX_API_ENDPOINT || 'https://api.mapbox.com/';
+  }
 
   constructor(params: { inputSchema: InputSchema }) {
     super(params);
@@ -20,12 +24,12 @@ export abstract class MapboxApiBasedTool<
    */
   static getUserNameFromToken(access_token?: string): string {
     if (!access_token) {
-      if (!MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN) {
+      if (!MapboxApiBasedTool.mapboxAccessToken) {
         throw new Error(
           'No access token provided. Please set MAPBOX_ACCESS_TOKEN environment variable or pass it as an argument.'
         );
       }
-      access_token = MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN;
+      access_token = MapboxApiBasedTool.mapboxAccessToken;
     }
 
     try {
@@ -84,7 +88,7 @@ export abstract class MapboxApiBasedTool<
       // In the streamableHttp, the authInfo is injected into extra from `req.auth`
       // https://github.com/modelcontextprotocol/typescript-sdk/blob/main/src/server/streamableHttp.ts#L405
       const authToken = extra?.authInfo?.token;
-      const accessToken = authToken || MapboxApiBasedTool.MAPBOX_ACCESS_TOKEN;
+      const accessToken = authToken || MapboxApiBasedTool.mapboxAccessToken;
       if (!accessToken) {
         throw new Error(
           'No access token available. Please provide via Bearer auth or MAPBOX_ACCESS_TOKEN env var'

@@ -3,7 +3,7 @@ import {
   CountryBoundingBoxSchema,
   CountryBoundingBoxInput
 } from './CountryBoundingBoxTool.schema.js';
-import boundariesData from './boundaries_v4_country_bbox_min.json' with { type: 'json' };
+import boundariesData from './BoundariesData.js';
 
 export class CountryBoundingBoxTool extends BaseTool<
   typeof CountryBoundingBoxSchema

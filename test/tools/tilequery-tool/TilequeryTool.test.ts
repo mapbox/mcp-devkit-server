@@ -1,5 +1,6 @@
-import { TilequeryTool } from './TilequeryTool.js';
-import { TilequeryInput } from './TilequeryTool.schema.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { TilequeryTool } from '../../../src/tools/tilequery-tool/TilequeryTool.js';
+import { TilequeryInput } from '../../../src/tools/tilequery-tool/TilequeryTool.schema.js';
 
 describe('TilequeryTool', () => {
   let tool: TilequeryTool;

@@ -1,16 +1,19 @@
-// Use a token with valid JWT format for tests
-process.env.MAPBOX_ACCESS_TOKEN =
-  'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
-
+import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import {
   setupFetch,
   assertHeadersSent
-} from '../../utils/requestUtils.test-helpers.js';
-import { ListStylesTool } from './ListStylesTool.js';
+} from '../../utils/fetchRequestUtils.js';
+import { ListStylesTool } from '../../../src/tools/list-styles-tool/ListStylesTool.js';
+
+const mockToken = 'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+
+beforeAll(() => {
+  process.env.MAPBOX_ACCESS_TOKEN = mockToken;
+});
 
 describe('ListStylesTool', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('tool metadata', () => {
@@ -22,14 +25,16 @@ describe('ListStylesTool', () => {
       );
     });
 
-    it('should have correct input schema', () => {
-      const { ListStylesSchema } = require('./ListStylesTool.schema.ts');
+    it('should have correct input schema', async () => {
+      const { ListStylesSchema } = await import(
+        '../../../src/tools/list-styles-tool/ListStylesTool.schema.js'
+      );
       expect(ListStylesSchema).toBeDefined();
     });
   });
 
   it('sends custom header', async () => {
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       json: async () => [
         { id: 'style1', name: 'Test Style 1' },
@@ -37,18 +42,18 @@ describe('ListStylesTool', () => {
       ]
     });
 
-    await new ListStylesTool().run({});
+    await new ListStylesTool(fetch).run({});
     assertHeadersSent(mockFetch);
   });
 
   it('handles fetch errors gracefully', async () => {
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: false,
       status: 404,
       statusText: 'Not Found'
     });
 
-    const result = await new ListStylesTool().run({});
+    const result = await new ListStylesTool(fetch).run({});
 
     expect(result.isError).toBe(true);
     expect(result.content[0]).toMatchObject({
@@ -59,12 +64,12 @@ describe('ListStylesTool', () => {
   });
 
   it('extracts username from token for API call', async () => {
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       json: async () => []
     });
 
-    await new ListStylesTool().run({});
+    await new ListStylesTool(fetch).run({});
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('/styles/v1/test-user?access_token='),
@@ -74,12 +79,12 @@ describe('ListStylesTool', () => {
   });
 
   it('includes limit parameter when provided', async () => {
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       json: async () => []
     });
 
-    await new ListStylesTool().run({ limit: 10 });
+    await new ListStylesTool(fetch).run({ limit: 10 });
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringMatching(/\/styles\/v1\/test-user\?.*limit=10/),
@@ -89,12 +94,12 @@ describe('ListStylesTool', () => {
   });
 
   it('includes start parameter when provided', async () => {
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       json: async () => []
     });
 
-    await new ListStylesTool().run({ start: 'abc123' });
+    await new ListStylesTool(fetch).run({ start: 'abc123' });
 
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringMatching(/\/styles\/v1\/test-user\?.*start=abc123/),
@@ -104,12 +109,12 @@ describe('ListStylesTool', () => {
   });
 
   it('includes both limit and start parameters when provided', async () => {
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       json: async () => []
     });
 
-    await new ListStylesTool().run({ limit: 5, start: 'xyz789' });
+    await new ListStylesTool(fetch).run({ limit: 5, start: 'xyz789' });
 
     const calledUrl = mockFetch.mock.calls[0][0];
     expect(calledUrl).toMatch(/\/styles\/v1\/test-user\?/);
@@ -125,12 +130,12 @@ describe('ListStylesTool', () => {
       { id: 'style2', name: 'Test Style 2', owner: 'testuser' }
     ];
 
-    const mockFetch = setupFetch({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       json: async () => mockStyles
     });
 
-    const result = await new ListStylesTool().run({});
+    const result = await new ListStylesTool(fetch).run({});
 
     expect(result.isError).toBe(false);
     expect(result.content).toHaveLength(1);

@@ -1,97 +1,25 @@
-import js from '@eslint/js';
-import typescript from '@typescript-eslint/eslint-plugin';
-import typescriptParser from '@typescript-eslint/parser';
-import prettier from 'eslint-config-prettier';
-import importPlugin from 'eslint-plugin-import';
-import unusedImports from 'eslint-plugin-unused-imports';
+import eslint from '@eslint/js';
+import { defineConfig } from 'eslint/config';
+import tseslint from 'typescript-eslint';
+import globals from 'globals';
 
-export default [
+export default defineConfig(
+  eslint.configs.recommended,
+  tseslint.configs.recommended,
   {
-    ignores: ['dist/**', 'node_modules/**', '*.js', '*.cjs', '*.mjs']
-  },
-  {
-    files: ['**/*.test.ts', '**/*.spec.ts', '**/*.test-helpers.ts'],
     languageOptions: {
       globals: {
-        describe: 'readonly',
-        test: 'readonly',
-        it: 'readonly',
-        expect: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
-        jest: 'readonly',
-        fetch: 'readonly',
-        global: 'readonly'
-      },
+        ...globals.node,
+      }
     },
     rules: {
-      'no-undef': 'off',
-      '@typescript-eslint/no-unused-vars': 'off',
-      'unused-imports/no-unused-imports': 'off',
-      'import/order': 'off',
-    },
+      "@typescript-eslint/no-explicit-any": "warn",
+    } 
   },
-  js.configs.recommended,
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx'],
-    languageOptions: {
-      parser: typescriptParser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        sourceType: 'module',
-        project: './tsconfig.json'
-      },
-      globals: {
-        fetch: 'readonly',
-        process: 'readonly',
-        global: 'readonly',
-        globalThis: 'readonly',
-        URL: 'readonly',
-        Request: 'readonly',
-        RequestInit: 'readonly',
-        Response: 'readonly',
-        Buffer: 'readonly',
-        console: 'readonly',
-        require: 'readonly',
-        __dirname: 'readonly',
-        __filename: 'readonly',
-      },
-    },
-    plugins: {
-      '@typescript-eslint': typescript,
-      'import': importPlugin,
-      'unused-imports': unusedImports
-    },
+    files: ["test/**/*.ts"], 
     rules: {
-      ...typescript.configs.recommended.rules,
-      '@typescript-eslint/no-unused-vars': 'off',
-      'unused-imports/no-unused-imports': 'error',
-      'unused-imports/no-unused-vars': [
-        'warn',
-        {
-          vars: 'all',
-          varsIgnorePattern: '^_',
-          args: 'after-used',
-          argsIgnorePattern: '^_'
-        }
-      ],
-      'import/order': [
-        'error',
-        {
-          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
-          'newlines-between': 'never',
-          alphabetize: {
-            order: 'asc'
-          }
-        }
-      ],
-      'no-console': 'warn',
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/no-non-null-assertion': 'warn',
-      '@typescript-eslint/no-require-imports': 'off',
-      'no-undef': 'off' // TypeScript handles this
+      "@typescript-eslint/no-unused-vars": "off",
     }
-  },
-  prettier
-];
+  }
+);

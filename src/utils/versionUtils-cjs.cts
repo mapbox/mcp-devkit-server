@@ -1,6 +1,5 @@
 import { readFileSync } from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
 export interface VersionInfo {
   name: string;
@@ -13,10 +12,7 @@ export interface VersionInfo {
 export function getVersionInfo(): VersionInfo {
   const name = 'Mapbox Developer MCP server';
   try {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const dirname = path.dirname(fileURLToPath(import.meta.url));
-    const filePath = path.resolve(dirname, '..', 'version.json');
+    const filePath = path.resolve(__dirname, '..', 'version.json');
     const data = readFileSync(filePath, 'utf-8');
     const info = JSON.parse(data) as VersionInfo;
     info.name = name;

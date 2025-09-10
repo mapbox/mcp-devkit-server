@@ -1,18 +1,11 @@
-import { GetMapboxDocSourceTool } from './GetMapboxDocSourceTool.js';
-
-// Mock fetch for testing
-global.fetch = jest.fn();
+import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { GetMapboxDocSourceTool } from '../../../src/tools/get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
+import { setupFetch } from 'test/utils/fetchRequestUtils.js';
 
 describe('GetMapboxDocSourceTool', () => {
-  let tool: GetMapboxDocSourceTool;
-  const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
-
-  beforeEach(() => {
-    tool = new GetMapboxDocSourceTool();
-    mockFetch.mockClear();
-  });
-
   it('should have correct name and description', () => {
+    const tool = new GetMapboxDocSourceTool();
+
     expect(tool.name).toBe('get_latest_mapbox_docs_tool');
     expect(tool.description).toContain(
       'Get the latest official Mapbox documentation'
@@ -34,15 +27,20 @@ This is the Mapbox developer documentation for LLMs.
 - Geocoding API for address search
 - Directions API for routing`;
 
-    mockFetch.mockResolvedValueOnce({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       status: 200,
       text: () => Promise.resolve(mockContent)
-    } as Response);
+    });
 
+    const tool = new GetMapboxDocSourceTool(fetch);
     const result = await tool.run({});
 
-    expect(mockFetch).toHaveBeenCalledWith('https://docs.mapbox.com/llms.txt');
+    expect(mockFetch).toHaveBeenCalledWith('https://docs.mapbox.com/llms.txt', {
+      headers: {
+        'User-Agent': 'TestServer/1.0.0 (default, no-tag, abcdef)'
+      }
+    });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].type).toBe('text');
 
@@ -53,10 +51,12 @@ This is the Mapbox developer documentation for LLMs.
   });
 
   it('should handle HTTP errors', async () => {
-    mockFetch.mockResolvedValueOnce({
+    const { fetch } = setupFetch({
       ok: false,
       status: 404
-    } as Response);
+    });
+
+    const tool = new GetMapboxDocSourceTool(fetch);
 
     const result = await tool.run({});
 
@@ -72,7 +72,11 @@ This is the Mapbox developer documentation for LLMs.
   });
 
   it('should handle network errors', async () => {
-    mockFetch.mockRejectedValueOnce(new Error('Network error'));
+    const { fetch } = setupFetch({
+      text: () => Promise.reject(new Error('Network error'))
+    });
+
+    const tool = new GetMapboxDocSourceTool(fetch);
 
     const result = await tool.run({});
 
@@ -88,7 +92,11 @@ This is the Mapbox developer documentation for LLMs.
   });
 
   it('should handle unknown errors', async () => {
-    mockFetch.mockRejectedValueOnce('Unknown error');
+    const { fetch } = setupFetch({
+      text: () => Promise.reject(new Error('Unknown error occurred'))
+    });
+
+    const tool = new GetMapboxDocSourceTool(fetch);
 
     const result = await tool.run({});
 
@@ -106,11 +114,13 @@ This is the Mapbox developer documentation for LLMs.
   it('should work with empty input object', async () => {
     const mockContent = 'Test documentation content';
 
-    mockFetch.mockResolvedValueOnce({
+    const { fetch } = setupFetch({
       ok: true,
       status: 200,
       text: () => Promise.resolve(mockContent)
-    } as Response);
+    });
+
+    const tool = new GetMapboxDocSourceTool(fetch);
 
     const result = await tool.run({});
 

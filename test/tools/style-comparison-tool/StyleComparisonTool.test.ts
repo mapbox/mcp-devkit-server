@@ -1,5 +1,6 @@
-import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
-import { StyleComparisonTool } from './StyleComparisonTool.js';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { MapboxApiBasedTool } from '../../../src/tools/MapboxApiBasedTool.js';
+import { StyleComparisonTool } from '../../../src/tools/style-comparison-tool/StyleComparisonTool.js';
 
 describe('StyleComparisonTool', () => {
   let tool: StyleComparisonTool;
@@ -9,7 +10,7 @@ describe('StyleComparisonTool', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('run', () => {
@@ -38,7 +39,7 @@ describe('StyleComparisonTool', () => {
         // Missing accessToken
       };
 
-      const result = await tool.run(input as any);
+      const result = await tool.run(input);
 
       expect(result.isError).toBe(true);
       expect(
@@ -63,9 +64,9 @@ describe('StyleComparisonTool', () => {
 
     it('should handle just style IDs with valid public token', async () => {
       // Mock MapboxApiBasedTool.getUserNameFromToken to return a username
-      jest
-        .spyOn(MapboxApiBasedTool, 'getUserNameFromToken')
-        .mockReturnValue('testuser');
+      vi.spyOn(MapboxApiBasedTool, 'getUserNameFromToken').mockReturnValue(
+        'testuser'
+      );
 
       const input = {
         before: 'style-id-1',
@@ -116,13 +117,13 @@ describe('StyleComparisonTool', () => {
 
     it('should return error for style ID without valid username in token', async () => {
       // Mock getUserNameFromToken to throw an error
-      jest
-        .spyOn(MapboxApiBasedTool, 'getUserNameFromToken')
-        .mockImplementation(() => {
+      vi.spyOn(MapboxApiBasedTool, 'getUserNameFromToken').mockImplementation(
+        () => {
           throw new Error(
             'MAPBOX_ACCESS_TOKEN does not contain username in payload'
           );
-        });
+        }
+      );
 
       const input = {
         before: 'style-id-only',

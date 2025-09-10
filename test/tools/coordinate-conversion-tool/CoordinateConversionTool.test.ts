@@ -1,4 +1,5 @@
-import { CoordinateConversionTool } from './CoordinateConversionTool.js';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { CoordinateConversionTool } from '../../../src/tools/coordinate-conversion-tool/CoordinateConversionTool.js';
 
 describe('CoordinateConversionTool', () => {
   let tool: CoordinateConversionTool;
@@ -15,10 +16,10 @@ describe('CoordinateConversionTool', () => {
       );
     });
 
-    it('should have correct input schema', () => {
-      const {
-        CoordinateConversionSchema
-      } = require('./CoordinateConversionTool.schema.ts');
+    it('should have correct input schema', async () => {
+      const { CoordinateConversionSchema } = await import(
+        '../../../src/tools/coordinate-conversion-tool/CoordinateConversionTool.schema.js'
+      );
       expect(CoordinateConversionSchema).toBeDefined();
     });
   });
@@ -242,7 +243,7 @@ describe('CoordinateConversionTool', () => {
     it('should require valid coordinate system names', async () => {
       const input = {
         coordinates: [0, 0],
-        from: 'invalid' as any,
+        from: 'invalid' as unknown as 'wgs84' | 'epsg3857',
         to: 'epsg3857' as const
       };
 

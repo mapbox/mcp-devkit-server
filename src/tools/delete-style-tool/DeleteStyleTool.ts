@@ -19,7 +19,7 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
     accessToken?: string
   ): Promise<any> {
     const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
-    const url = `${MapboxApiBasedTool.MAPBOX_API_ENDPOINT}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;
+    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;
 
     const response = await fetch(url, {
       method: 'DELETE'

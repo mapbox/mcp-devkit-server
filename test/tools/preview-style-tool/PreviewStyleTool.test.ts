@@ -1,8 +1,8 @@
-// Use a token with valid JWT format for tests
 process.env.MAPBOX_ACCESS_TOKEN =
   'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
-import { PreviewStyleTool } from './PreviewStyleTool.js';
+import { describe, it, expect } from 'vitest';
+import { PreviewStyleTool } from '../../../src/tools/preview-style-tool/PreviewStyleTool.js';
 
 describe('PreviewStyleTool', () => {
   const TEST_ACCESS_TOKEN =
@@ -17,8 +17,10 @@ describe('PreviewStyleTool', () => {
       );
     });
 
-    it('should have correct input schema', () => {
-      const { PreviewStyleSchema } = require('./PreviewStyleTool.schema.ts');
+    it('should have correct input schema', async () => {
+      const { PreviewStyleSchema } = await import(
+        '../../../src/tools/preview-style-tool/PreviewStyleTool.schema.js'
+      );
       expect(PreviewStyleSchema).toBeDefined();
     });
   });
