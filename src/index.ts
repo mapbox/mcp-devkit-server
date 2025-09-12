@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { parseToolConfigFromArgs, filterTools } from './config/toolConfig.js';
 import { getAllTools } from './tools/toolRegistry.js';
+import { getAllResources } from './resources/resourceRegistry.js';
 import { getVersionInfo } from './utils/versionUtils.js';
 
 // Get version info and patch fetch
@@ -23,7 +24,8 @@ const server = new McpServer(
   {
     capabilities: {
       logging: {},
-      tools: {}
+      tools: {},
+      resources: {}
     }
   }
 );
@@ -31,6 +33,12 @@ const server = new McpServer(
 // Register enabled tools to the server
 enabledTools.forEach((tool) => {
   tool.installTo(server);
+});
+
+// Register resources to the server
+const resources = getAllResources();
+resources.forEach((resource) => {
+  resource.installTo(server);
 });
 
 async function main() {
