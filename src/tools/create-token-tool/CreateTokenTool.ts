@@ -12,7 +12,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
   readonly description =
     'Create a new Mapbox public access token with specified scopes and optional URL restrictions.';
 
-  constructor(private fetchImpl: typeof fetch = fetchClient) {
+  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: CreateTokenSchema });
   }
 
@@ -51,7 +51,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
     }
 
     try {
-      const response = await this.fetchImpl(url, {
+      const response = await this.fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

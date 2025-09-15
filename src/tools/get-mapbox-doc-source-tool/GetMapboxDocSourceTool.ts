@@ -12,7 +12,7 @@ export class GetMapboxDocSourceTool extends BaseTool<
   description =
     'Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search.';
 
-  constructor(private fetchImpl: typeof fetch = fetchClient) {
+  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: GetMapboxDocSourceSchema });
   }
 
@@ -21,7 +21,7 @@ export class GetMapboxDocSourceTool extends BaseTool<
     _input: GetMapboxDocSourceInput
   ): Promise<{ type: 'text'; text: string }> {
     try {
-      const response = await this.fetchImpl('https://docs.mapbox.com/llms.txt');
+      const response = await this.fetch('https://docs.mapbox.com/llms.txt');
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
