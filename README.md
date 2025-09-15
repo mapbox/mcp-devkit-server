@@ -118,6 +118,10 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 
 Complete set of tools for managing Mapbox styles via the Styles API:
 
+**Style Builder Tool** - Create and modify Mapbox styles programmatically through conversational prompts
+
+📖 **[See the Style Builder documentation for detailed usage and examples →](./docs/STYLE_BUILDER.md)**
+
 **ListStylesTool** - List all styles for a Mapbox account
 
 - Input: `limit` (optional - max number of styles), `start` (optional - pagination token)
