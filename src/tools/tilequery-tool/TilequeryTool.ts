@@ -1,3 +1,4 @@
+import { fetchClient } from '../../utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import { TilequerySchema, TilequeryInput } from './TilequeryTool.schema.js';
 
@@ -6,7 +7,7 @@ export class TilequeryTool extends MapboxApiBasedTool<typeof TilequerySchema> {
   description =
     'Query vector and raster data from Mapbox tilesets at geographic coordinates';
 
-  constructor() {
+  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: TilequerySchema });
   }
 
@@ -45,7 +46,7 @@ export class TilequeryTool extends MapboxApiBasedTool<typeof TilequerySchema> {
 
     url.searchParams.set('access_token', accessToken || '');
 
-    const response = await fetch(url.toString());
+    const response = await this.fetch(url.toString());
 
     if (!response.ok) {
       const errorText = await response.text();

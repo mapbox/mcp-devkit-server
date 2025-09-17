@@ -1,3 +1,4 @@
+import { fetchClient } from '../../utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   UpdateStyleSchema,
@@ -10,7 +11,7 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
   name = 'update_style_tool';
   description = 'Update an existing Mapbox style';
 
-  constructor() {
+  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: UpdateStyleSchema });
   }
 
@@ -25,7 +26,7 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
     if (input.name) payload.name = input.name;
     if (input.style) Object.assign(payload, input.style);
 
-    const response = await fetch(url, {
+    const response = await this.fetch(url, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'
