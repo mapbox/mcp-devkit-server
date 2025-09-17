@@ -142,6 +142,7 @@ export interface BaseLayer {
   filter?: Filter;
   layout?: Record<string, unknown>;
   paint?: Record<string, unknown>;
+  slot?: 'bottom' | 'middle' | 'top';
 }
 
 export interface BackgroundLayer extends BaseLayer {
@@ -442,6 +443,11 @@ export interface MapboxStyle {
   version: 8;
   name?: string;
   metadata?: Record<string, unknown>;
+  imports?: Array<{
+    id: string;
+    url: string;
+    data?: Record<string, unknown>;
+  }>;
   center?: [number, number];
   zoom?: number;
   bearing?: number;

@@ -12,13 +12,13 @@ describe('StyleBuilderTool', () => {
   describe('basic functionality', () => {
     it('should have correct name and description', () => {
       expect(tool.name).toBe('style_builder_tool');
-      expect(tool.description).toContain('Build custom Mapbox styles');
+      expect(tool.description).toContain('Generate Mapbox style JSON');
     });
 
     it('should build a basic style with water layer', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Test Style',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'water',
@@ -42,7 +42,7 @@ describe('StyleBuilderTool', () => {
     it('should handle dark mode', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Dark Mode Style',
-        base_style: 'streets-v12',
+        base_style: 'streets', // Use classic style to test background color
         layers: [],
         global_settings: {
           mode: 'dark',
@@ -63,7 +63,7 @@ describe('StyleBuilderTool', () => {
     it('should handle color action', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Color Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'primary_roads',
@@ -83,7 +83,7 @@ describe('StyleBuilderTool', () => {
     it('should handle highlight action', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Highlight Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'railways',
@@ -105,7 +105,7 @@ describe('StyleBuilderTool', () => {
     it('should handle hide action', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Hide Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'place_labels',
@@ -124,7 +124,7 @@ describe('StyleBuilderTool', () => {
     it('should handle show action', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Show Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'buildings',
@@ -145,7 +145,7 @@ describe('StyleBuilderTool', () => {
     it('should handle country boundaries with correct filters', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Country Boundaries Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'country_boundaries',
@@ -185,7 +185,7 @@ describe('StyleBuilderTool', () => {
     it('should handle state boundaries', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'State Boundaries Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'state_boundaries',
@@ -220,7 +220,7 @@ describe('StyleBuilderTool', () => {
     it('should generate valid Mapbox style JSON', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Valid Style Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'water',
@@ -246,24 +246,28 @@ describe('StyleBuilderTool', () => {
       // Check basic style structure
       expect(style.version).toBe(8);
       expect(style.name).toBe('Valid Style Test');
-      expect(style.sources).toBeTruthy();
-      expect(style.sources.composite).toBeTruthy();
-      expect(style.sources.composite.url).toBe(
-        'mapbox://mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2'
-      );
-      expect(style.sprite).toContain('streets-v12');
-      expect(style.glyphs).toContain('mapbox://fonts');
+      // For standard style, check imports instead of sources
+      expect(style.imports).toBeTruthy();
+      expect(Array.isArray(style.imports)).toBe(true);
+      expect(style.imports[0]).toEqual({
+        id: 'basemap',
+        url: 'mapbox://styles/mapbox/standard'
+      });
       expect(Array.isArray(style.layers)).toBe(true);
 
-      // Check background layer is always added
-      const bgLayer = style.layers.find((l: any) => l.id === 'background');
-      expect(bgLayer).toBeTruthy();
+      // Standard styles don't have background layers (provided by import)
+      // Only check for background in non-standard styles
+      if (input.base_style !== 'standard') {
+        const bgLayer = style.layers.find((l: any) => l.id === 'background');
+        expect(bgLayer).toBeTruthy();
+      }
     });
 
-    it('should include essential layers by default', async () => {
+    it('should include only background layer when no layers specified', async () => {
+      // Test with classic style
       const input: StyleBuilderToolInput = {
         style_name: 'Essential Layers Test',
-        base_style: 'streets-v12',
+        base_style: 'streets', // Use classic style
         layers: [] // No layers specified
       };
 
@@ -273,14 +277,11 @@ describe('StyleBuilderTool', () => {
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
-      // Should have at least background and water
-      expect(style.layers.length).toBeGreaterThanOrEqual(2);
+      // Classic styles should only have background when no layers specified
+      expect(style.layers.length).toBe(1);
 
       const bgLayer = style.layers.find((l: any) => l.id === 'background');
-      const waterLayer = style.layers.find((l: any) => l.id === 'water-custom');
-
       expect(bgLayer).toBeTruthy();
-      expect(waterLayer).toBeTruthy();
     });
   });
 
@@ -288,7 +289,7 @@ describe('StyleBuilderTool', () => {
     it('should handle unknown layer types gracefully', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Unknown Layer Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'unknown_layer' as any,
@@ -309,7 +310,7 @@ describe('StyleBuilderTool', () => {
     it('should handle custom filters', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Custom Filter Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'motorways',
@@ -340,7 +341,7 @@ describe('StyleBuilderTool', () => {
     it('should generate zoom-based expressions', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Zoom Expression Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'motorways',
@@ -376,7 +377,7 @@ describe('StyleBuilderTool', () => {
     it('should generate data-driven expressions', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Data Driven Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'primary_roads',
@@ -414,7 +415,7 @@ describe('StyleBuilderTool', () => {
     it('should handle custom expressions', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Custom Expression Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'buildings',
@@ -453,7 +454,7 @@ describe('StyleBuilderTool', () => {
     it('should generate opacity interpolation with zoom', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Opacity Zoom Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'buildings',
@@ -561,7 +562,7 @@ describe('StyleBuilderTool', () => {
     it('should filter roads by class', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Motorway Filter Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'motorways',
@@ -592,7 +593,7 @@ describe('StyleBuilderTool', () => {
     it('should filter by multiple properties', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Bridge Motorways Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'motorways',
@@ -626,7 +627,7 @@ describe('StyleBuilderTool', () => {
     it('should filter admin boundaries correctly', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Undisputed Countries Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'country_boundaries',
@@ -659,11 +660,168 @@ describe('StyleBuilderTool', () => {
     });
   });
 
+  describe('style types', () => {
+    it('should generate Standard style with imports', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Standard Style Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#0099ff'
+          }
+        ]
+      };
+
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
+
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+      const style = JSON.parse(jsonMatch![1]);
+
+      // Check that Standard style uses imports
+      expect(style.imports).toBeTruthy();
+      expect(Array.isArray(style.imports)).toBe(true);
+      expect(style.imports[0]).toEqual({
+        id: 'basemap',
+        url: 'mapbox://styles/mapbox/standard'
+      });
+      // Should have sources defined (required by spec)
+      // With custom layers, it needs composite source
+      expect(style.sources).toBeDefined();
+      expect(style.sources.composite).toBeDefined();
+
+      // Check that layers have slot property for Standard style
+      style.layers.forEach((layer: any) => {
+        expect(layer.slot).toBe('top');
+      });
+    });
+
+    it('should generate Classic style with sources', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Classic Style Test',
+        base_style: 'streets',
+        layers: [
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#0099ff'
+          }
+        ]
+      };
+
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
+
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+      const style = JSON.parse(jsonMatch![1]);
+
+      // Check that Classic style uses traditional sources
+      expect(style.sources).toBeTruthy();
+      expect(style.sources.composite).toBeTruthy();
+      expect(style.sources.composite.url).toBe(
+        'mapbox://mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2'
+      );
+      expect(style.sprite).toContain('streets-v12');
+      expect(style.glyphs).toContain('mapbox://fonts');
+      // Should not have imports for classic styles
+      expect(style.imports).toBeUndefined();
+
+      // Classic styles should not have slot property
+      style.layers.forEach((layer: any) => {
+        expect(layer.slot).toBeUndefined();
+      });
+    });
+
+    it('should use custom slot for Standard style layers', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Custom Slot Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#0099ff',
+            slot: 'bottom'
+          },
+          {
+            layer_type: 'parks',
+            action: 'color',
+            color: '#00ff00',
+            slot: 'middle'
+          },
+          {
+            layer_type: 'poi_labels',
+            action: 'show',
+            slot: 'top'
+          }
+        ]
+      };
+
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
+
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+      const style = JSON.parse(jsonMatch![1]);
+
+      // Check that layers have correct custom slots
+      // Note: layer IDs include the original layer ID plus '-custom' suffix
+      const waterLayer = style.layers.find((l: any) => l.id === 'water-custom');
+      const parksLayer = style.layers.find(
+        (l: any) => l.id === 'landuse_park-custom'
+      );
+      const poiLayer = style.layers.find(
+        (l: any) => l.id === 'poi-label-custom'
+      );
+
+      expect(waterLayer).toBeTruthy();
+      expect(parksLayer).toBeTruthy();
+      expect(poiLayer).toBeTruthy();
+
+      expect(waterLayer.slot).toBe('bottom');
+      expect(parksLayer.slot).toBe('middle');
+      expect(poiLayer.slot).toBe('top');
+    });
+
+    it('should generate Blank style with sources but no imports', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Blank Style Test',
+        base_style: 'blank',
+        layers: [
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#0099ff'
+          }
+        ]
+      };
+
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
+
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+      const style = JSON.parse(jsonMatch![1]);
+
+      // Check that Blank style has sources but no imports
+      expect(style.sources).toBeTruthy();
+      expect(style.sources.composite).toBeTruthy();
+      expect(style.sprite).toContain('streets-v12');
+      expect(style.glyphs).toContain('mapbox://fonts');
+      expect(style.imports).toBeUndefined();
+
+      // Blank styles should not have slot property
+      style.layers.forEach((layer: any) => {
+        expect(layer.slot).toBeUndefined();
+      });
+    });
+  });
+
   describe('multiple layers', () => {
     it('should handle multiple layers with different actions', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Multi Layer Test',
-        base_style: 'streets-v12',
+        base_style: 'standard',
         layers: [
           {
             layer_type: 'water',

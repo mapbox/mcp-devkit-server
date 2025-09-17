@@ -64,12 +64,37 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
   },
   {
     "className": "StyleBuilderTool",
-    "description": "Build custom Mapbox styles with precise control over layers and visual properties, including zoom-based and data-driven expressions.
+    "description": "Generate Mapbox style JSON for creating new styles or updating existing ones. Supports Mapbox Standard (default), Classic, and Blank base styles with full control over layers, expressions, and visual properties.
 
-HOW TO CREATE A STYLE:
-1. First, consult resource://mapbox-style-layers to see all available layer types
-2. Use this tool to generate a style configuration
-3. Apply the style using create_style_tool or update_style_tool
+USAGE:
+1. Use this tool to generate style JSON configuration
+2. For NEW styles: Use the generated JSON with create_style_tool
+3. For EXISTING styles: Use portions of the JSON with update_style_tool to modify specific layers
+
+BASE STYLES:
+• standard (default): Modern Mapbox Standard with imports, requires slot property
+• streets/light/dark/satellite/outdoors: Classic styles (deprecated but supported)
+• blank: Empty style for full customization
+
+LAYER ORDERING:
+• In ALL styles: Later layers in array render on top of earlier layers
+• Standard style: 'slot' determines which section, array order matters within each slot
+• Classic/Blank: Array order is the only control for layer stacking
+Example: [background, water, roads, labels] = labels render on top
+
+MAPBOX STANDARD - SLOT PROPERTY:
+When using Standard base style, each layer needs a 'slot' to control stacking:
+• bottom: Below most map features (land, water)
+• middle: Between base features and labels
+• top: Above all base map features (default for visibility)
+Within each slot, array order still applies - later layers render on top
+
+RESOURCE GUIDE:
+The resource://mapbox-style-layers contains comprehensive documentation including:
+• All available layer types with descriptions
+• Paint and layout properties for each layer type
+• Common filters and expressions
+• Example configurations
 
 AVAILABLE LAYER TYPES:
 • water, waterway - Oceans, lakes, rivers

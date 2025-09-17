@@ -81,16 +81,35 @@ const LayerConfigSchema = z.object({
       z.record(z.unknown())
     ])
     .optional()
-    .describe('Custom Mapbox expression for advanced styling')
+    .describe('Custom Mapbox expression for advanced styling'),
+
+  // Slot for Standard styles
+  slot: z
+    .enum(['bottom', 'middle', 'top'])
+    .optional()
+    .describe(
+      'Layer slot for Mapbox Standard styles. Controls layer stacking order. ' +
+        'Bottom: below most map features, Middle: between base and labels, Top: above all base map features (default)'
+    )
 });
 
 export const StyleBuilderToolSchema = z.object({
   style_name: z.string().default('Custom Style').describe('Name for the style'),
 
   base_style: z
-    .enum(['streets', 'light', 'dark', 'satellite', 'outdoors', 'blank'])
-    .default('streets')
-    .describe('Base style template to start from'),
+    .enum([
+      'standard',
+      'streets',
+      'light',
+      'dark',
+      'satellite',
+      'outdoors',
+      'blank'
+    ])
+    .default('standard')
+    .describe(
+      'Base style template to start from (standard uses new Mapbox Standard, classic styles are deprecated)'
+    ),
 
   layers: z
     .array(LayerConfigSchema)
