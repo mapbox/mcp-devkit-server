@@ -100,16 +100,28 @@ AVAILABLE LAYER TYPES:
 • water, waterway - Oceans, lakes, rivers
 • landuse, parks - Land areas like parks, hospitals, schools
 • buildings, building_3d - Building footprints and 3D extrusions
-• roads (motorways, primary_roads, secondary_roads, streets, paths, railways)
+• ROAD TYPES (use these specific types for best results):
+  - motorways - Highway/freeway roads (class: motorway)
+  - primary_roads - Major roads (class: primary, trunk)
+  - secondary_roads - Secondary roads (class: secondary)
+  - streets - Local streets (class: street, street_limited)
+  - paths - Walking/cycling paths (class: path, pedestrian)
+  - railways - Rail lines
+  - roads - Generic/all roads (avoid using - use specific types above instead)
 • country_boundaries, state_boundaries - Administrative borders
 • place_labels, road_labels, poi_labels - Text labels
 • landcover - Natural features like forests, grass
 • airports - Airport features
 • transit - Bus stops, subway entrances, rail stations (filter by maki: bus, entrance, rail-metro)
 
+IMPORTANT FOR ROADS:
+• Always use specific road layer types (motorways, primary_roads, etc.) instead of generic 'roads'
+• Each road type automatically includes proper filters and zoom-based width interpolation
+• Don't specify fixed widths - the tool automatically applies appropriate zoom-based scaling
+
 ACTIONS YOU CAN APPLY:
-• color - Set the layer's color
-• highlight - Make layer prominent with color/width
+• color - Set the layer's color (roads will use smart defaults if not specified)
+• highlight - Make layer prominent with enhanced color/width
 • hide - Remove layer from view
 • show - Display layer with default styling
 

@@ -562,7 +562,12 @@ ${JSON.stringify(style, null, 2)}
         const [property, values] = condition.split(':').map((s) => s.trim());
         const valueList = values.split('|').map((v) => {
           const trimmed = v.trim();
-          // Handle boolean strings
+          // Special handling for admin layer properties that use string booleans
+          // maritime and disputed use "true"/"false" as strings, not booleans
+          if (property === 'maritime' || property === 'disputed') {
+            return trimmed; // Keep as string "true" or "false"
+          }
+          // Handle boolean strings for other properties
           if (trimmed === 'true') return true;
           if (trimmed === 'false') return false;
           // Try to parse as number
