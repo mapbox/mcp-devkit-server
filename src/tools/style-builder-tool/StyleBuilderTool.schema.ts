@@ -108,7 +108,9 @@ export const StyleBuilderToolSchema = z.object({
     ])
     .default('standard')
     .describe(
-      'Base style template to start from (standard uses new Mapbox Standard, classic styles are deprecated)'
+      'Base style template. ALWAYS defaults to "standard" for new styles. ' +
+        'Use "standard" for all new styles unless explicitly requested otherwise. ' +
+        'Classic styles (streets/light/dark) should only be used when working with existing Classic styles or upon explicit request.'
     ),
 
   layers: z
@@ -122,7 +124,180 @@ export const StyleBuilderToolSchema = z.object({
       mode: z.enum(['light', 'dark']).optional().describe('Light or dark mode')
     })
     .optional()
-    .describe('Global style settings')
+    .describe('Global style settings'),
+
+  standard_config: z
+    .object({
+      // Boolean configuration properties
+      showPedestrianRoads: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base pedestrian roads and paths from the Standard style'
+        ),
+      showPlaceLabels: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base place label layers from the Standard style'
+        ),
+      showPointOfInterestLabels: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base POI icons and text from the Standard style'
+        ),
+      showRoadLabels: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base road labels and shields from the Standard style'
+        ),
+      showTransitLabels: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base transit icons and text from the Standard style'
+        ),
+      show3dObjects: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base 3D objects like buildings and landmarks from the Standard style'
+        ),
+      showLandmarkIcons: z
+        .boolean()
+        .optional()
+        .describe('Show/hide the base landmark icons from the Standard style'),
+      showLandmarkIconLabels: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base landmark icon labels from the Standard style'
+        ),
+      showAdminBoundaries: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base administrative boundaries from the Standard style'
+        ),
+      showRoadsAndTransit: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base roads and transit networks from the Standard style (Standard-Satellite)'
+        ),
+
+      // String configuration properties
+      theme: z
+        .enum(['default', 'faded', 'monochrome', 'custom'])
+        .optional()
+        .describe('Theme for the base Standard style layers'),
+      'theme-data': z
+        .string()
+        .optional()
+        .describe('Custom color theme for the base style via Base64 LUT image'),
+      lightPreset: z
+        .enum(['dusk', 'dawn', 'day', 'night'])
+        .optional()
+        .describe('Time-of-day lighting for the base Standard style'),
+      font: z
+        .string()
+        .optional()
+        .describe('Font family for the base Standard style text'),
+      colorModePointOfInterestLabels: z
+        .string()
+        .optional()
+        .describe('Color mode for the base POI labels'),
+      backgroundPointOfInterestLabels: z
+        .string()
+        .optional()
+        .describe('Background style for the base POI labels'),
+
+      // Numeric configuration properties
+      densityPointOfInterestLabels: z
+        .number()
+        .min(1)
+        .max(5)
+        .optional()
+        .describe('Density of base POI labels (1-5, default 3)'),
+
+      // Color override properties
+      colorPlaceLabels: z
+        .string()
+        .optional()
+        .describe('Override color for the base place labels in Standard style'),
+      colorRoadLabels: z
+        .string()
+        .optional()
+        .describe('Override color for the base road labels in Standard style'),
+      colorGreenspace: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base greenspace areas in Standard style'
+        ),
+      colorWater: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base water features in Standard style'
+        ),
+      colorAdminBoundaries: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base administrative boundaries in Standard style'
+        ),
+      colorPointOfInterestLabels: z
+        .string()
+        .optional()
+        .describe('Override color for the base POI labels in Standard style'),
+      colorMotorways: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base motorways/highways in Standard style'
+        ),
+      colorTrunks: z
+        .string()
+        .optional()
+        .describe('Override color for the base trunk roads in Standard style'),
+      colorRoads: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base regular roads in Standard style'
+        ),
+      colorBuildingHighlight: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base highlighted buildings in Standard style'
+        ),
+      colorBuildingSelect: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base selected buildings in Standard style'
+        ),
+      colorPlaceLabelHighlight: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base highlighted place labels in Standard style'
+        ),
+      colorPlaceLabelSelect: z
+        .string()
+        .optional()
+        .describe(
+          'Override color for the base selected place labels in Standard style'
+        )
+    })
+    .optional()
+    .describe(
+      'Configuration for the base Mapbox Standard style. These properties customize the underlying Standard style features - you can still add your own custom layers on top using the layers parameter. The Standard style provides a rich basemap that you can configure and enhance with additional layers.'
+    )
 });
 
 export type StyleBuilderToolInput = z.infer<typeof StyleBuilderToolSchema>;

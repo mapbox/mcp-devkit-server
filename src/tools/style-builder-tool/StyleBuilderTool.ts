@@ -9,17 +9,35 @@ import type { MapboxStyle, Layer, Filter } from '../../types/mapbox-style.js';
 
 export class StyleBuilderTool extends BaseTool<typeof StyleBuilderToolSchema> {
   name = 'style_builder_tool';
-  description = `Generate Mapbox style JSON for creating new styles or updating existing ones. Supports Mapbox Standard (default), Classic, and Blank base styles with full control over layers, expressions, and visual properties.
+  description = `Generate Mapbox style JSON for creating new styles or updating existing ones. Uses Mapbox Standard for all NEW styles, and preserves the base style type when working with EXISTING styles.
 
 USAGE:
 1. Use this tool to generate style JSON configuration
 2. For NEW styles: Use the generated JSON with create_style_tool
 3. For EXISTING styles: Use portions of the JSON with update_style_tool to modify specific layers
 
+BASE STYLE SELECTION:
+• FOR NEW STYLES: ALWAYS use base_style: 'standard' unless user explicitly requests otherwise
+  - Standard is the modern, recommended approach with best performance
+  - Example: "Create a style showing toll roads" → use 'standard'
+  - Example: "Create a dark style showing parks" → use 'standard' with dark theme config
+
+• FOR EXISTING STYLES: Auto-detect and preserve the current base style
+  - If working on a Classic style (retrieved via retrieve_style_tool), keep using Classic
+  - If working on a Standard style, keep using Standard
+  - Look for 'imports' field to identify Standard styles
+
 BASE STYLES:
-• standard (default): Modern Mapbox Standard with imports, requires slot property
-• streets/light/dark/satellite/outdoors: Classic styles (deprecated but supported)
-• blank: Empty style for full customization
+• standard (DEFAULT FOR NEW STYLES): Modern Mapbox Standard with imports, best performance
+• streets/light/dark/satellite/outdoors: Classic styles (use only for existing Classic styles or explicit request)
+• blank: Empty style for full customization (only when explicitly needed)
+
+WHEN TO USE EACH BASE STYLE:
+• "Create a style showing toll roads" → base_style: 'standard'
+• "Create a dark style with parks" → base_style: 'standard' + standard_config: { theme: 'monochrome' }
+• "Build a navigation style" → base_style: 'standard'
+• "Working on style cmfnxfroh..." (if it's Classic) → preserve its base_style
+• "Create a streets-v11 style" (explicit request) → base_style: 'streets'
 
 LAYER ORDERING:
 • In ALL styles: Later layers in array render on top of earlier layers
@@ -34,6 +52,26 @@ When using Standard base style, each layer needs a 'slot' to control stacking:
 • top: Above all base map features (default for visibility)
 Within each slot, array order still applies - later layers render on top
 
+MAPBOX STANDARD - CONFIGURATION:
+Standard style provides a rich basemap that can be customized using the standard_config parameter.
+These settings control the BASE Standard style features - you can still add custom layers on top!
+
+• Visibility toggles: Control which base features are shown
+  - showPlaceLabels, showRoadLabels, showTransitLabels (base labels)
+  - showPedestrianRoads, show3dObjects, showAdminBoundaries (base features)
+• Theme options: Adjust the overall look of the base style
+  - theme: default/faded/monochrome/custom
+  - lightPreset: day/night/dawn/dusk
+• Color overrides: Change colors of base Standard style elements
+  - Roads: colorMotorways, colorTrunks, colorRoads
+  - Nature: colorWater, colorGreenspace
+  - Labels: colorPlaceLabels, colorRoadLabels, colorPointOfInterestLabels
+  - Admin: colorAdminBoundaries
+• Density controls: densityPointOfInterestLabels (1-5)
+
+IMPORTANT: These configurations modify the underlying Standard basemap.
+Your custom layers (defined in 'layers' parameter) are added ON TOP of this configured basemap.
+
 RESOURCE GUIDE:
 The resource://mapbox-style-layers contains comprehensive documentation including:
 • All available layer types with descriptions
@@ -43,26 +81,30 @@ The resource://mapbox-style-layers contains comprehensive documentation includin
 
 AVAILABLE LAYER TYPES:
 • water, waterway - Oceans, lakes, rivers
-• landuse, parks - Land areas like parks, hospitals, schools
+• landuse - General land use areas
+• parks - Parks, cemeteries, golf courses (pre-filtered for class: park|cemetery|golf_course)
 • buildings, building_3d - Building footprints and 3D extrusions
-• ROAD TYPES (use these specific types for best results):
-  - motorways - Highway/freeway roads (class: motorway)
-  - primary_roads - Major roads (class: primary, trunk)
-  - secondary_roads - Secondary roads (class: secondary)
-  - streets - Local streets (class: street, street_limited)
-  - paths - Walking/cycling paths (class: path, pedestrian)
-  - railways - Rail lines
-  - roads - Generic/all roads (avoid using - use specific types above instead)
+• ROAD TYPES (each automatically includes the correct road classes):
+  - road - Generic road layer for CUSTOM filtering (use for toll roads, bridges, tunnels, etc.)
+  - motorways - Highways/freeways (includes: motorway, trunk)
+  - primary_roads - Major arterial roads (includes: primary)
+  - secondary_roads - Secondary & tertiary roads (includes: secondary, tertiary)
+  - streets - Local/residential streets (includes: street, street_limited, residential, service)
+  - paths - Pedestrian paths & walkways (includes: path, pedestrian)
+  - railways - Rail lines (includes: major_rail, minor_rail, service_rail)
 • country_boundaries, state_boundaries - Administrative borders
-• place_labels, road_labels, poi_labels - Text labels
+• place_labels - City/town/village labels (pre-filtered)
+• road_labels - Street name labels
+• poi_labels - Points of interest with icons
 • landcover - Natural features like forests, grass
-• airports - Airport features
-• transit - Bus stops, subway entrances, rail stations (filter by maki: bus, entrance, rail-metro)
+• airports - Airport features (runways, terminals)
+• transit - Transit stops with icons (bus, subway, rail)
 
 IMPORTANT FOR ROADS:
-• Always use specific road layer types (motorways, primary_roads, etc.) instead of generic 'roads'
-• Each road type automatically includes proper filters and zoom-based width interpolation
-• Don't specify fixed widths - the tool automatically applies appropriate zoom-based scaling
+• Use 'road' layer type for custom filtering (toll roads, bridges, tunnels, bike lanes, etc.)
+• Use specific road types (motorways, primary_roads, etc.) for pre-filtered road classes
+• Each specific road type automatically includes proper filters and zoom-based width interpolation
+• The generic 'road' layer requires filter_properties for filtering
 
 ACTIONS YOU CAN APPLY:
 • color - Set the layer's color (roads will use smart defaults if not specified)
@@ -77,23 +119,37 @@ EXPRESSION FEATURES:
 • Interpolated values - "Fade buildings in between zoom 14 and 16"
 
 ADVANCED FILTERING:
-• "Show only motorways and trunk roads"
-• "Display only bridges, not tunnels"
-• "Show only paved roads"
-• "Display only disputed boundaries"
-• "Show only major rail lines, not service rails"
-• "Filter POIs by maki icon type (restaurants, hospitals, etc.)"
-• "Show only bus stops (transit layer with maki: bus)"
-• "Display subway entrances (transit with maki: entrance)"
+• "Show only motorways and trunk roads" - Use motorways layer type
+• "Display only toll roads" - Use road layer with filter_properties: { toll: true }
+• "Display only bridges" - Use road layer with filter_properties: { structure: 'bridge' }
+• "Show only tunnels" - Use road layer with filter_properties: { structure: 'tunnel' }
+• "Show only paved roads" - Use road layer with filter_properties: { surface: 'paved' }
+• "Show roads with bike lanes" - Use road layer with filter_properties: { bike_lane: ['left', 'right', 'both'] }
+• "Display only disputed boundaries" - Use filter_properties: { disputed: 'true' }
+• "Filter POIs by maki icon type" - Use poi_labels with filter_properties: { maki: 'restaurant' }
+• "Show only bus stops" - Use transit layer with filter_properties: { maki: 'bus' }
+• "Display subway entrances" - Use transit layer with filter_properties: { maki: 'entrance' }
 
 COMPREHENSIVE EXAMPLES:
-• "Show only motorways that are bridges"
-• "Display major rails but exclude tunnels"
-• "Color roads: motorways red, primary orange, secondary yellow"
-• "Show only toll roads that are paved"
-• "Display only civil airports, not military"
-• "Show country boundaries excluding maritime ones"
-• "Color bus stops red and subway entrances blue (transit with different maki values)"
+• "Color all roads differently":
+  - Use motorways (red), primary_roads (orange), secondary_roads (yellow), streets (green), paths (purple)
+  - Each layer type automatically includes the correct road classes
+• "Show only toll roads" - Use road layer with filter_properties: { toll: true }
+• "Show toll motorways" - Use road layer with filter_properties: { toll: true, class: ['motorway', 'trunk'] }
+• "Display bridges" - Use road layer with filter_properties: { structure: 'bridge' }
+• "Show paved roads" - Use road layer with filter_properties: { surface: 'paved' }
+• "Display one-way streets" - Use road layer with filter_properties: { oneway: 'true', class: ['street'] }
+• "Show roads with bike lanes" - Use road layer with filter_properties: { bike_lane: ['left', 'right', 'both', 'yes'] }
+• "Show all labels" - Use place_labels, road_labels, poi_labels layers
+• "Display boundaries" - Use country_boundaries and state_boundaries layers
+
+IMPORTANT FOR ROAD FILTERING:
+• The 'toll' property uses 'true' as a string value when present
+• Structure values: 'none', 'bridge', 'tunnel', 'ford'
+• Surface values: 'paved', 'unpaved'
+• Bike lane values: 'left', 'right', 'both', 'yes', 'no'
+• Oneway and dual_carriageway use string values: 'true' or 'false'
+• Access can be 'restricted' when limitations exist
 
 For detailed layer properties and filters, check resource://mapbox-style-layers
 
@@ -118,6 +174,7 @@ To show multiple transit types: filter_properties: { maki: ['bus', 'entrance', '
 **Name:** ${input.style_name}
 **Base:** ${input.base_style}
 **Layers Configured:** ${input.layers.length}
+${input.standard_config ? `**Standard Config:** ${Object.keys(input.standard_config).length} properties set` : ''}
 
 ${this.generateSummary(input)}
 
@@ -224,12 +281,22 @@ ${JSON.stringify(style, null, 2)}
       };
       style.center = [0, 0];
       style.zoom = 2;
-      style.imports = [
-        {
-          id: 'basemap',
-          url: 'mapbox://styles/mapbox/standard'
-        }
-      ];
+
+      // Build the import configuration
+      const importConfig: any = {
+        id: 'basemap',
+        url: 'mapbox://styles/mapbox/standard'
+      };
+
+      // Add Standard style configuration if provided
+      if (
+        input.standard_config &&
+        Object.keys(input.standard_config).length > 0
+      ) {
+        importConfig.config = input.standard_config;
+      }
+
+      style.imports = [importConfig];
       style.sources = {
         composite: {
           url: 'mapbox://mapbox.mapbox-streets-v8',
@@ -281,15 +348,50 @@ ${JSON.stringify(style, null, 2)}
     globalSettings?: StyleBuilderToolInput['global_settings'],
     isUsingStandard?: boolean
   ): Layer | null {
+    // Generate a unique ID for the layer based on its properties
+    let layerId = `${layerDef.id}-custom`;
+
+    // If there are filter properties, create a unique suffix from them
+    if (config.filter_properties) {
+      // Create a deterministic hash from the filter properties
+      const filterKeys = Object.entries(config.filter_properties)
+        .map(([key, value]) => `${key}-${value}`)
+        .join('-');
+      layerId = `${layerDef.id}-${filterKeys}`;
+    }
+
     const layer: Layer = {
-      id: `${layerDef.id}-custom`,
+      id: layerId,
       type: layerDef.type as Layer['type']
     };
 
     // Add slot for Standard style
     if (isUsingStandard) {
-      // Use custom slot if provided, otherwise default to 'top' for visibility
-      layer.slot = config.slot || 'top';
+      // Smart slot assignment if not explicitly provided:
+      // - Layers with filter_properties go to 'top' for visibility
+      // - Regular roads go to 'middle'
+      // - Labels go to 'top'
+
+      if (config.slot) {
+        // User explicitly set the slot - respect their choice
+        layer.slot = config.slot;
+      } else if (
+        config.filter_properties &&
+        Object.keys(config.filter_properties).length > 0
+      ) {
+        // ANY layer with filter properties should be on top for visibility
+        // This includes: toll roads, bridges, tunnels, bike lanes, restricted roads, etc.
+        layer.slot = 'top';
+      } else if (config.layer_type.includes('label')) {
+        // Labels should always be on top
+        layer.slot = 'top';
+      } else if (this.isRoadLayer(config.layer_type)) {
+        // Regular roads without filters in the middle
+        layer.slot = 'middle';
+      } else {
+        // Default for other layers
+        layer.slot = 'middle';
+      }
     }
 
     // Add source configuration
@@ -349,22 +451,96 @@ ${JSON.stringify(style, null, 2)}
     // Apply opacity - use specified value or smart defaults
     const opacityProp = this.getOpacityProperty(layerDef.type);
     if (opacityProp) {
-      // For Standard style overlays, use higher opacity by default
-      // This keeps colors vibrant and easily distinguishable
-      const opacity =
-        config.opacity !== undefined
-          ? config.opacity
-          : isUsingStandard
-            ? 0.75
+      // Special handling for boundaries - fade at higher zooms
+      if (
+        config.layer_type === 'country_boundaries' ||
+        config.layer_type === 'state_boundaries'
+      ) {
+        const baseOpacity =
+          config.opacity !== undefined
+            ? config.opacity
             : this.getDefaultOpacity(config.layer_type, layerDef.type);
 
-      // Only apply if not full opacity (to keep styles cleaner)
-      if (opacity < 1.0) {
-        paint[opacityProp] = this.generateExpression(
-          opacity,
-          config,
-          'opacity'
-        );
+        // Create zoom-based interpolation for boundaries
+        paint[opacityProp] = [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          0,
+          baseOpacity, // Full opacity at world view
+          6,
+          baseOpacity * 0.8, // Slightly faded at country view
+          10,
+          baseOpacity * 0.6, // More faded at region view
+          14,
+          baseOpacity * 0.4, // Very faded at city view
+          18,
+          baseOpacity * 0.2 // Almost invisible at street level
+        ];
+      } else if (this.isRoadLayer(config.layer_type)) {
+        // Special handling for roads - more subtle at lower zooms
+        const baseOpacity =
+          config.opacity !== undefined
+            ? config.opacity
+            : this.getDefaultOpacity(config.layer_type, layerDef.type);
+
+        // For highlighted/navigation roads, use higher opacity
+        const isNavigationHighlight =
+          config.action === 'highlight' || config.layer_type === 'motorways';
+
+        if (isNavigationHighlight) {
+          // Navigation-focused roads should be more prominent
+          paint[opacityProp] = [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            Math.max(baseOpacity * 0.6, 0.6), // More visible at country view
+            8,
+            Math.max(baseOpacity * 0.75, 0.75), // Good visibility at region view
+            11,
+            Math.max(baseOpacity * 0.85, 0.85), // Strong at city level
+            14,
+            Math.max(baseOpacity * 0.95, 0.95), // Nearly full at neighborhood
+            16,
+            1.0 // Full opacity at street level
+          ];
+        } else {
+          // Regular roads - subtle at low zooms
+          paint[opacityProp] = [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            5,
+            baseOpacity * 0.3, // Very subtle at country view
+            8,
+            baseOpacity * 0.5, // Half opacity at region view
+            11,
+            baseOpacity * 0.7, // More visible at city level
+            14,
+            baseOpacity * 0.85, // Nearly full at neighborhood level
+            16,
+            baseOpacity // Full opacity at street level
+          ];
+        }
+      } else {
+        // For Standard style overlays, use higher opacity by default
+        // This keeps colors vibrant and easily distinguishable
+        const opacity =
+          config.opacity !== undefined
+            ? config.opacity
+            : isUsingStandard
+              ? 0.75
+              : this.getDefaultOpacity(config.layer_type, layerDef.type);
+
+        // Only apply if not full opacity (to keep styles cleaner)
+        if (opacity < 1.0) {
+          paint[opacityProp] = this.generateExpression(
+            opacity,
+            config,
+            'opacity'
+          );
+        }
       }
     }
 
@@ -396,7 +572,11 @@ ${JSON.stringify(style, null, 2)}
         }
       } else {
         // Apply smart default widths based on road type with zoom interpolation
-        const defaultWidth = this.getDefaultLineWidth(config.layer_type);
+        const defaultWidth = this.getDefaultLineWidth(
+          config.layer_type,
+          config.action === 'highlight'
+        );
+
         if (defaultWidth) {
           paint['line-width'] = defaultWidth;
         }
@@ -551,33 +731,62 @@ ${JSON.stringify(style, null, 2)}
   }
 
   private parseFilterString(filterStr: string): unknown | null {
-    // Parse filter strings like "class: park, cemetery" or "admin_level: 0, maritime: false"
+    // Parse filter strings like "class: motorway|trunk" or "admin_level: 0, maritime: false"
     const filters: unknown[] = [];
 
-    // Split by comma if there are multiple conditions
-    const conditions = filterStr.split(',').map((s) => s.trim());
+    // Check if this contains multiple properties (multiple colons not within quotes)
+    const colonMatches = filterStr.match(/:/g) || [];
 
-    for (const condition of conditions) {
-      if (condition.includes(':')) {
-        const [property, values] = condition.split(':').map((s) => s.trim());
-        const valueList = values.split('|').map((v) => {
-          const trimmed = v.trim();
-          // Special handling for admin layer properties that use string booleans
-          // maritime and disputed use "true"/"false" as strings, not booleans
-          if (property === 'maritime' || property === 'disputed') {
-            return trimmed; // Keep as string "true" or "false"
-          }
-          // Handle boolean strings for other properties
-          if (trimmed === 'true') return true;
-          if (trimmed === 'false') return false;
-          // Try to parse as number
-          const num = Number(trimmed);
-          return isNaN(num) ? trimmed : num;
-        });
+    if (colonMatches.length === 1) {
+      // Single property, possibly with multiple values separated by |
+      const [property, values] = filterStr.split(':').map((s) => s.trim());
+      const valueList = values.split('|').map((v) => {
+        const trimmed = v.trim();
+        // Special handling for admin layer properties that use string booleans
+        // maritime and disputed use "true"/"false" as strings, not booleans
+        if (
+          property === 'maritime' ||
+          property === 'disputed' ||
+          property === 'toll'
+        ) {
+          return trimmed; // Keep as string "true" or "false"
+        }
+        // Handle boolean strings for other properties
+        if (trimmed === 'true') return true;
+        if (trimmed === 'false') return false;
+        // Try to parse as number
+        const num = Number(trimmed);
+        return isNaN(num) ? trimmed : num;
+      });
 
-        if (valueList.length === 1) {
-          filters.push(['==', ['get', property], valueList[0]]);
-        } else {
+      // Always use match format for consistency with Mapbox Studio
+      filters.push(['match', ['get', property], valueList, true, false]);
+    } else {
+      // Multiple properties separated by comma
+      const conditions = filterStr.split(',').map((s) => s.trim());
+
+      for (const condition of conditions) {
+        if (condition.includes(':')) {
+          const [property, values] = condition.split(':').map((s) => s.trim());
+          const valueList = values.split('|').map((v) => {
+            const trimmed = v.trim();
+            // Special handling for properties that use string booleans
+            if (
+              property === 'maritime' ||
+              property === 'disputed' ||
+              property === 'toll'
+            ) {
+              return trimmed; // Keep as string
+            }
+            // Handle boolean strings for other properties
+            if (trimmed === 'true') return true;
+            if (trimmed === 'false') return false;
+            // Try to parse as number
+            const num = Number(trimmed);
+            return isNaN(num) ? trimmed : num;
+          });
+
+          // Always use match format for consistency with Mapbox Studio
           filters.push(['match', ['get', property], valueList, true, false]);
         }
       }
@@ -641,6 +850,77 @@ ${JSON.stringify(style, null, 2)}
 
     if (input.global_settings?.mode) {
       parts.push(`\n**Mode:** ${input.global_settings.mode}`);
+    }
+
+    // Add Standard style configuration summary if present
+    if (
+      input.standard_config &&
+      Object.keys(input.standard_config).length > 0
+    ) {
+      parts.push(`\n**Standard Style Configuration:**`);
+      const config = input.standard_config;
+
+      // Visibility settings
+      const visibilitySettings = [];
+      if (config.showPlaceLabels !== undefined)
+        visibilitySettings.push(
+          `Place labels: ${config.showPlaceLabels ? 'shown' : 'hidden'}`
+        );
+      if (config.showRoadLabels !== undefined)
+        visibilitySettings.push(
+          `Road labels: ${config.showRoadLabels ? 'shown' : 'hidden'}`
+        );
+      if (config.showPointOfInterestLabels !== undefined)
+        visibilitySettings.push(
+          `POI labels: ${config.showPointOfInterestLabels ? 'shown' : 'hidden'}`
+        );
+      if (config.showTransitLabels !== undefined)
+        visibilitySettings.push(
+          `Transit labels: ${config.showTransitLabels ? 'shown' : 'hidden'}`
+        );
+      if (config.showPedestrianRoads !== undefined)
+        visibilitySettings.push(
+          `Pedestrian roads: ${config.showPedestrianRoads ? 'shown' : 'hidden'}`
+        );
+      if (config.show3dObjects !== undefined)
+        visibilitySettings.push(
+          `3D objects: ${config.show3dObjects ? 'shown' : 'hidden'}`
+        );
+      if (config.showAdminBoundaries !== undefined)
+        visibilitySettings.push(
+          `Admin boundaries: ${config.showAdminBoundaries ? 'shown' : 'hidden'}`
+        );
+
+      if (visibilitySettings.length > 0) {
+        parts.push(`• Visibility: ${visibilitySettings.join(', ')}`);
+      }
+
+      // Theme settings
+      if (config.theme) parts.push(`• Theme: ${config.theme}`);
+      if (config.lightPreset)
+        parts.push(`• Light preset: ${config.lightPreset}`);
+
+      // Color overrides
+      const colorOverrides = [];
+      if (config.colorMotorways)
+        colorOverrides.push(`motorways: ${config.colorMotorways}`);
+      if (config.colorTrunks)
+        colorOverrides.push(`trunks: ${config.colorTrunks}`);
+      if (config.colorRoads) colorOverrides.push(`roads: ${config.colorRoads}`);
+      if (config.colorWater) colorOverrides.push(`water: ${config.colorWater}`);
+      if (config.colorGreenspace)
+        colorOverrides.push(`greenspace: ${config.colorGreenspace}`);
+      if (config.colorAdminBoundaries)
+        colorOverrides.push(`admin boundaries: ${config.colorAdminBoundaries}`);
+
+      if (colorOverrides.length > 0) {
+        parts.push(`• Color overrides: ${colorOverrides.join(', ')}`);
+      }
+
+      // Other settings
+      if (config.densityPointOfInterestLabels !== undefined) {
+        parts.push(`• POI density: ${config.densityPointOfInterestLabels}`);
+      }
     }
 
     return parts.join('\n');
@@ -777,20 +1057,99 @@ ${JSON.stringify(style, null, 2)}
     for (const [property, value] of Object.entries(filterConfig)) {
       if (value === undefined || value === null) continue;
 
-      const fieldDef = layerFields[property as keyof typeof layerFields];
+      const fieldDef = layerFields[property as keyof typeof layerFields] as any;
+
+      // Special handling for toll property - it's a presence check, not a value check
+      // The toll field only has 'true' when present, otherwise it's not in the data
+      if (
+        property === 'toll' &&
+        (value === true || value === 'true' || value === 1 || value === '1')
+      ) {
+        // Use "has" expression to check if toll property exists
+        filters.push(['has', 'toll']);
+        continue;
+      }
+
       if (!fieldDef) continue;
 
-      // Handle array of values (multiple selections)
-      if (Array.isArray(value)) {
-        if (value.length === 1) {
-          filters.push(['==', ['get', property], value[0]]);
-        } else if (value.length > 1) {
-          filters.push(['match', ['get', property], value, true, false]);
+      // Check if this field uses string booleans by looking at its defined values
+      const isStringBooleanField =
+        fieldDef &&
+        'values' in fieldDef &&
+        Array.isArray(fieldDef.values) &&
+        fieldDef.values.length > 0 &&
+        (fieldDef.values.includes('true') || fieldDef.values.includes('false'));
+
+      // Convert values for properties that expect string booleans
+      let processedValue = value;
+      if (isStringBooleanField) {
+        if (Array.isArray(value)) {
+          processedValue = value.map((v) => {
+            // Handle all truthy values
+            if (v === true || v === 1 || v === '1' || v === 'true')
+              return 'true';
+            // Handle all falsy values
+            if (v === false || v === 0 || v === '0' || v === 'false')
+              return 'false';
+            return String(v);
+          });
+        } else {
+          // Handle all truthy values
+          if (
+            value === true ||
+            value === 1 ||
+            value === '1' ||
+            value === 'true'
+          ) {
+            processedValue = 'true';
+          } else if (
+            value === false ||
+            value === 0 ||
+            value === '0' ||
+            value === 'false'
+          ) {
+            processedValue = 'false';
+          } else {
+            processedValue = String(value);
+          }
         }
       }
-      // Handle single value
-      else {
-        filters.push(['==', ['get', property], value]);
+
+      // Optional: Validate values against defined values (only for fields with enumerated values)
+      if (
+        fieldDef &&
+        'values' in fieldDef &&
+        Array.isArray(fieldDef.values) &&
+        fieldDef.values.length > 0
+      ) {
+        const validValues = fieldDef.values;
+        const valuesToCheck = Array.isArray(processedValue)
+          ? processedValue
+          : [processedValue];
+
+        for (const val of valuesToCheck) {
+          if (!validValues.includes(val as any)) {
+            console.warn(
+              `Warning: Value "${val}" is not a valid option for field "${property}" in layer "${sourceLayer}". Valid values are: ${validValues.join(', ')}`
+            );
+          }
+        }
+      }
+
+      // Use Mapbox Studio's match format for all property filters
+      // For presence-based fields like 'toll', we already handled them above
+      if (Array.isArray(processedValue) && processedValue.length > 0) {
+        // Array of values - use as is
+        filters.push(['match', ['get', property], processedValue, true, false]);
+      } else if (processedValue !== undefined && processedValue !== null) {
+        // Single value - wrap in array for consistent match format
+        filters.push([
+          'match',
+          ['get', property],
+          [processedValue],
+          true,
+          false
+        ]);
       }
     }
 
@@ -808,21 +1167,46 @@ ${JSON.stringify(style, null, 2)}
       return config.filter as Filter;
     }
 
-    // If filter_properties is provided, build from that
+    const filters: Filter[] = [];
+
+    // First, add common filters from layer definition
+    if (layerDef.commonFilters && layerDef.commonFilters.length > 0) {
+      // Handle multiple filter conditions - join with comma for multiple properties
+      // Each element can be either a single property or a property with pipe-separated values
+      const filterStr = layerDef.commonFilters.join(', ');
+      const commonFilter = this.parseFilterString(filterStr);
+      if (commonFilter) {
+        filters.push(commonFilter as Filter);
+      }
+    }
+
+    // Then, add filter_properties if provided
     if (config.filter_properties && layerDef.sourceLayer) {
-      return this.buildAdvancedFilter(
+      const propertyFilter = this.buildAdvancedFilter(
         layerDef.sourceLayer,
         config.filter_properties
       );
+      if (propertyFilter) {
+        filters.push(propertyFilter);
+      }
     }
 
-    // Otherwise, use common filters from layer definition
-    if (layerDef.commonFilters && layerDef.commonFilters.length > 0) {
-      const filterStr = layerDef.commonFilters.join(', ');
-      return this.parseFilterString(filterStr) as Filter;
-    }
+    // Combine filters if there are multiple
+    if (filters.length === 0) return null;
+    if (filters.length === 1) return filters[0];
+    return ['all', ...filters] as Filter;
+  }
 
-    return null;
+  private isRoadLayer(layerType: string): boolean {
+    return [
+      'roads',
+      'motorways',
+      'primary_roads',
+      'secondary_roads',
+      'streets',
+      'paths',
+      'railways'
+    ].includes(layerType);
   }
 
   private getDefaultLineWidth(
@@ -932,9 +1316,37 @@ ${JSON.stringify(style, null, 2)}
         4.0
       ],
 
-      // Administrative boundaries
-      country_boundaries: 2.0,
-      state_boundaries: 1.5
+      // Administrative boundaries - thinner with zoom interpolation
+      country_boundaries: [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        0,
+        0.5, // Very thin at world view
+        4,
+        0.8, // Slightly thicker at country level
+        8,
+        1.2, // Moderate at region level
+        12,
+        1.5, // Slightly thicker at city level
+        16,
+        1.8 // Maximum thickness at street level
+      ],
+      state_boundaries: [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        2,
+        0.3, // Almost invisible at world view
+        6,
+        0.6, // Thin at country level
+        10,
+        1.0, // Moderate at region level
+        14,
+        1.3, // Slightly thicker at city level
+        18,
+        1.5 // Maximum thickness at street level
+      ]
     };
 
     // If highlighting, slightly increase the widths
@@ -965,22 +1377,22 @@ ${JSON.stringify(style, null, 2)}
       landuse: 0.45,
       landcover: 0.4,
 
-      // Roads - much more subtle opacity
-      motorways: 0.4,
-      primary_roads: 0.35,
-      secondary_roads: 0.3,
-      streets: 0.25,
-      paths: 0.2,
-      railways: 0.3,
-      roads: 0.3, // General roads
+      // Roads - varied opacity for navigation clarity
+      motorways: 0.85, // High visibility for navigation
+      primary_roads: 0.75, // Clear but not dominant
+      secondary_roads: 0.65, // Visible but subdued
+      streets: 0.55, // Background context
+      paths: 0.45, // Subtle
+      railways: 0.7, // Clear but distinct
+      roads: 0.6, // General roads
 
       // Buildings - subtle presence
       buildings: 0.6,
       building_3d: 0.7,
 
-      // Administrative - very subtle
-      country_boundaries: 0.8,
-      state_boundaries: 0.6,
+      // Administrative - very subtle, fading at higher zooms
+      country_boundaries: 0.5, // More subtle base opacity
+      state_boundaries: 0.4, // Even more subtle for states
 
       // Infrastructure
       airports: 0.7,

@@ -92,7 +92,7 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     description: 'Line layer for rivers, streams, and canals',
     sourceLayer: 'waterway',
     type: 'line',
-    commonFilters: ['class: river, stream, canal'],
+    commonFilters: ['class: river|stream|canal'],
     paintProperties: [
       {
         property: 'line-color',
@@ -118,7 +118,7 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     description: 'Fill layer for parks, gardens, and green spaces',
     sourceLayer: 'landuse',
     type: 'fill',
-    commonFilters: ['class: park, cemetery, golf_course'],
+    commonFilters: ['class: park|cemetery|golf_course'],
     paintProperties: [
       {
         property: 'fill-color',
@@ -197,7 +197,7 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     description: 'Line layer for railway tracks and rail lines',
     sourceLayer: 'road',
     type: 'line',
-    commonFilters: ['class: major_rail, minor_rail, service_rail'],
+    commonFilters: ['class: major_rail|minor_rail|service_rail'],
     paintProperties: [
       {
         property: 'line-color',
@@ -224,12 +224,48 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     ]
   },
 
+  road: {
+    id: 'road',
+    description:
+      'Generic road layer for custom filtering (toll roads, bridges, tunnels, bike lanes, etc.)',
+    sourceLayer: 'road',
+    type: 'line',
+    commonFilters: [],
+    paintProperties: [
+      {
+        property: 'line-color',
+        description: 'Color of roads',
+        example: '#ccc'
+      },
+      {
+        property: 'line-width',
+        description: 'Width of road lines',
+        example: 4
+      },
+      {
+        property: 'line-opacity',
+        description: 'Opacity of road lines',
+        example: 1
+      }
+    ],
+    layoutProperties: [],
+    examples: [
+      'Show toll roads with filter_properties: { toll: true }',
+      'Show bridges with filter_properties: { structure: "bridge" }',
+      'Show tunnels with filter_properties: { structure: "tunnel" }',
+      'Show paved roads with filter_properties: { surface: "paved" }',
+      'Show roads with bike lanes with filter_properties: { bike_lane: ["left", "right", "both"] }',
+      'Show one-way roads with filter_properties: { oneway: "true" }',
+      'Show restricted roads with filter_properties: { access: "restricted" }'
+    ]
+  },
+
   motorways: {
     id: 'road-motorway',
     description: 'Line layer for highways and motorways',
     sourceLayer: 'road',
     type: 'line',
-    commonFilters: ['class: motorway, trunk'],
+    commonFilters: ['class: motorway|trunk'],
     paintProperties: [
       {
         property: 'line-color',
@@ -275,7 +311,7 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     description: 'Line layer for secondary roads',
     sourceLayer: 'road',
     type: 'line',
-    commonFilters: ['class: secondary, tertiary'],
+    commonFilters: ['class: secondary|tertiary'],
     paintProperties: [
       {
         property: 'line-color',
@@ -304,7 +340,7 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     description: 'Line layer for local streets',
     sourceLayer: 'road',
     type: 'line',
-    commonFilters: ['class: street, street_limited, residential, service'],
+    commonFilters: ['class: street|street_limited|residential|service'],
     paintProperties: [
       {
         property: 'line-color',
@@ -337,7 +373,7 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     description: 'Line layer for pedestrian paths, footways, and trails',
     sourceLayer: 'road',
     type: 'line',
-    commonFilters: ['class: path, pedestrian'],
+    commonFilters: ['class: path|pedestrian'],
     paintProperties: [
       {
         property: 'line-color',
@@ -527,7 +563,7 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     description: 'Symbol layer for city, town, and place name labels',
     sourceLayer: 'place_label',
     type: 'symbol',
-    commonFilters: ['class: settlement, city, town, village'],
+    commonFilters: ['class: settlement|city|town|village'],
     layoutProperties: [
       {
         property: 'text-field',
@@ -625,7 +661,7 @@ export const MAPBOX_STYLE_LAYERS: Record<string, LayerDefinition> = {
     description: 'Symbol layer for points of interest (POI) labels',
     sourceLayer: 'poi_label',
     type: 'symbol',
-    commonFilters: ['class: park, hospital, school, museum, etc.'],
+    commonFilters: [],
     layoutProperties: [
       {
         property: 'text-field',

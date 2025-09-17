@@ -89,6 +89,26 @@ When using Standard base style, each layer needs a 'slot' to control stacking:
 • top: Above all base map features (default for visibility)
 Within each slot, array order still applies - later layers render on top
 
+MAPBOX STANDARD - CONFIGURATION:
+Standard style provides a rich basemap that can be customized using the standard_config parameter.
+These settings control the BASE Standard style features - you can still add custom layers on top!
+
+• Visibility toggles: Control which base features are shown
+  - showPlaceLabels, showRoadLabels, showTransitLabels (base labels)
+  - showPedestrianRoads, show3dObjects, showAdminBoundaries (base features)
+• Theme options: Adjust the overall look of the base style
+  - theme: default/faded/monochrome/custom
+  - lightPreset: day/night/dawn/dusk
+• Color overrides: Change colors of base Standard style elements
+  - Roads: colorMotorways, colorTrunks, colorRoads
+  - Nature: colorWater, colorGreenspace
+  - Labels: colorPlaceLabels, colorRoadLabels, colorPointOfInterestLabels
+  - Admin: colorAdminBoundaries
+• Density controls: densityPointOfInterestLabels (1-5)
+
+IMPORTANT: These configurations modify the underlying Standard basemap.
+Your custom layers (defined in 'layers' parameter) are added ON TOP of this configured basemap.
+
 RESOURCE GUIDE:
 The resource://mapbox-style-layers contains comprehensive documentation including:
 • All available layer types with descriptions

@@ -518,7 +518,13 @@ describe('StyleBuilderTool', () => {
         l.id.includes('transit')
       );
       expect(transitLayer).toBeDefined();
-      expect(transitLayer.filter).toEqual(['==', ['get', 'maki'], 'bus']);
+      expect(transitLayer.filter).toEqual([
+        'match',
+        ['get', 'maki'],
+        ['bus'],
+        true,
+        false
+      ]);
     });
 
     it('should filter multiple transit types', async () => {
@@ -559,6 +565,39 @@ describe('StyleBuilderTool', () => {
   });
 
   describe('comprehensive filtering', () => {
+    it('should filter toll roads correctly', async () => {
+      const tool = new StyleBuilderTool();
+      const input: StyleBuilderToolInput = {
+        style_name: 'Toll Roads Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'road',
+            action: 'highlight',
+            color: '#9370DB',
+            filter_properties: {
+              toll: true
+            }
+          }
+        ]
+      };
+
+      const result = await tool.execute(input);
+      expect(result.isError).toBe(false);
+
+      const styleJson = JSON.parse(
+        result.content[0].text.match(/```json\n([\s\S]*?)\n```/)![1]
+      );
+
+      const roadsLayer = styleJson.layers.find((l: any) =>
+        l.id.includes('road-toll-true')
+      );
+      expect(roadsLayer).toBeDefined();
+      // Should have 'has' filter for toll
+      expect(roadsLayer.filter).toEqual(['has', 'toll']);
+      expect(roadsLayer.paint['line-color']).toBe('#9370DB');
+    });
+
     it('should filter roads by class', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Motorway Filter Test',
@@ -694,8 +733,76 @@ describe('StyleBuilderTool', () => {
 
       // Check that layers have slot property for Standard style
       style.layers.forEach((layer: any) => {
-        expect(layer.slot).toBe('top');
+        expect(layer.slot).toBeDefined();
+        // Water is not a road or label, so it should default to 'middle'
+        expect(layer.slot).toBe('middle');
       });
+    });
+
+    it('should generate Standard style with configuration', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Standard Config Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#0099ff'
+          }
+        ],
+        standard_config: {
+          // Visibility settings
+          showPlaceLabels: false,
+          showRoadLabels: false,
+          showTransitLabels: true,
+          showPedestrianRoads: false,
+          show3dObjects: true,
+          showAdminBoundaries: true,
+
+          // Theme settings
+          theme: 'faded',
+          lightPreset: 'dusk',
+
+          // Color overrides
+          colorMotorways: '#ff0000',
+          colorTrunks: '#ff6600',
+          colorRoads: '#ffaa00',
+          colorWater: '#0066cc',
+          colorGreenspace: '#00cc00',
+          colorAdminBoundaries: '#9966cc',
+
+          // Density settings
+          densityPointOfInterestLabels: 5
+        }
+      };
+
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
+
+      expect(text).toContain('Standard Config:** 15 properties set');
+      expect(text).toContain('Theme: faded');
+      expect(text).toContain('Light preset: dusk');
+
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
+      const style = JSON.parse(jsonMatch![1]);
+
+      // Check that Standard style uses imports with config
+      expect(style.imports).toBeTruthy();
+      expect(Array.isArray(style.imports)).toBe(true);
+      expect(style.imports[0].id).toBe('basemap');
+      expect(style.imports[0].url).toBe('mapbox://styles/mapbox/standard');
+
+      // Check that config properties are included
+      const config = style.imports[0].config;
+      expect(config).toBeTruthy();
+      expect(config.showPlaceLabels).toBe(false);
+      expect(config.showRoadLabels).toBe(false);
+      expect(config.showTransitLabels).toBe(true);
+      expect(config.theme).toBe('faded');
+      expect(config.lightPreset).toBe('dusk');
+      expect(config.colorMotorways).toBe('#ff0000');
+      expect(config.colorWater).toBe('#0066cc');
+      expect(config.densityPointOfInterestLabels).toBe(5);
     });
 
     it('should generate Classic style with sources', async () => {
