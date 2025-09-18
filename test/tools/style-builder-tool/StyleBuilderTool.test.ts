@@ -924,6 +924,74 @@ describe('StyleBuilderTool', () => {
     });
   });
 
+  describe('layer auto-correction', () => {
+    it('should auto-correct landcover to landuse_overlay for wetlands', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Wetlands Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'landcover', // Wrong layer type
+            action: 'color',
+            color: '#00ff00',
+            filter_properties: {
+              type: ['wetland', 'swamp']
+            }
+          }
+        ]
+      };
+
+      const result = await tool.execute(input);
+
+      expect(result.isError).toBe(false);
+      const text = result.content[0].text;
+      expect(text).toContain('Auto-corrections Applied');
+      expect(text).toContain('Using "landuse_overlay" instead');
+
+      // Check the generated style JSON
+      const jsonMatch = text.match(/```json\n([\s\S]+?)\n```/);
+      expect(jsonMatch).toBeTruthy();
+      const style = JSON.parse(jsonMatch![1]);
+
+      // Find the generated layer
+      const wetlandLayer = style.layers.find(
+        (l: any) => l['source-layer'] === 'landuse_overlay'
+      );
+      expect(wetlandLayer).toBeTruthy();
+
+      // The filter should be a Mapbox expression like ['match', ['get', 'type'], ['wetland', 'swamp'], true, false]
+      expect(wetlandLayer.filter).toBeTruthy();
+      expect(wetlandLayer.filter[0]).toBe('match'); // Expression type
+      expect(wetlandLayer.filter[1]).toEqual(['get', 'type']); // Field accessor
+      expect(wetlandLayer.filter[2]).toContain('wetland'); // Values to match
+      expect(wetlandLayer.filter[2]).toContain('swamp');
+    });
+
+    it('should find correct layer based on filter field and value', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Field Resolution Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'unknown', // Completely unknown layer
+            action: 'color',
+            color: '#ff0000',
+            filter_properties: {
+              maki: 'restaurant' // This field only exists in poi_label
+            }
+          }
+        ]
+      };
+
+      const result = await tool.execute(input);
+
+      expect(result.isError).toBe(false);
+      const text = result.content[0].text;
+      expect(text).toContain('Auto-corrections Applied');
+      expect(text).toContain('Using "poi_label" instead');
+    });
+  });
+
   describe('multiple layers', () => {
     it('should handle multiple layers with different actions', async () => {
       const input: StyleBuilderToolInput = {
