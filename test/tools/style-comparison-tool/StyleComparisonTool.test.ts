@@ -16,7 +16,7 @@ describe('StyleComparisonTool', () => {
   describe('run', () => {
     it('should generate comparison URL with provided access token', async () => {
       const input = {
-        before: 'mapbox/streets-v11',
+        before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
         accessToken: 'pk.test.token'
       };
@@ -28,13 +28,13 @@ describe('StyleComparisonTool', () => {
       const url = (result.content[0] as { type: 'text'; text: string }).text;
       expect(url).toContain('https://agent.mapbox.com/tools/style-compare');
       expect(url).toContain('access_token=pk.test.token');
-      expect(url).toContain('before=mapbox%2Fstreets-v11');
+      expect(url).toContain('before=mapbox%2Fstreets-v12');
       expect(url).toContain('after=mapbox%2Foutdoors-v12');
     });
 
     it('should require access token', async () => {
       const input = {
-        before: 'mapbox/streets-v11',
+        before: 'mapbox/streets-v12',
         after: 'mapbox/satellite-v9'
         // Missing accessToken
       };
@@ -49,7 +49,7 @@ describe('StyleComparisonTool', () => {
 
     it('should handle full style URLs', async () => {
       const input = {
-        before: 'mapbox://styles/mapbox/streets-v11',
+        before: 'mapbox://styles/mapbox/streets-v12',
         after: 'mapbox://styles/mapbox/outdoors-v12',
         accessToken: 'pk.test.token'
       };
@@ -58,7 +58,7 @@ describe('StyleComparisonTool', () => {
 
       expect(result.isError).toBe(false);
       const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('before=mapbox%2Fstreets-v11');
+      expect(url).toContain('before=mapbox%2Fstreets-v12');
       expect(url).toContain('after=mapbox%2Foutdoors-v12');
     });
 
@@ -84,7 +84,7 @@ describe('StyleComparisonTool', () => {
 
     it('should reject secret tokens', async () => {
       const input = {
-        before: 'mapbox/streets-v11',
+        before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
         accessToken: 'sk.secret.token'
       };
@@ -102,7 +102,7 @@ describe('StyleComparisonTool', () => {
 
     it('should reject invalid token formats', async () => {
       const input = {
-        before: 'mapbox/streets-v11',
+        before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
         accessToken: 'invalid.token'
       };
@@ -157,7 +157,7 @@ describe('StyleComparisonTool', () => {
 
     it('should include hash fragment with map position when coordinates are provided', async () => {
       const input = {
-        before: 'mapbox/streets-v11',
+        before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
         accessToken: 'pk.test.token',
         zoom: 5.72,
@@ -175,7 +175,7 @@ describe('StyleComparisonTool', () => {
     it('should not include hash fragment when coordinates are incomplete', async () => {
       // Only zoom provided
       const input1 = {
-        before: 'mapbox/streets-v11',
+        before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
         accessToken: 'pk.test.token',
         zoom: 10
@@ -188,7 +188,7 @@ describe('StyleComparisonTool', () => {
 
       // Only latitude and longitude, no zoom
       const input2 = {
-        before: 'mapbox/streets-v11',
+        before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
         accessToken: 'pk.test.token',
         latitude: 40.7128,

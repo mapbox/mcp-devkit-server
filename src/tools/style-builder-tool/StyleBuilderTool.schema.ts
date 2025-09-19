@@ -127,18 +127,20 @@ export const StyleBuilderToolSchema = z.object({
   base_style: z
     .enum([
       'standard',
-      'streets-v11',
-      'light-v10',
-      'dark-v10',
+      'streets-v12',
+      'light-v11',
+      'dark-v11',
       'satellite-v9',
-      'satellite-streets-v11',
-      'outdoors-v11'
+      'satellite-streets-v12',
+      'outdoors-v12',
+      'navigation-day-v1',
+      'navigation-night-v1'
     ])
     .default('standard')
     .describe(
       'Base style template. ALWAYS use "standard" as the default for all new styles. ' +
         'Standard style provides the best performance and modern features. ' +
-        'Only use Classic styles (streets/light/dark/satellite/outdoors) when explicitly requested with "create a classic style" or when working with an existing Classic style.'
+        'Only use Classic styles (streets/light/dark/satellite/outdoors/navigation) when explicitly requested with "create a classic style" or when working with an existing Classic style.'
     ),
 
   layers: z

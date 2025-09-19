@@ -60,7 +60,7 @@ You don't need exact layer names - the tool automatically finds the correct laye
 
 BASE STYLES:
 • standard: ALWAYS THE DEFAULT - Modern Mapbox Standard with best performance
-• Classic styles: streets-v11/light-v10/dark-v10/satellite-v9/outdoors-v11
+• Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/outdoors-v12/satellite-streets-v12/navigation-day-v1/navigation-night-v1
   Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
 
 STANDARD STYLE CONFIG:
@@ -323,15 +323,6 @@ ${JSON.stringify(style, null, 2)}
       version: 8,
       name: input.style_name
     } as MapboxStyle;
-
-    // Determine which base style to use
-    // const isClassicStyle = [
-    //   'streets',
-    //   'light',
-    //   'dark',
-    //   'satellite',
-    //   'outdoors'
-    // ].includes(baseStyle);
 
     // For standard style, use imports to inherit from Mapbox Standard
     if (baseStyle === 'standard') {
