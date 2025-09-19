@@ -1,3 +1,4 @@
+import { filterExpandedMapboxStyles } from '../../utils/styleUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   RetrieveStyleSchema,
@@ -30,6 +31,7 @@ export class RetrieveStyleTool extends MapboxApiBasedTool<
     }
 
     const data = await response.json();
-    return data;
+    // Always filter out expanded Mapbox styles to prevent token overflow
+    return filterExpandedMapboxStyles(data);
   }
 }

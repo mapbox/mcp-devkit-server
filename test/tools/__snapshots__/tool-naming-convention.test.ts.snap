@@ -64,60 +64,67 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
   },
   {
     "className": "StyleBuilderTool",
-    "description": "Build custom Mapbox styles with precise control over layers and visual properties, including zoom-based and data-driven expressions.
+    "description": "Generate Mapbox style JSON for creating new styles or updating existing ones.
 
-HOW TO CREATE A STYLE:
-1. First, consult resource://mapbox-style-layers to see all available layer types
-2. Use this tool to generate a style configuration
-3. Apply the style using create_style_tool or update_style_tool
+The tool intelligently resolves layer types and filter properties using Streets v8 data.
+You don't need exact layer names - the tool automatically finds the correct layer based on your filters.
 
-AVAILABLE LAYER TYPES:
-• water, waterway - Oceans, lakes, rivers
-• landuse, parks - Land areas like parks, hospitals, schools
-• buildings, building_3d - Building footprints and 3D extrusions
-• roads (motorways, primary_roads, secondary_roads, streets, paths, railways)
-• country_boundaries, state_boundaries - Administrative borders
-• place_labels, road_labels, poi_labels - Text labels
-• landcover - Natural features like forests, grass
-• airports - Airport features
-• transit - Bus stops, subway entrances, rail stations (filter by maki: bus, entrance, rail-metro)
+BASE STYLES:
+• standard: ALWAYS THE DEFAULT - Modern Mapbox Standard with best performance
+• Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/outdoors-v12/satellite-streets-v12/navigation-day-v1/navigation-night-v1
+  Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
 
-ACTIONS YOU CAN APPLY:
-• color - Set the layer's color
-• highlight - Make layer prominent with color/width
-• hide - Remove layer from view
-• show - Display layer with default styling
+STANDARD STYLE CONFIG:
+Use standard_config to customize the basemap:
+• Theme: default/faded/monochrome
+• Light: day/night/dawn/dusk
+• Show/hide: labels, roads, 3D buildings
+• Colors: water, roads, parks, etc.
 
-EXPRESSION FEATURES:
-• Zoom-based styling - "Make roads wider at higher zoom levels"
-• Data-driven styling - "Color roads based on their class"
-• Property-based filters - "Show only international airports"
-• Interpolated values - "Fade buildings in between zoom 14 and 16"
+LAYER ORDERING:
+• Layers are rendered in order - last layer in the array appears visually on top
+• The 'slot' parameter is OPTIONAL - by default, layer order in the array determines visibility
+• For Standard style, you can optionally use 'slot' to control placement:
+  - No slot (default): Above all existing layers in the style
+  - 'top': Behind Place and Transit labels
+  - 'middle': Between basemap and labels
+  - 'bottom': Below most basemap features
 
-ADVANCED FILTERING:
-• "Show only motorways and trunk roads"
-• "Display only bridges, not tunnels"
-• "Show only paved roads"
-• "Display only disputed boundaries"
-• "Show only major rail lines, not service rails"
-• "Filter POIs by maki icon type (restaurants, hospitals, etc.)"
-• "Show only bus stops (transit layer with maki: bus)"
-• "Display subway entrances (transit with maki: entrance)"
+LAYER RENDERING:
+• render_type controls HOW to visualize the layer (line, fill, symbol, etc.)
+• Most important: Use render_type:"line" for outlines/borders even on polygon features
+• Default "auto" picks based on geometry, but override for specific effects:
+  - Building outlines → render_type:"line" (not fill!)
+  - Solid buildings → render_type:"fill" or "fill-extrusion" (3D)
+  - Road lines → render_type:"line" (auto works too)
+  - POI dots → render_type:"circle"
+  - Labels → render_type:"symbol"
 
-COMPREHENSIVE EXAMPLES:
-• "Show only motorways that are bridges"
-• "Display major rails but exclude tunnels"
-• "Color roads: motorways red, primary orange, secondary yellow"
-• "Show only toll roads that are paved"
-• "Display only civil airports, not military"
-• "Show country boundaries excluding maritime ones"
-• "Color bus stops red and subway entrances blue (transit with different maki values)"
+LAYER ACTIONS:
+• color: Apply a specific color
+• highlight: Make prominent
+• hide: Remove from view
+• show: Display with defaults
 
-For detailed layer properties and filters, check resource://mapbox-style-layers
+AUTO-DETECTION:
+The tool automatically finds the correct layer from your filter_properties.
+Examples:
+• { class: 'park' } → finds 'landuse' layer
+• { type: 'wetland' } → finds 'landuse_overlay' layer
+• { maki: 'restaurant' } → finds 'poi_label' layer
+• { toll: true } → finds 'road' layer
+• { admin_level: 0 } → finds 'admin' layer (for country boundaries)
+• { admin_level: 1 } → finds 'admin' layer (for state/province boundaries)
 
-TRANSIT FILTERING EXAMPLE:
-To show only bus stops: use layer_type: 'transit' with filter_properties: { maki: 'bus' }
-To show multiple transit types: filter_properties: { maki: ['bus', 'entrance', 'rail-metro'] }",
+IMPORTANT LAYER NAMES:
+• Use "admin" for all boundaries (countries, states, etc.)
+• Use "building" (singular, not "buildings")
+• Use "road" for all streets, highways, paths
+
+If a layer type is not recognized, the tool will provide helpful suggestions showing:
+• All available source layers from Streets v8
+• Which fields are available in each layer
+• Examples of how to properly specify layers and filters",
     "toolName": "style_builder_tool",
   },
   {
