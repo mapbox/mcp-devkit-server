@@ -70,9 +70,9 @@ The tool intelligently resolves layer types and filter properties using Streets 
 You don't need exact layer names - the tool automatically finds the correct layer based on your filters.
 
 BASE STYLES:
-• standard (DEFAULT): Modern Mapbox Standard with best performance - ALWAYS USE THIS UNLESS SPECIFIED OTHERWISE
-• streets-v11/light-v10/dark-v10/satellite-v9/outdoors-v11: Classic styles (only when explicitly requested)
-• blank: Empty canvas for full customization
+• standard: ALWAYS THE DEFAULT - Modern Mapbox Standard with best performance
+• Classic styles: streets-v11/light-v10/dark-v10/satellite-v9/outdoors-v11
+  Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
 
 STANDARD STYLE CONFIG:
 Use standard_config to customize the basemap:
