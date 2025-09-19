@@ -10,14 +10,14 @@ describe('MapboxStyleLayersResource', () => {
 
   describe('basic properties', () => {
     it('should have correct name and URI', () => {
-      expect(resource.name).toBe('Mapbox Style Layers Guide');
+      expect(resource.name).toBe('Mapbox Style Specification Guide');
       expect(resource.uri).toBe('resource://mapbox-style-layers');
       expect(resource.mimeType).toBe('text/markdown');
     });
 
     it('should have a description', () => {
       expect(resource.description).toContain(
-        'Comprehensive guide for Mapbox style layers'
+        'Mapbox GL JS style specification reference'
       );
     });
   });

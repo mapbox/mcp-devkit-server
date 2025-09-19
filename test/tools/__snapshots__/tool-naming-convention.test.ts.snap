@@ -70,8 +70,8 @@ The tool intelligently resolves layer types and filter properties using Streets 
 You don't need exact layer names - the tool automatically finds the correct layer based on your filters.
 
 BASE STYLES:
-• standard (DEFAULT): Modern Mapbox Standard with best performance
-• streets/light/dark/satellite/outdoors: Classic styles
+• standard (DEFAULT): Modern Mapbox Standard with best performance - ALWAYS USE THIS UNLESS SPECIFIED OTHERWISE
+• streets-v11/light-v10/dark-v10/satellite-v9/outdoors-v11: Classic styles (only when explicitly requested)
 • blank: Empty canvas for full customization
 
 STANDARD STYLE CONFIG:
@@ -80,6 +80,25 @@ Use standard_config to customize the basemap:
 • Light: day/night/dawn/dusk
 • Show/hide: labels, roads, 3D buildings
 • Colors: water, roads, parks, etc.
+
+LAYER ORDERING:
+• Layers are rendered in order - last layer in the array appears visually on top
+• The 'slot' parameter is OPTIONAL - by default, layer order in the array determines visibility
+• For Standard style, you can optionally use 'slot' to control placement:
+  - No slot (default): Above all existing layers in the style
+  - 'top': Behind Place and Transit labels
+  - 'middle': Between basemap and labels
+  - 'bottom': Below most basemap features
+
+LAYER RENDERING:
+• render_type controls HOW to visualize the layer (line, fill, symbol, etc.)
+• Most important: Use render_type:"line" for outlines/borders even on polygon features
+• Default "auto" picks based on geometry, but override for specific effects:
+  - Building outlines → render_type:"line" (not fill!)
+  - Solid buildings → render_type:"fill" or "fill-extrusion" (3D)
+  - Road lines → render_type:"line" (auto works too)
+  - POI dots → render_type:"circle"
+  - Labels → render_type:"symbol"
 
 LAYER ACTIONS:
 • color: Apply a specific color
@@ -94,10 +113,18 @@ Examples:
 • { type: 'wetland' } → finds 'landuse_overlay' layer
 • { maki: 'restaurant' } → finds 'poi_label' layer
 • { toll: true } → finds 'road' layer
+• { admin_level: 0 } → finds 'admin' layer (for country boundaries)
+• { admin_level: 1 } → finds 'admin' layer (for state/province boundaries)
 
-Invalid layer names are auto-corrected based on the filter properties you provide.
+IMPORTANT LAYER NAMES:
+• Use "admin" for all boundaries (countries, states, etc.)
+• Use "building" (singular, not "buildings")
+• Use "road" for all streets, highways, paths
 
-For detailed documentation: resource://mapbox-style-layers",
+If a layer type is not recognized, the tool will provide helpful suggestions showing:
+• All available source layers from Streets v8
+• Which fields are available in each layer
+• Examples of how to properly specify layers and filters",
     "toolName": "style_builder_tool",
   },
   {

@@ -6,6 +6,31 @@ const LayerConfigSchema = z.object({
     .describe(
       'Layer type from the resource (e.g., "water", "railways", "parks")'
     ),
+
+  render_type: z
+    .enum([
+      'fill',
+      'line',
+      'symbol',
+      'circle',
+      'fill-extrusion',
+      'heatmap',
+      'auto'
+    ])
+    .optional()
+    .default('auto')
+    .describe(
+      'How to render this layer visually. Default "auto" chooses based on geometry type.\n' +
+        'Override to achieve specific visual effects:\n' +
+        '• "line" - For outlines, borders, strokes (e.g., building outlines, road borders)\n' +
+        '• "fill" - For solid filled areas (e.g., solid color buildings, water bodies)\n' +
+        '• "fill-extrusion" - For 3D extrusions (e.g., 3D buildings)\n' +
+        '• "symbol" - For text labels or icons\n' +
+        '• "circle" - For dot visualization (e.g., POI dots, data points)\n' +
+        '• "heatmap" - For density maps (points only)\n' +
+        'IMPORTANT: Use "line" for outlines even on polygon features like buildings.'
+    ),
+
   action: z
     .enum(['show', 'hide', 'color', 'highlight'])
     .describe('What to do with this layer'),
@@ -14,7 +39,10 @@ const LayerConfigSchema = z.object({
     .optional()
     .describe('Color value if action is "color" or "highlight"'),
   opacity: z.number().min(0).max(1).optional().describe('Opacity value'),
-  width: z.number().optional().describe('Width for line layers'),
+  width: z
+    .number()
+    .optional()
+    .describe('Width for line layers or outline thickness'),
   filter: z
     .union([
       z.string(),
@@ -99,18 +127,18 @@ export const StyleBuilderToolSchema = z.object({
   base_style: z
     .enum([
       'standard',
-      'streets',
-      'light',
-      'dark',
-      'satellite',
-      'outdoors',
-      'blank'
+      'streets-v11',
+      'light-v10',
+      'dark-v10',
+      'satellite-v9',
+      'satellite-streets-v11',
+      'outdoors-v11'
     ])
     .default('standard')
     .describe(
-      'Base style template. ALWAYS defaults to "standard" for new styles. ' +
-        'Use "standard" for all new styles unless explicitly requested otherwise. ' +
-        'Classic styles (streets/light/dark) should only be used when working with existing Classic styles or upon explicit request.'
+      'Base style template. ALWAYS use "standard" as the default for all new styles. ' +
+        'Standard style provides the best performance and modern features. ' +
+        'Only use Classic styles (streets/light/dark/satellite/outdoors) when explicitly requested with "create a classic style" or when working with an existing Classic style.'
     ),
 
   layers: z

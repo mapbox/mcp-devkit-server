@@ -3,14 +3,14 @@ import {
   StyleBuilderToolSchema,
   type StyleBuilderToolInput
 } from './StyleBuilderTool.schema.js';
-import { MAPBOX_STYLE_LAYERS } from '../../constants/mapboxStyleLayers.js';
+// Using STREETS_V8_FIELDS as single source of truth instead of MAPBOX_STYLE_LAYERS
 import { STREETS_V8_FIELDS } from '../../constants/mapboxStreetsV8Fields.js';
 import type { Layer, Filter, MapboxStyle } from '../../types/mapbox-style.js';
 
 // Type for dynamically created layer definitions
 type DynamicLayerDefinition = {
   id: string;
-  type: 'fill' | 'line' | 'symbol' | 'circle' | 'fill-extrusion';
+  type: 'fill' | 'line' | 'symbol' | 'circle' | 'fill-extrusion' | 'heatmap';
   sourceLayer: string;
   description: string;
   paintProperties: Array<{
@@ -18,8 +18,12 @@ type DynamicLayerDefinition = {
     description: string;
     example: unknown;
   }>;
+  layoutProperties?: Array<{
+    property: string;
+    description: string;
+    example: unknown;
+  }>;
   commonFilters: string[];
-  examples: string[];
 };
 
 // Geometry types from Mapbox tilestats API for Streets v8
@@ -48,15 +52,16 @@ const SOURCE_LAYER_GEOMETRY: Record<
 
 export class StyleBuilderTool extends BaseTool<typeof StyleBuilderToolSchema> {
   name = 'style_builder_tool';
+  private currentSourceLayer?: string; // Track current source layer for better error messages
   description = `Generate Mapbox style JSON for creating new styles or updating existing ones.
 
 The tool intelligently resolves layer types and filter properties using Streets v8 data.
 You don't need exact layer names - the tool automatically finds the correct layer based on your filters.
 
 BASE STYLES:
-• standard (DEFAULT): Modern Mapbox Standard with best performance
-• streets/light/dark/satellite/outdoors: Classic styles
-• blank: Empty canvas for full customization
+• standard: ALWAYS THE DEFAULT - Modern Mapbox Standard with best performance
+• Classic styles: streets-v11/light-v10/dark-v10/satellite-v9/outdoors-v11
+  Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
 
 STANDARD STYLE CONFIG:
 Use standard_config to customize the basemap:
@@ -64,6 +69,25 @@ Use standard_config to customize the basemap:
 • Light: day/night/dawn/dusk
 • Show/hide: labels, roads, 3D buildings
 • Colors: water, roads, parks, etc.
+
+LAYER ORDERING:
+• Layers are rendered in order - last layer in the array appears visually on top
+• The 'slot' parameter is OPTIONAL - by default, layer order in the array determines visibility
+• For Standard style, you can optionally use 'slot' to control placement:
+  - No slot (default): Above all existing layers in the style
+  - 'top': Behind Place and Transit labels
+  - 'middle': Between basemap and labels
+  - 'bottom': Below most basemap features
+
+LAYER RENDERING:
+• render_type controls HOW to visualize the layer (line, fill, symbol, etc.)
+• Most important: Use render_type:"line" for outlines/borders even on polygon features
+• Default "auto" picks based on geometry, but override for specific effects:
+  - Building outlines → render_type:"line" (not fill!)
+  - Solid buildings → render_type:"fill" or "fill-extrusion" (3D)
+  - Road lines → render_type:"line" (auto works too)
+  - POI dots → render_type:"circle"
+  - Labels → render_type:"symbol"
 
 LAYER ACTIONS:
 • color: Apply a specific color
@@ -78,10 +102,18 @@ Examples:
 • { type: 'wetland' } → finds 'landuse_overlay' layer
 • { maki: 'restaurant' } → finds 'poi_label' layer
 • { toll: true } → finds 'road' layer
+• { admin_level: 0 } → finds 'admin' layer (for country boundaries)
+• { admin_level: 1 } → finds 'admin' layer (for state/province boundaries)
 
-Invalid layer names are auto-corrected based on the filter properties you provide.
+IMPORTANT LAYER NAMES:
+• Use "admin" for all boundaries (countries, states, etc.)
+• Use "building" (singular, not "buildings")
+• Use "road" for all streets, highways, paths
 
-For detailed documentation: resource://mapbox-style-layers`;
+If a layer type is not recognized, the tool will provide helpful suggestions showing:
+• All available source layers from Streets v8
+• Which fields are available in each layer
+• Examples of how to properly specify layers and filters`;
 
   constructor() {
     super({ inputSchema: StyleBuilderToolSchema });
@@ -90,13 +122,41 @@ For detailed documentation: resource://mapbox-style-layers`;
   protected async execute(input: StyleBuilderToolInput) {
     try {
       const result = this.buildStyle(input);
-      const { style, corrections } = result;
+      const { style, corrections, layerHelp, availableProperties } = result;
+
+      // If we need layer help, return guidance to the model
+      if (layerHelp) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: layerHelp
+            }
+          ],
+          isError: false // Return as guidance, not error
+        };
+      }
 
       // Build corrections message if any
       const correctionsMessage =
         corrections.length > 0
           ? `\n**Auto-corrections Applied:**\n${corrections.join('\n')}\n`
           : '';
+
+      // Build available properties message
+      let propertiesMessage = '';
+      if (availableProperties && Object.keys(availableProperties).length > 0) {
+        propertiesMessage = '\n**Available Properties for Your Layers:**\n';
+        for (const [layerType, props] of Object.entries(availableProperties)) {
+          propertiesMessage += `\n**${layerType} layers:**\n`;
+          if (props.paint && props.paint.length > 0) {
+            propertiesMessage += `- Paint: ${props.paint.slice(0, 8).join(', ')}${props.paint.length > 8 ? '...' : ''}\n`;
+          }
+          if (props.layout && props.layout.length > 0) {
+            propertiesMessage += `- Layout: ${props.layout.slice(0, 8).join(', ')}${props.layout.length > 8 ? '...' : ''}\n`;
+          }
+        }
+      }
 
       return {
         content: [
@@ -105,10 +165,11 @@ For detailed documentation: resource://mapbox-style-layers`;
             text: `**Style Built Successfully**
 
 **Name:** ${input.style_name}
-**Base:** ${input.base_style}
+**Base:** ${input.base_style || 'standard'}
 **Layers Configured:** ${input.layers.length}
 ${input.standard_config ? `**Standard Config:** ${Object.keys(input.standard_config).length} properties set` : ''}
 ${correctionsMessage}
+${propertiesMessage}
 ${this.generateSummary(input)}
 
 **Generated Style JSON:**
@@ -140,10 +201,18 @@ ${JSON.stringify(style, null, 2)}
   private buildStyle(input: StyleBuilderToolInput): {
     style: MapboxStyle;
     corrections: string[];
+    layerHelp?: string;
+    availableProperties?: Record<string, { paint: string[]; layout: string[] }>;
   } {
     const layers: Layer[] = [];
     const allCorrections: string[] = [];
-    const isUsingStandard = input.base_style === 'standard';
+    const availableProperties: Record<
+      string,
+      { paint: string[]; layout: string[] }
+    > = {};
+    // Apply default base_style if not specified
+    const baseStyle = input.base_style || 'standard';
+    const isUsingStandard = baseStyle === 'standard';
 
     // Only add background layer for non-Standard styles
     // Standard style provides its own background through imports
@@ -167,42 +236,39 @@ ${JSON.stringify(style, null, 2)}
     for (const config of input.layers) {
       if (config.action === 'hide') continue;
 
-      // Try to get layer from MAPBOX_STYLE_LAYERS first
-      let layerDef:
-        | (typeof MAPBOX_STYLE_LAYERS)[keyof typeof MAPBOX_STYLE_LAYERS]
-        | DynamicLayerDefinition
-        | null = MAPBOX_STYLE_LAYERS[config.layer_type];
+      // Determine the source layer for this config
+      let sourceLayer = config.layer_type;
+      let layerDef: DynamicLayerDefinition | null = null;
 
-      // If not found, try to create a dynamic layer definition
-      if (!layerDef) {
-        layerDef = this.createDynamicLayerDefinition(config.layer_type);
-        if (!layerDef) {
-          // Try to find the correct layer based on filter properties
-          const correctLayer = this.findCorrectLayerForFilters(config);
-          if (correctLayer) {
-            allCorrections.push(
-              `• Layer type "${config.layer_type}" not found. Using "${correctLayer}" instead (contains the filtered fields).`
-            );
-            // Update the config with the correct layer type
-            config.layer_type = correctLayer;
-            // Try again with the correct layer
-            layerDef =
-              MAPBOX_STYLE_LAYERS[correctLayer] ||
-              this.createDynamicLayerDefinition(correctLayer);
-          } else {
-            // If no filter properties or can't find a match, skip with warning
-            console.warn(`Unknown layer type: "${config.layer_type}"`);
-            if (
-              config.filter_properties &&
-              Object.keys(config.filter_properties).length > 0
-            ) {
-              // Only provide suggestions if they had filter properties
-              const availableLayers = this.getAvailableLayersInfo(config);
-              console.warn(availableLayers);
-            }
-            continue;
-          }
+      // Check if layer_type is a valid source layer
+      if (sourceLayer in STREETS_V8_FIELDS) {
+        layerDef = this.createDynamicLayerDefinition(sourceLayer, config);
+      } else if (
+        config.filter_properties &&
+        Object.keys(config.filter_properties).length > 0
+      ) {
+        // Try to find the correct source layer based on filter properties
+        const bestMatch = this.findSourceLayerByFilterProperties(
+          config.filter_properties
+        );
+        if (bestMatch) {
+          sourceLayer = bestMatch;
+          allCorrections.push(
+            `• Determined source layer "${sourceLayer}" from filter properties (original: "${config.layer_type}")`
+          );
+          layerDef = this.createDynamicLayerDefinition(sourceLayer, config);
         }
+      }
+
+      // If still no match, return helpful information
+      if (!layerDef) {
+        const helpMessage = this.generateLayerHelp(config);
+        return {
+          style: {} as MapboxStyle,
+          corrections: [],
+          layerHelp: helpMessage,
+          availableProperties: {}
+        };
       }
 
       const result = this.createLayer(
@@ -213,8 +279,37 @@ ${JSON.stringify(style, null, 2)}
       );
       if (result.layer) {
         layers.push(result.layer);
+
+        // Collect available properties for this layer type
+        if (layerDef.type && !availableProperties[layerDef.type]) {
+          availableProperties[layerDef.type] = {
+            paint: layerDef.paintProperties
+              .filter((p) => p.example !== undefined)
+              .map((p) => p.property),
+            layout: layerDef.layoutProperties
+              ? layerDef.layoutProperties
+                  .filter((p) => p.example !== undefined)
+                  .map((p) => p.property)
+              : []
+          };
+        }
       }
       if (result.corrections.length > 0) {
+        // Check for critical errors that need immediate attention
+        const criticalError = result.corrections.find((c) =>
+          c.startsWith('ERROR:')
+        );
+        if (criticalError) {
+          // Return helpful guidance for the model to retry with correct field
+          return {
+            style: {} as MapboxStyle,
+            corrections: [],
+            layerHelp:
+              criticalError +
+              '\n\n**Please retry with the corrected filter_properties.**',
+            availableProperties: {}
+          };
+        }
         allCorrections.push(...result.corrections);
       }
     }
@@ -230,16 +325,16 @@ ${JSON.stringify(style, null, 2)}
     } as MapboxStyle;
 
     // Determine which base style to use
-    const isClassicStyle = [
-      'streets',
-      'light',
-      'dark',
-      'satellite',
-      'outdoors'
-    ].includes(input.base_style);
+    // const isClassicStyle = [
+    //   'streets',
+    //   'light',
+    //   'dark',
+    //   'satellite',
+    //   'outdoors'
+    // ].includes(baseStyle);
 
     // For standard style, use imports to inherit from Mapbox Standard
-    if (input.base_style === 'standard') {
+    if (baseStyle === 'standard') {
       // Follow the exact order from the working Mapbox Studio example
       style.metadata = {
         'mapbox:autocomposite': true,
@@ -283,21 +378,8 @@ ${JSON.stringify(style, null, 2)}
       // Explicitly set terrain to null for API compatibility
       // @ts-expect-error - The API expects null but TypeScript type doesn't allow it
       style.terrain = null;
-    } else if (isClassicStyle) {
-      // For classic styles (being deprecated), use traditional sources
-      style.center = [0, 0];
-      style.zoom = 2;
-      style.sources = {
-        composite: {
-          type: 'vector',
-          url: 'mapbox://mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2'
-        }
-      };
-      style.sprite = 'mapbox://sprites/mapbox/streets-v12';
-      style.glyphs = 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf';
-      style.layers = layers;
     } else {
-      // Blank style or no base style specified - no imports, just basic sources
+      // Classic styles - use traditional sources
       style.center = [0, 0];
       style.zoom = 2;
       style.sources = {
@@ -311,13 +393,170 @@ ${JSON.stringify(style, null, 2)}
       style.layers = layers;
     }
 
-    return { style, corrections: allCorrections };
+    return { style, corrections: allCorrections, availableProperties };
+  }
+
+  private findSourceLayerByFilterProperties(
+    filterProperties: Record<string, any>
+  ): string | null {
+    let bestMatch: { layer: string; score: number } | null = null;
+
+    for (const [sourceLayer, fields] of Object.entries(STREETS_V8_FIELDS)) {
+      let score = 0;
+      const layerFields = fields as any;
+
+      for (const [filterKey, filterValue] of Object.entries(filterProperties)) {
+        // Check if this field exists in this source layer
+        if (filterKey in layerFields) {
+          score += 10;
+
+          // Check if the value is valid for this field
+          if (layerFields[filterKey].values) {
+            const validValues = layerFields[filterKey].values;
+            const valuesToCheck = Array.isArray(filterValue)
+              ? filterValue
+              : [filterValue];
+
+            for (const val of valuesToCheck) {
+              const normalizedVal = String(val).toLowerCase();
+              if (
+                validValues.some(
+                  (v: any) => String(v).toLowerCase() === normalizedVal
+                )
+              ) {
+                score += 20; // High score for exact match
+              }
+            }
+          }
+        }
+      }
+
+      if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { layer: sourceLayer, score };
+      }
+    }
+
+    return bestMatch?.layer || null;
+  }
+
+  private generateLayerHelp(
+    config: StyleBuilderToolInput['layers'][0]
+  ): string {
+    // Generate all possible layer/filter combinations from STREETS_V8_FIELDS
+    const combinations: string[] = [];
+
+    for (const [sourceLayer, fields] of Object.entries(STREETS_V8_FIELDS)) {
+      const layerFields = fields as any;
+      const fieldExamples: string[] = [];
+
+      // Get up to 3 example fields with their values
+      let fieldCount = 0;
+      for (const [fieldName, fieldDef] of Object.entries(layerFields)) {
+        if (fieldCount >= 3) break;
+        if (
+          fieldDef &&
+          typeof fieldDef === 'object' &&
+          'values' in fieldDef &&
+          fieldDef.values
+        ) {
+          const values = (fieldDef.values as any[])
+            .slice(0, 3)
+            .map((v) => `"${v}"`)
+            .join(', ');
+          fieldExamples.push(`${fieldName}: ${values}`);
+          fieldCount++;
+        }
+      }
+
+      if (fieldExamples.length > 0) {
+        combinations.push(`**${sourceLayer}**: ${fieldExamples.join(' | ')}`);
+      }
+    }
+
+    // Create helpful message for the model
+    let helpText = `**Layer "${config.layer_type}" not found.**\n\n`;
+
+    helpText += `**IMPORTANT:** Keep the same base_style and other settings, just correct the layer_type.\n\n`;
+
+    helpText += `**Available source layers you can use:**\n`;
+
+    // List all available source layers with helpful clarifications
+    const allLayers = Object.keys(SOURCE_LAYER_GEOMETRY);
+    const layerDescriptions: Record<string, string> = {
+      admin: 'admin (administrative boundaries - countries, states, etc.)',
+      building: 'building (building footprints)',
+      landuse: 'landuse (parks, residential, industrial areas)',
+      landuse_overlay: 'landuse_overlay (wetlands, national parks)',
+      road: 'road (all roads, streets, paths, railways)',
+      water: 'water (oceans, lakes, rivers as polygons)',
+      waterway: 'waterway (rivers, streams as lines)',
+      place_label: 'place_label (city, state, country labels)',
+      poi_label: 'poi_label (points of interest)',
+      transit_stop_label: 'transit_stop_label (bus, train stops)',
+      natural_label: 'natural_label (natural feature labels)',
+      motorway_junction: 'motorway_junction (highway exits)',
+      housenum_label: 'housenum_label (house numbers)',
+      airport_label: 'airport_label (airport labels)',
+      aeroway: 'aeroway (runways, taxiways)',
+      structure: 'structure (bridges, tunnels, fences)'
+    };
+
+    helpText += allLayers
+      .map((layer) => `• ${layerDescriptions[layer] || layer}`)
+      .join('\n');
+    helpText += '\n\n';
+
+    // Add common confusion clarifications
+    helpText += `**Note:** Looking for boundaries? Use "admin" with filter_properties like {admin_level: 0} for countries.\n\n`;
+
+    if (
+      config.filter_properties &&
+      Object.keys(config.filter_properties).length > 0
+    ) {
+      helpText += `You specified filter_properties: ${JSON.stringify(config.filter_properties)}\n\n`;
+
+      // Check which layers have these fields
+      const matchingLayers: string[] = [];
+      for (const [filterKey] of Object.entries(config.filter_properties)) {
+        for (const [sourceLayer, fields] of Object.entries(STREETS_V8_FIELDS)) {
+          if (filterKey in (fields as any)) {
+            matchingLayers.push(`${sourceLayer} (has field: ${filterKey})`);
+          }
+        }
+      }
+
+      if (matchingLayers.length > 0) {
+        helpText += `**Layers with your filter fields:**\n${matchingLayers.map((l) => `• ${l}`).join('\n')}\n\n`;
+      }
+    }
+
+    helpText += `**Try again with the correct layer_type from the list above.**\n\n`;
+
+    helpText += `**Example for parks:**
+\`\`\`json
+{
+  "layer_type": "landuse",
+  "filter_properties": { "class": "park" },
+  "action": "color",
+  "color": "#90C090"
+}
+\`\`\`
+
+**Example for only cemeteries:**
+\`\`\`json
+{
+  "layer_type": "landuse",
+  "filter_properties": { "class": "cemetery" },
+  "action": "color",
+  "color": "#D0D0D0"
+}
+\`\`\``;
+
+    return helpText;
   }
 
   private createLayer(
-    layerDef:
-      | (typeof MAPBOX_STYLE_LAYERS)[keyof typeof MAPBOX_STYLE_LAYERS]
-      | NonNullable<ReturnType<typeof this.createDynamicLayerDefinition>>,
+    layerDef: DynamicLayerDefinition,
     config: StyleBuilderToolInput['layers'][0],
     globalSettings?: StyleBuilderToolInput['global_settings'],
     isUsingStandard?: boolean
@@ -339,34 +578,18 @@ ${JSON.stringify(style, null, 2)}
       type: layerDef.type as Layer['type']
     };
 
-    // Add slot for Standard style
-    if (isUsingStandard) {
-      // Smart slot assignment if not explicitly provided:
-      // - Layers with filter_properties go to 'top' for visibility
-      // - Regular roads go to 'middle'
-      // - Labels go to 'top'
-
-      if (config.slot) {
-        // User explicitly set the slot - respect their choice
-        layer.slot = config.slot;
-      } else if (
-        config.filter_properties &&
-        Object.keys(config.filter_properties).length > 0
-      ) {
-        // ANY layer with filter properties should be on top for visibility
-        // This includes: toll roads, bridges, tunnels, bike lanes, restricted roads, etc.
-        layer.slot = 'top';
-      } else if (config.layer_type.includes('label')) {
-        // Labels should always be on top
-        layer.slot = 'top';
-      } else if (this.isRoadLayer(config.layer_type)) {
-        // Regular roads without filters in the middle
-        layer.slot = 'middle';
-      } else {
-        // Default for other layers
-        layer.slot = 'middle';
-      }
+    // Add slot for Standard style if explicitly provided
+    if (isUsingStandard && config.slot) {
+      // User explicitly set the slot - respect their choice
+      // Available slots:
+      // - no slot (undefined): Above all existing layers in the style
+      // - 'top': Behind Place and Transit labels
+      // - 'middle': Between basemap and labels
+      // - 'bottom': Below most basemap features
+      layer.slot = config.slot;
     }
+    // Note: If no slot is specified, the layer will appear above all existing layers
+    // Layers are rendered in order - last layer in the array appears visually on top
 
     // Add source configuration
     if (layerDef.sourceLayer) {
@@ -654,6 +877,7 @@ ${JSON.stringify(style, null, 2)}
     if (
       'layoutProperties' in layerDef &&
       layerDef.layoutProperties &&
+      Array.isArray(layerDef.layoutProperties) &&
       layerDef.layoutProperties.length > 0
     ) {
       const layout: Record<string, unknown> = {};
@@ -691,7 +915,10 @@ ${JSON.stringify(style, null, 2)}
         layout['text-font'] = ['DIN Pro Regular', 'Arial Unicode MS Regular'];
         layout['text-size'] = 12;
         layout['text-rotation-alignment'] = 'map';
-      } else if ('layoutProperties' in layerDef && layerDef.layoutProperties) {
+      } else if (
+        'layoutProperties' in layerDef &&
+        Array.isArray(layerDef.layoutProperties)
+      ) {
         // Default layout from definition
         for (const prop of layerDef.layoutProperties) {
           if (prop.example !== undefined) {
@@ -706,73 +933,6 @@ ${JSON.stringify(style, null, 2)}
     }
 
     return { layer, corrections: filterResult.corrections };
-  }
-
-  private parseFilterString(filterStr: string): unknown | null {
-    // Parse filter strings like "class: motorway|trunk" or "admin_level: 0, maritime: false"
-    const filters: unknown[] = [];
-
-    // Check if this contains multiple properties (multiple colons not within quotes)
-    const colonMatches = filterStr.match(/:/g) || [];
-
-    if (colonMatches.length === 1) {
-      // Single property, possibly with multiple values separated by |
-      const [property, values] = filterStr.split(':').map((s) => s.trim());
-      const valueList = values.split('|').map((v) => {
-        const trimmed = v.trim();
-        // Special handling for admin layer properties that use string booleans
-        // maritime and disputed use "true"/"false" as strings, not booleans
-        if (
-          property === 'maritime' ||
-          property === 'disputed' ||
-          property === 'toll'
-        ) {
-          return trimmed; // Keep as string "true" or "false"
-        }
-        // Handle boolean strings for other properties
-        if (trimmed === 'true') return true;
-        if (trimmed === 'false') return false;
-        // Try to parse as number
-        const num = Number(trimmed);
-        return isNaN(num) ? trimmed : num;
-      });
-
-      // Always use match format for consistency with Mapbox Studio
-      filters.push(['match', ['get', property], valueList, true, false]);
-    } else {
-      // Multiple properties separated by comma
-      const conditions = filterStr.split(',').map((s) => s.trim());
-
-      for (const condition of conditions) {
-        if (condition.includes(':')) {
-          const [property, values] = condition.split(':').map((s) => s.trim());
-          const valueList = values.split('|').map((v) => {
-            const trimmed = v.trim();
-            // Special handling for properties that use string booleans
-            if (
-              property === 'maritime' ||
-              property === 'disputed' ||
-              property === 'toll'
-            ) {
-              return trimmed; // Keep as string
-            }
-            // Handle boolean strings for other properties
-            if (trimmed === 'true') return true;
-            if (trimmed === 'false') return false;
-            // Try to parse as number
-            const num = Number(trimmed);
-            return isNaN(num) ? trimmed : num;
-          });
-
-          // Always use match format for consistency with Mapbox Studio
-          filters.push(['match', ['get', property], valueList, true, false]);
-        }
-      }
-    }
-
-    if (filters.length === 0) return null;
-    if (filters.length === 1) return filters[0];
-    return ['all', ...filters];
   }
 
   private getColorProperty(layerType: string): string | null {
@@ -805,9 +965,10 @@ ${JSON.stringify(style, null, 2)}
     const parts: string[] = ['**Layer Configurations:**'];
 
     for (const config of input.layers) {
-      const layerDef =
-        MAPBOX_STYLE_LAYERS[config.layer_type] ||
-        this.createDynamicLayerDefinition(config.layer_type);
+      const layerDef = this.createDynamicLayerDefinition(
+        config.layer_type,
+        config
+      );
       const description = layerDef?.description || config.layer_type;
 
       switch (config.action) {
@@ -982,43 +1143,6 @@ ${JSON.stringify(style, null, 2)}
     return value;
   }
 
-  private generateDataDrivenExpression(
-    property: string,
-    valueMap: Record<string, unknown>,
-    defaultValue: unknown
-  ): unknown {
-    const expression: unknown[] = ['match', ['get', property]];
-
-    for (const [key, value] of Object.entries(valueMap)) {
-      expression.push(key);
-      expression.push(value);
-    }
-
-    expression.push(defaultValue);
-    return expression;
-  }
-
-  private generateZoomInterpolation(
-    minZoom: number,
-    maxZoom: number,
-    minValue: number,
-    maxValue: number,
-    interpolationType: 'linear' | 'exponential' = 'linear'
-  ): unknown {
-    const interpolation =
-      interpolationType === 'exponential' ? ['exponential', 1.5] : ['linear'];
-
-    return [
-      'interpolate',
-      interpolation,
-      ['zoom'],
-      minZoom,
-      minValue,
-      maxZoom,
-      maxValue
-    ];
-  }
-
   /**
    * Calculate similarity between two strings (simple Levenshtein-like score)
    */
@@ -1051,7 +1175,8 @@ ${JSON.stringify(style, null, 2)}
   private findClosestFieldValue(
     fieldName: string,
     inputValue: string | number | boolean,
-    validValues: readonly any[]
+    validValues: readonly any[],
+    sourceLayer?: string
   ): { value: any; corrected: boolean; message?: string } {
     // For non-string values, just check if it's valid
     if (typeof inputValue !== 'string') {
@@ -1139,7 +1264,44 @@ ${JSON.stringify(style, null, 2)}
       }
     }
 
-    // 4. No good match found - return original with error message
+    // 4. No good match found - check if this value exists in other fields
+    // This helps when user specifies class:"golf_course" but it should be type:"golf_course"
+    if (sourceLayer) {
+      const layerFields = STREETS_V8_FIELDS[
+        sourceLayer as keyof typeof STREETS_V8_FIELDS
+      ] as any;
+      if (layerFields) {
+        // Check all other fields to see if this value exists there
+        for (const [otherFieldName, otherFieldDef] of Object.entries(
+          layerFields
+        )) {
+          if (otherFieldName === fieldName) continue; // Skip the current field
+          if (!otherFieldDef || typeof otherFieldDef !== 'object') continue;
+          if (
+            !('values' in otherFieldDef) ||
+            !Array.isArray((otherFieldDef as any).values)
+          )
+            continue;
+
+          const otherValues = (otherFieldDef as any).values;
+          const exactMatch = otherValues.find(
+            (v: any) =>
+              typeof v === 'string' &&
+              v.toLowerCase() === inputValue.toLowerCase()
+          );
+
+          if (exactMatch) {
+            return {
+              value: inputValue,
+              corrected: false,
+              message: `ERROR: "${inputValue}" is not a valid ${fieldName} value. Did you mean ${otherFieldName}:"${exactMatch}"? Use filter_properties: {${otherFieldName}: "${exactMatch}"} instead.`
+            };
+          }
+        }
+      }
+    }
+
+    // 5. Really no match anywhere - return original with error message
     const suggestions = validValues.slice(0, 10).join(', ');
     return {
       value: inputValue,
@@ -1176,7 +1338,8 @@ ${JSON.stringify(style, null, 2)}
         const result = this.findClosestFieldValue(
           property,
           value,
-          fieldDef.values
+          fieldDef.values,
+          sourceLayer
         );
         return {
           resolvedProperty: property,
@@ -1274,6 +1437,9 @@ ${JSON.stringify(style, null, 2)}
   ): { filter: Filter | null; corrections: string[] } {
     const filters: unknown[] = [];
     const corrections: string[] = [];
+
+    // Set current source layer for better error messages
+    this.currentSourceLayer = sourceLayer;
 
     // Get field definitions for this source layer
     const layerFields =
@@ -1392,9 +1558,16 @@ ${JSON.stringify(style, null, 2)}
             const result = this.findClosestFieldValue(
               property,
               val,
-              validValues
+              validValues,
+              sourceLayer
             );
             if (result.message) {
+              // If it's a critical error (wrong field), we should stop and guide the model
+              if (result.message.startsWith('ERROR:')) {
+                corrections.push(result.message);
+                // Don't continue with invalid filter - return early
+                return { filter: null, corrections: [result.message] };
+              }
               corrections.push(`  ${property}: ${result.message}`);
             }
             correctedValues.push(result.value);
@@ -1405,9 +1578,16 @@ ${JSON.stringify(style, null, 2)}
           const result = this.findClosestFieldValue(
             property,
             processedValue,
-            validValues
+            validValues,
+            sourceLayer
           );
           if (result.message) {
+            // If it's a critical error (wrong field), we should stop and guide the model
+            if (result.message.startsWith('ERROR:')) {
+              corrections.push(result.message);
+              // Don't continue with invalid filter - return early
+              return { filter: null, corrections: [result.message] };
+            }
             corrections.push(`  ${property}: ${result.message}`);
           }
           processedValue = result.value;
@@ -1443,10 +1623,7 @@ ${JSON.stringify(style, null, 2)}
 
   private generateComprehensiveFilter(
     config: StyleBuilderToolInput['layers'][0],
-    layerDef:
-      | (typeof MAPBOX_STYLE_LAYERS)[keyof typeof MAPBOX_STYLE_LAYERS]
-      | DynamicLayerDefinition
-      | null
+    layerDef: DynamicLayerDefinition | null
   ): { filter: Filter | null; corrections: string[] } {
     // If custom filter is provided, process it through buildAdvancedFilter
     if (
@@ -1472,22 +1649,7 @@ ${JSON.stringify(style, null, 2)}
     const filters: Filter[] = [];
     const allCorrections: string[] = [];
 
-    // First, add common filters from layer definition
-    if (
-      layerDef &&
-      layerDef.commonFilters &&
-      layerDef.commonFilters.length > 0
-    ) {
-      // Handle multiple filter conditions - join with comma for multiple properties
-      // Each element can be either a single property or a property with pipe-separated values
-      const filterStr = layerDef.commonFilters.join(', ');
-      const commonFilter = this.parseFilterString(filterStr);
-      if (commonFilter) {
-        filters.push(commonFilter as Filter);
-      }
-    }
-
-    // Then, add filter_properties if provided
+    // Add filter_properties if provided
     if (
       config.filter_properties &&
       layerDef &&
@@ -1533,7 +1695,7 @@ ${JSON.stringify(style, null, 2)}
     layerType: string,
     isHighlight: boolean = false
   ): unknown | null {
-    // Reasonable default line widths with zoom interpolation (25% thicker)
+    // Reasonable default line widths with zoom interpolation
     const roadWidths: Record<string, unknown> = {
       roads: [
         'interpolate',
@@ -1635,37 +1797,36 @@ ${JSON.stringify(style, null, 2)}
         20,
         4.0
       ],
-
-      // Administrative boundaries - thinner with zoom interpolation
+      // Administrative boundaries - thinner
       country_boundaries: [
         'interpolate',
         ['linear'],
         ['zoom'],
         0,
-        0.5, // Very thin at world view
+        0.5,
         4,
-        0.8, // Slightly thicker at country level
+        0.8,
         8,
-        1.2, // Moderate at region level
+        1.2,
         12,
-        1.5, // Slightly thicker at city level
+        1.5,
         16,
-        1.8 // Maximum thickness at street level
+        1.8
       ],
       state_boundaries: [
         'interpolate',
         ['linear'],
         ['zoom'],
         2,
-        0.3, // Almost invisible at world view
+        0.3,
         6,
-        0.6, // Thin at country level
+        0.6,
         10,
-        1.0, // Moderate at region level
+        1.0,
         14,
-        1.3, // Slightly thicker at city level
+        1.3,
         18,
-        1.5 // Maximum thickness at street level
+        1.5
       ]
     };
 
@@ -1686,52 +1847,225 @@ ${JSON.stringify(style, null, 2)}
   }
 
   private getDefaultOpacity(layerType: string, layerDefType: string): number {
-    // Sophisticated opacity values for different layer types
+    // Symbol layers should always be fully opaque for readability
+    if (layerDefType === 'symbol') {
+      return 1.0;
+    }
+
+    // Layer-specific opacity for better visual hierarchy
     const opacityMap: Record<string, number> = {
-      // Water features - slightly transparent for depth
       water: 0.85,
       waterway: 0.75,
-
-      // Natural features - soft and subtle
       parks: 0.65,
       landuse: 0.45,
-
-      // Roads - varied opacity for navigation clarity
-      motorways: 0.85, // High visibility for navigation
-      primary_roads: 0.75, // Clear but not dominant
-      secondary_roads: 0.65, // Visible but subdued
-      streets: 0.55, // Background context
-      paths: 0.45, // Subtle
-      railways: 0.7, // Clear but distinct
-      roads: 0.6, // General roads
-
-      // Buildings - subtle presence
+      motorways: 0.85,
+      primary_roads: 0.75,
+      secondary_roads: 0.65,
+      streets: 0.55,
+      paths: 0.45,
+      railways: 0.7,
+      roads: 0.6,
       buildings: 0.6,
       building_3d: 0.7,
-
-      // Administrative - very subtle, fading at higher zooms
-      country_boundaries: 0.5, // More subtle base opacity
-      state_boundaries: 0.4, // Even more subtle for states
-
-      // Infrastructure
+      country_boundaries: 0.5,
+      state_boundaries: 0.4,
       airports: 0.7,
       transit: 0.75,
-
-      // Labels should be fully opaque for readability
       place_labels: 1.0,
       road_labels: 1.0,
       poi_labels: 1.0
     };
 
-    // Symbol layers should always be fully opaque
-    if (layerDefType === 'symbol') {
-      return 1.0;
-    }
-
     return opacityMap[layerType] || 0.7;
   }
 
-  private createDynamicLayerDefinition(layerType: string) {
+  private getLayerTypeProperties(
+    layerType:
+      | 'fill'
+      | 'line'
+      | 'symbol'
+      | 'circle'
+      | 'fill-extrusion'
+      | 'heatmap'
+  ) {
+    const properties: {
+      paintProperties: Array<{
+        property: string;
+        description: string;
+        example: any;
+      }>;
+      layoutProperties?: Array<{
+        property: string;
+        description: string;
+        example: any;
+      }>;
+    } = { paintProperties: [] };
+
+    switch (layerType) {
+      case 'line':
+        properties.paintProperties = [
+          {
+            property: 'line-color',
+            description: 'Line color',
+            example: '#000000'
+          },
+          { property: 'line-width', description: 'Line width', example: 2 },
+          {
+            property: 'line-opacity',
+            description: 'Line opacity',
+            example: 0.8
+          },
+          {
+            property: 'line-dasharray',
+            description: 'Dash pattern',
+            example: [2, 2]
+          },
+          { property: 'line-gap-width', description: 'Gap width', example: 0 }
+        ];
+        break;
+      case 'fill':
+        properties.paintProperties = [
+          {
+            property: 'fill-color',
+            description: 'Fill color',
+            example: '#000000'
+          },
+          {
+            property: 'fill-opacity',
+            description: 'Fill opacity',
+            example: 0.5
+          },
+          {
+            property: 'fill-outline-color',
+            description: 'Outline color',
+            example: '#000000'
+          }
+        ];
+        break;
+      case 'fill-extrusion':
+        properties.paintProperties = [
+          {
+            property: 'fill-extrusion-color',
+            description: 'Extrusion color',
+            example: '#AAAAAA'
+          },
+          {
+            property: 'fill-extrusion-height',
+            description: 'Extrusion height',
+            example: ['get', 'height']
+          },
+          {
+            property: 'fill-extrusion-base',
+            description: 'Extrusion base',
+            example: ['get', 'min_height']
+          },
+          {
+            property: 'fill-extrusion-opacity',
+            description: 'Extrusion opacity',
+            example: 0.8
+          }
+        ];
+        break;
+      case 'circle':
+        properties.paintProperties = [
+          {
+            property: 'circle-radius',
+            description: 'Circle radius',
+            example: 5
+          },
+          {
+            property: 'circle-color',
+            description: 'Circle color',
+            example: '#007cbf'
+          },
+          {
+            property: 'circle-opacity',
+            description: 'Circle opacity',
+            example: 0.8
+          },
+          {
+            property: 'circle-stroke-color',
+            description: 'Circle stroke color',
+            example: '#000000'
+          },
+          {
+            property: 'circle-stroke-width',
+            description: 'Circle stroke width',
+            example: 1
+          }
+        ];
+        break;
+      case 'symbol':
+        properties.paintProperties = [
+          {
+            property: 'text-color',
+            description: 'Text color',
+            example: '#000000'
+          },
+          {
+            property: 'text-halo-color',
+            description: 'Text halo color',
+            example: '#FFFFFF'
+          },
+          {
+            property: 'text-halo-width',
+            description: 'Text halo width',
+            example: 1
+          },
+          { property: 'icon-opacity', description: 'Icon opacity', example: 1 }
+        ];
+        properties.layoutProperties = [
+          {
+            property: 'text-field',
+            description: 'Text content',
+            example: ['get', 'name']
+          },
+          {
+            property: 'text-font',
+            description: 'Font stack',
+            example: ['DIN Pro Medium', 'Arial Unicode MS Regular']
+          },
+          { property: 'text-size', description: 'Text size', example: 14 },
+          {
+            property: 'icon-image',
+            description: 'Icon sprite name',
+            example: 'marker-15'
+          }
+        ];
+        break;
+      case 'heatmap':
+        properties.paintProperties = [
+          {
+            property: 'heatmap-weight',
+            description: 'Point weight',
+            example: 1
+          },
+          {
+            property: 'heatmap-intensity',
+            description: 'Intensity',
+            example: 1
+          },
+          {
+            property: 'heatmap-radius',
+            description: 'Influence radius',
+            example: 30
+          },
+          {
+            property: 'heatmap-opacity',
+            description: 'Layer opacity',
+            example: 0.7
+          }
+        ];
+        break;
+    }
+
+    return properties;
+  }
+
+  private createDynamicLayerDefinition(
+    layerType: string,
+    config?: StyleBuilderToolInput['layers'][0]
+  ) {
     // Check if this layer type exists as a source-layer
     // No conversion needed - source-layer names already use underscores
     const sourceLayer = layerType;
@@ -1748,434 +2082,143 @@ ${JSON.stringify(style, null, 2)}
     const geometry = SOURCE_LAYER_GEOMETRY[sourceLayer];
     if (!geometry) {
       // Source-layer exists in STREETS_V8_FIELDS but not in our geometry mapping
-      // This shouldn't happen with Streets v8, but let's handle it gracefully
-      console.warn(`No geometry type found for source-layer: ${sourceLayer}`);
       return null;
     }
 
-    // Determine layer type based on geometry
-    let type: 'fill' | 'line' | 'symbol' | 'circle' | 'fill-extrusion';
+    // Determine layer type based on render_type override or geometry
+    let type:
+      | 'fill'
+      | 'line'
+      | 'symbol'
+      | 'circle'
+      | 'fill-extrusion'
+      | 'heatmap';
     let paintProperties: Array<{
       property: string;
       description: string;
       example: any;
     }> = [];
+    let layoutProperties:
+      | Array<{
+          property: string;
+          description: string;
+          example: any;
+        }>
+      | undefined;
 
-    switch (geometry) {
-      case 'Polygon':
-        // Special case for buildings with 3D
-        if (sourceLayer === 'building' && layerType.includes('3d')) {
-          type = 'fill-extrusion';
-          paintProperties = [
-            {
-              property: 'fill-extrusion-color',
-              description: 'Building color',
-              example: '#AAAAAA'
-            },
-            {
-              property: 'fill-extrusion-height',
-              description: 'Building height',
-              example: ['get', 'height']
-            },
-            {
-              property: 'fill-extrusion-base',
-              description: 'Building base height',
-              example: ['get', 'min_height']
-            },
-            {
-              property: 'fill-extrusion-opacity',
-              description: 'Building opacity',
-              example: 0.8
-            }
-          ];
-        } else {
+    // Check if render_type is explicitly specified and not 'auto'
+    if (config?.render_type && config.render_type !== 'auto') {
+      // Use the explicitly specified render type
+      type = config.render_type;
+      const properties = this.getLayerTypeProperties(type);
+      paintProperties = properties.paintProperties;
+      layoutProperties = properties.layoutProperties;
+    } else {
+      // Auto-detect based on geometry
+      switch (geometry) {
+        case 'Polygon': {
+          // Special case for buildings with 3D
+          if (sourceLayer === 'building' && layerType.includes('3d')) {
+            type = 'fill-extrusion';
+          } else {
+            type = 'fill';
+          }
+          const polygonProps = this.getLayerTypeProperties(type);
+          paintProperties = polygonProps.paintProperties;
+          layoutProperties = polygonProps.layoutProperties;
+          break;
+        }
+
+        case 'LineString': {
+          // Admin boundaries and natural features are often rendered as lines
+          type = 'line';
+          const lineProps = this.getLayerTypeProperties(type);
+          paintProperties = lineProps.paintProperties;
+          layoutProperties = lineProps.layoutProperties;
+          break;
+        }
+
+        case 'Point': {
+          // Points can be either circle or symbol layers
+          // Labels and text-based layers should be symbols
+          if (
+            sourceLayer.includes('label') ||
+            sourceLayer === 'motorway_junction'
+          ) {
+            type = 'symbol';
+            const symbolProps = this.getLayerTypeProperties(type);
+            paintProperties = symbolProps.paintProperties;
+            layoutProperties = symbolProps.layoutProperties;
+          } else {
+            // Default to circle for point features without labels
+            type = 'circle';
+            const circleProps = this.getLayerTypeProperties(type);
+            paintProperties = circleProps.paintProperties;
+            layoutProperties = circleProps.layoutProperties;
+          }
+          break;
+        }
+
+        default: {
+          // Fallback to fill for unknown geometry
           type = 'fill';
-          paintProperties = [
-            {
-              property: 'fill-color',
-              description: 'Fill color',
-              example: '#000000'
-            },
-            {
-              property: 'fill-opacity',
-              description: 'Fill opacity',
-              example: 0.5
-            },
-            {
-              property: 'fill-outline-color',
-              description: 'Outline color',
-              example: '#000000'
-            }
-          ];
+          const defaultProps = this.getLayerTypeProperties(type);
+          paintProperties = defaultProps.paintProperties;
+          layoutProperties = defaultProps.layoutProperties;
         }
-        break;
-
-      case 'LineString':
-        // Admin boundaries and natural features are often rendered as lines
-        type = 'line';
-        paintProperties = [
-          {
-            property: 'line-color',
-            description: 'Line color',
-            example: '#000000'
-          },
-          { property: 'line-width', description: 'Line width', example: 2 },
-          {
-            property: 'line-opacity',
-            description: 'Line opacity',
-            example: 0.8
-          }
-        ];
-        break;
-
-      case 'Point':
-        // Points can be either circle or symbol layers
-        // Labels and text-based layers should be symbols
-        if (
-          sourceLayer.includes('label') ||
-          sourceLayer === 'motorway_junction'
-        ) {
-          type = 'symbol';
-          paintProperties = [
-            {
-              property: 'text-color',
-              description: 'Text color',
-              example: '#000000'
-            },
-            {
-              property: 'text-halo-color',
-              description: 'Text halo color',
-              example: '#FFFFFF'
-            },
-            {
-              property: 'text-halo-width',
-              description: 'Text halo width',
-              example: 1
-            }
-          ];
-        } else {
-          // Default to circle for point features without labels
-          type = 'circle';
-          paintProperties = [
-            {
-              property: 'circle-color',
-              description: 'Circle color',
-              example: '#000000'
-            },
-            {
-              property: 'circle-radius',
-              description: 'Circle radius',
-              example: 5
-            },
-            {
-              property: 'circle-opacity',
-              description: 'Circle opacity',
-              example: 0.8
-            }
-          ];
-        }
-        break;
-
-      default:
-        // This shouldn't happen with our hardcoded geometry mapping
-        console.warn(`Unknown geometry type: ${geometry}`);
-        type = 'fill';
-        paintProperties = [
-          {
-            property: 'fill-color',
-            description: 'Fill color',
-            example: '#000000'
-          },
-          {
-            property: 'fill-opacity',
-            description: 'Fill opacity',
-            example: 0.5
-          }
-        ];
+      }
     }
 
     return {
       id: sourceLayer, // Use source-layer name as the id
-      type: type as any,
+      type: type,
       sourceLayer: sourceLayer,
       description: `${sourceLayer} layer (${geometry} geometry)`,
       paintProperties,
-      commonFilters: [],
-      examples: []
+      layoutProperties,
+      commonFilters: []
     };
-  }
-
-  private findCorrectLayerForFilters(
-    config: StyleBuilderToolInput['layers'][0]
-  ): string | null {
-    // If no filter properties, we can't determine the correct layer
-    if (!config.filter_properties) {
-      return null;
-    }
-
-    // Score each source layer based on how well it matches the filter properties
-    const layerScores: Record<string, number> = {};
-    const filterEntries = Object.entries(config.filter_properties);
-
-    for (const [sourceLayer, fields] of Object.entries(STREETS_V8_FIELDS)) {
-      let score = 0;
-      const layerFields = fields as Record<
-        string,
-        { values?: readonly string[]; description?: string }
-      >;
-
-      for (const [fieldName, fieldValue] of filterEntries) {
-        // Check if this field exists in this layer
-        if (fieldName in layerFields) {
-          score += 10; // Base score for having the field
-
-          const fieldDef = layerFields[fieldName];
-          if (fieldDef.values && Array.isArray(fieldDef.values)) {
-            // Check if the value exists in this field's allowed values
-            const valuesToCheck = Array.isArray(fieldValue)
-              ? fieldValue
-              : [fieldValue];
-
-            for (const val of valuesToCheck) {
-              const normalizedVal = String(val)
-                .toLowerCase()
-                .replace(/[_-\s]/g, '');
-
-              // Exact match (after normalization)
-              const exactMatch = fieldDef.values.some(
-                (v) =>
-                  String(v)
-                    .toLowerCase()
-                    .replace(/[_-\s]/g, '') === normalizedVal
-              );
-
-              if (exactMatch) {
-                score += 20; // High score for exact value match
-              } else {
-                // Partial match
-                const partialMatch = fieldDef.values.some(
-                  (v) =>
-                    String(v)
-                      .toLowerCase()
-                      .replace(/[_-\s]/g, '')
-                      .includes(normalizedVal) ||
-                    normalizedVal.includes(
-                      String(v)
-                        .toLowerCase()
-                        .replace(/[_-\s]/g, '')
-                    )
-                );
-
-                if (partialMatch) {
-                  score += 5; // Lower score for partial match
-                }
-              }
-            }
-          } else {
-            // Field exists but has no predefined values (like name fields)
-            // Still counts but with lower score
-            score += 5;
-          }
-        }
-      }
-
-      if (score > 0) {
-        layerScores[sourceLayer] = score;
-      }
-    }
-
-    // Find the layer with the highest score
-    let bestLayer: string | null = null;
-    let bestScore = 0;
-
-    for (const [layer, score] of Object.entries(layerScores)) {
-      if (score > bestScore) {
-        bestScore = score;
-        bestLayer = layer;
-      }
-    }
-
-    // If we found a match and it's different from what was requested, return it
-    if (bestLayer && bestLayer !== config.layer_type) {
-      return bestLayer;
-    }
-
-    return null;
-  }
-
-  private getAvailableLayersInfo(
-    config: StyleBuilderToolInput['layers'][0]
-  ): string {
-    const messages: string[] = [];
-
-    // First, list the valid layer types from MAPBOX_STYLE_LAYERS
-    const validPreDefinedLayers = Object.keys(MAPBOX_STYLE_LAYERS);
-    messages.push(
-      `Valid pre-defined layer types: ${validPreDefinedLayers.join(', ')}`
-    );
-
-    // List valid source layers from STREETS_V8_FIELDS
-    const validSourceLayers = Object.keys(STREETS_V8_FIELDS);
-    messages.push(
-      `Valid Streets v8 source layers: ${validSourceLayers.join(', ')}`
-    );
-
-    // If they specified filter properties, suggest layers that contain those fields
-    if (config.filter_properties) {
-      const suggestions: string[] = [];
-
-      for (const [fieldName, fieldValue] of Object.entries(
-        config.filter_properties
-      )) {
-        // Find which layers contain this field
-        const layersWithField: string[] = [];
-
-        for (const [sourceLayer, fields] of Object.entries(STREETS_V8_FIELDS)) {
-          const layerFields = fields as Record<
-            string,
-            { values?: readonly string[]; description?: string }
-          >;
-          if (fieldName in layerFields) {
-            const fieldDef = layerFields[fieldName];
-            if (fieldDef.values && fieldDef.values.length > 0) {
-              // Show some example values for this field in this layer
-              const exampleValues = fieldDef.values.slice(0, 5).join(', ');
-              const moreValues =
-                fieldDef.values.length > 5
-                  ? `, ... (${fieldDef.values.length} total)`
-                  : '';
-              layersWithField.push(
-                `${sourceLayer} (${fieldName}: ${exampleValues}${moreValues})`
-              );
-            } else {
-              layersWithField.push(`${sourceLayer} (has ${fieldName} field)`);
-            }
-          }
-        }
-
-        if (layersWithField.length > 0) {
-          suggestions.push(
-            `Layers with field "${fieldName}": ${layersWithField.join(', ')}`
-          );
-        }
-
-        // Also look for value matches
-        const layersWithValue: string[] = [];
-        const valueStr = String(fieldValue)
-          .toLowerCase()
-          .replace(/[_-\s]/g, '');
-
-        for (const [sourceLayer, fields] of Object.entries(STREETS_V8_FIELDS)) {
-          const layerFields = fields as Record<
-            string,
-            { values?: readonly string[]; description?: string }
-          >;
-
-          for (const [layerFieldName, fieldDef] of Object.entries(
-            layerFields
-          )) {
-            if (fieldDef.values && Array.isArray(fieldDef.values)) {
-              const matchingValues = fieldDef.values.filter(
-                (v) =>
-                  String(v)
-                    .toLowerCase()
-                    .replace(/[_-\s]/g, '')
-                    .includes(valueStr) ||
-                  valueStr.includes(
-                    String(v)
-                      .toLowerCase()
-                      .replace(/[_-\s]/g, '')
-                  )
-              );
-
-              if (matchingValues.length > 0) {
-                layersWithValue.push(
-                  `${sourceLayer}.${layerFieldName} has: ${matchingValues.slice(0, 3).join(', ')}`
-                );
-              }
-            }
-          }
-        }
-
-        if (layersWithValue.length > 0) {
-          suggestions.push(
-            `Layers with value similar to "${fieldValue}": ${layersWithValue.slice(0, 5).join(', ')}`
-          );
-        }
-      }
-
-      if (suggestions.length > 0) {
-        messages.push(
-          `\nSuggestions based on your filters:\n${suggestions.join('\n')}`
-        );
-      }
-    }
-
-    return messages.join('\n');
   }
 
   private getHarmoniousColor(layerType: string, action: string): string {
-    // Define default colors for when user doesn't specify
-    const colorPalette = {
-      // Transportation colors - vibrant defaults
-      motorways: '#ff0000', // Pure red
-      primary_roads: '#ff6600', // Orange
-      secondary_roads: '#ffaa00', // Yellow-orange
-      streets: '#999999', // Medium gray
-      paths: '#666666', // Dark gray
-      railways: '#555555', // Very dark gray
-      roads: '#ff3333', // Generic road red
-
-      // Water features (nice blues)
-      water: '#4A90E2', // Nice blue
-      waterway: '#5BA0F2', // Lighter blue
-
-      // Natural features (greens)
-      parks: '#90C090', // Park green
-      landuse: '#A0D0A0', // Light green
-
-      // Administrative (purples)
-      country_boundaries: '#9966CC', // Purple
-      state_boundaries: '#B399D4', // Light purple
-
-      // Labels (dark tones for readability)
-      place_labels: '#333333', // Dark gray
-      road_labels: '#444444', // Medium dark gray
-      poi_labels: '#555555', // Gray
-
-      // Infrastructure
-      buildings: '#D4C4B0', // Tan
-      building_3d: '#C4B4A0', // Darker tan
-      airports: '#CC99CC', // Light purple
-      transit: '#6699CC', // Blue-gray
-
-      // Default/highlight colors
-      default: '#808080', // Neutral gray
-      highlight: '#FF0000' // Red for highlights
+    // Define sensible default colors for common layer types
+    const colorPalette: Record<string, string> = {
+      motorways: '#ff6600',
+      primary_roads: '#ff9933',
+      secondary_roads: '#ffaa66',
+      streets: '#999999',
+      paths: '#666666',
+      railways: '#555555',
+      roads: '#888888',
+      water: '#4A90E2',
+      waterway: '#5BA0F2',
+      parks: '#90C090',
+      landuse: '#A0D0A0',
+      country_boundaries: '#9966CC',
+      state_boundaries: '#B399D4',
+      place_labels: '#333333',
+      road_labels: '#444444',
+      poi_labels: '#555555',
+      buildings: '#D4C4B0',
+      building_3d: '#C4B4A0',
+      airports: '#CC99CC',
+      transit: '#6699CC',
+      default: '#808080',
+      highlight: '#FF6B6B'
     };
 
-    // Return color based on layer type and action
     if (action === 'highlight') {
-      // Use slightly more saturated versions for highlights
+      // Highlight colors are more saturated
       const highlightColors: Record<string, string> = {
-        motorways: '#C0C0C0', // Medium gray for highlights
-        primary_roads: '#CCCCCC', // Slightly darker gray
-        secondary_roads: '#D0D0D0', // Light-medium gray
-        streets: '#D8D8D8', // Light gray
-        roads: '#CCCCCC', // Generic road highlight
-        water: '#7FA3CC',
-        parks: '#88B889',
-        country_boundaries: '#9B7FB8',
-        state_boundaries: '#B299CC',
-        transit: '#6B8FAA',
-        airports: '#D09099'
+        motorways: '#ff3300',
+        roads: '#ff6633',
+        water: '#2E7BC7',
+        parks: '#70A070',
+        buildings: '#B8A090'
       };
       return highlightColors[layerType] || colorPalette.highlight;
     }
 
-    return (
-      colorPalette[layerType as keyof typeof colorPalette] ||
-      colorPalette.default
-    );
+    return colorPalette[layerType] || colorPalette.default;
   }
 }
