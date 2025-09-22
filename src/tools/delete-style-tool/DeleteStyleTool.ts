@@ -1,3 +1,4 @@
+import { fetchClient } from '../../utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   DeleteStyleSchema,
@@ -10,7 +11,7 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
   name = 'delete_style_tool';
   description = 'Delete a Mapbox style by ID';
 
-  constructor() {
+  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: DeleteStyleSchema });
   }
 
@@ -21,7 +22,7 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
     const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;
 
-    const response = await fetch(url, {
+    const response = await this.fetch(url, {
       method: 'DELETE'
     });
 
