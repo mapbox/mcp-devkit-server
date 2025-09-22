@@ -1,4 +1,5 @@
 import { fetchClient } from '../../utils/fetchRequest.js';
+import { filterExpandedMapboxStyles } from '../../utils/styleUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   UpdateStyleSchema,
@@ -41,6 +42,7 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
     }
 
     const data = await response.json();
-    return data;
+    // Return full style but filter out expanded Mapbox styles
+    return filterExpandedMapboxStyles(data);
   }
 }

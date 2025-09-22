@@ -1,4 +1,5 @@
 import { fetchClient } from '../../utils/fetchRequest.js';
+import { filterExpandedMapboxStyles } from '../../utils/styleUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   CreateStyleSchema,
@@ -18,7 +19,7 @@ export class CreateStyleTool extends MapboxApiBasedTool<
   protected async execute(
     input: CreateStyleInput,
     accessToken?: string
-  ): Promise<any> {
+  ): Promise<unknown> {
     const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}?access_token=${accessToken}`;
 
@@ -42,6 +43,7 @@ export class CreateStyleTool extends MapboxApiBasedTool<
     }
 
     const data = await response.json();
-    return data;
+    // Return full style but filter out expanded Mapbox styles
+    return filterExpandedMapboxStyles(data);
   }
 }
