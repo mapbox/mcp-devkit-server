@@ -2,7 +2,7 @@
 
 A Model Context Protocol (MCP) server that provides AI assistants with direct access to Mapbox developer APIs. This server enables AI models to interact with Mapbox services, helping developers build Mapbox applications more efficiently.
 
-![Mapbox MCP DevKit Server Demo](./assets/mcp_server_devkit.gif)
+https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
 
 ## Table of Contents
 
