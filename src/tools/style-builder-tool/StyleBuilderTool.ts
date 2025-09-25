@@ -53,6 +53,13 @@ const SOURCE_LAYER_GEOMETRY: Record<
 export class StyleBuilderTool extends BaseTool<typeof StyleBuilderToolSchema> {
   name = 'style_builder_tool';
   private currentSourceLayer?: string; // Track current source layer for better error messages
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    title: 'Build Mapbox Style JSON Tool'
+  };
   description = `Generate Mapbox style JSON for creating new styles or updating existing ones.
 
 The tool intelligently resolves layer types and filter properties using Streets v8 data.

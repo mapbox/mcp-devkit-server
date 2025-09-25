@@ -9,6 +9,13 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
   name = 'geojson_preview_tool';
   description =
     'Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    title: 'Preview GeoJSON Data Tool'
+  };
 
   constructor() {
     super({ inputSchema: GeojsonPreviewSchema });

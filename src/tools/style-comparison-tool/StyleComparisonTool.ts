@@ -11,6 +11,13 @@ export class StyleComparisonTool extends BaseTool<
   readonly name = 'style_comparison_tool';
   readonly description =
     'Generate a comparison URL for comparing two Mapbox styles side-by-side';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    title: 'Compare Mapbox Styles Tool'
+  };
 
   constructor() {
     super({ inputSchema: StyleComparisonSchema });

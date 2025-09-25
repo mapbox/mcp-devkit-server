@@ -11,6 +11,13 @@ export class RetrieveStyleTool extends MapboxApiBasedTool<
 > {
   name = 'retrieve_style_tool';
   description = 'Retrieve a specific Mapbox style by ID';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+    title: 'Retrieve Mapbox Style Tool'
+  };
 
   constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: RetrieveStyleSchema });
