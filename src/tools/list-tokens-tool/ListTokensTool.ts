@@ -8,6 +8,13 @@ export class ListTokensTool extends MapboxApiBasedTool<
   readonly name = 'list_tokens_tool';
   readonly description =
     'List Mapbox access tokens for the authenticated user with optional filtering and pagination. When using pagination, the "start" parameter must be obtained from the "next_start" field of the previous response (it is not a token ID)';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+    title: 'List Mapbox Tokens Tool'
+  };
 
   constructor(private fetchImpl: typeof fetch = fetchClient) {
     super({ inputSchema: ListTokensSchema });

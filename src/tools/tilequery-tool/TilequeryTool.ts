@@ -6,6 +6,13 @@ export class TilequeryTool extends MapboxApiBasedTool<typeof TilequerySchema> {
   name = 'tilequery_tool';
   description =
     'Query vector and raster data from Mapbox tilesets at geographic coordinates';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+    title: 'Mapbox Tilequery Tool'
+  };
 
   constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: TilequerySchema });

@@ -11,6 +11,13 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
 > {
   name = 'update_style_tool';
   description = 'Update an existing Mapbox style';
+  readonly annotations = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: true,
+    title: 'Update Mapbox Style Tool'
+  };
 
   constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: UpdateStyleSchema });

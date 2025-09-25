@@ -11,6 +11,13 @@ export class CountryBoundingBoxTool extends BaseTool<
   readonly name = 'country_bounding_box_tool';
   readonly description =
     'Gets bounding box for a country by its ISO 3166-1 country code, returns as [minX, minY, maxX, maxY].';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    title: 'Get Country Bounding Box Tool'
+  };
 
   private boundariesData: Record<string, [number, number, number, number]> =
     boundariesData as unknown as Record<

@@ -10,6 +10,13 @@ export class CoordinateConversionTool extends BaseTool<
   readonly name = 'coordinate_conversion_tool';
   readonly description =
     'Converts coordinates between WGS84 (longitude/latitude) and EPSG:3857 (Web Mercator) coordinate systems';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    title: 'Convert Coordinates Tool'
+  };
 
   constructor() {
     super({ inputSchema: CoordinateConversionSchema });

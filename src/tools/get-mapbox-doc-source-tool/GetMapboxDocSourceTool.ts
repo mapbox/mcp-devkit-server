@@ -11,6 +11,13 @@ export class GetMapboxDocSourceTool extends BaseTool<
   name = 'get_latest_mapbox_docs_tool';
   description =
     'Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search.';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+    title: 'Get Mapbox Documentation Tool'
+  };
 
   constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: GetMapboxDocSourceSchema });

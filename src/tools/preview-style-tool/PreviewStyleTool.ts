@@ -9,6 +9,13 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   readonly name = 'preview_style_tool';
   readonly description =
     'Generate preview URL for a Mapbox style using an existing public token';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    title: 'Preview Mapbox Style Tool'
+  };
 
   constructor() {
     super({ inputSchema: PreviewStyleSchema });

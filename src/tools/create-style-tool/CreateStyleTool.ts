@@ -11,6 +11,13 @@ export class CreateStyleTool extends MapboxApiBasedTool<
 > {
   name = 'create_style_tool';
   description = 'Create a new Mapbox style';
+  readonly annotations = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: true,
+    title: 'Create Mapbox Style Tool'
+  };
 
   constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: CreateStyleSchema });

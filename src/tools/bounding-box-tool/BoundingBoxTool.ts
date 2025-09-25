@@ -16,6 +16,13 @@ export class BoundingBoxTool extends BaseTool<typeof BoundingBoxSchema> {
   readonly name = 'bounding_box_tool';
   readonly description =
     'Calculates bounding box of given GeoJSON content, returns as [minX, minY, maxX, maxY]';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false,
+    title: 'Calculate GeoJSON Bounding Box Tool'
+  };
 
   constructor() {
     super({ inputSchema: BoundingBoxSchema });
