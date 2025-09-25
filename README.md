@@ -12,6 +12,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Integration with Developer Tools](#integration-with-developer-tools)
     - [DXT Package Distribution](#dxt-package-distribution)
       - [Creating the DXT Package](#creating-the-dxt-package)
+    - [Hosted MCP Endpoint](#hosted-mcp-endpoint)
     - [Getting Your Mapbox Access Token](#getting-your-mapbox-access-token)
   - [Tools](#tools)
     - [Documentation Tools](#documentation-tools)
@@ -32,6 +33,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Creating New Tools](#creating-new-tools)
     - [Environment Variables](#environment-variables)
       - [VERBOSE_ERRORS](#verbose_errors)
+  - [Contributing](#contributing)
 
 ## Quick Start
 
@@ -496,3 +498,11 @@ src/tools/your-tool-name-tool/
 Set `VERBOSE_ERRORS=true` to get detailed error messages from the MCP server. This is useful for debugging issues when integrating with MCP clients.
 
 By default, the server returns generic error messages. With verbose errors enabled, you'll receive the actual error details, which can help diagnose API connection issues, invalid parameters, or other problems.
+
+## Contributing
+
+We welcome contributions to the Mapbox Development MCP Server! Please review our standards and guidelines before contributing:
+
+- **[Engineering Standards (CLAUDE.md)](./CLAUDE.md)** - Code quality, testing, documentation, and collaboration standards for all contributors
+- **[AI Agent Instructions (AGENTS.md)](./AGENTS.md)** - Comprehensive guide for AI agents working with this codebase
+- **[GitHub Copilot Guidelines](./.github/copilot-instructions.md)** - Best practices for using GitHub Copilot responsibly in this project
