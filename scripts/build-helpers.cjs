@@ -33,16 +33,6 @@ function generateVersion() {
   console.log('Generated version.json:', versionInfo);
 }
 
-// Sync version from package.json to manifest.json
-function syncManifestVersion() {
-  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-  const manifestJson = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-  
-  manifestJson.version = packageJson.version;
-  
-  fs.writeFileSync('manifest.json', JSON.stringify(manifestJson, null, 2) + '\n');
-  console.log(`Synced version ${packageJson.version} from package.json to manifest.json`);
-}
 
 // Copy JSON files to dist
 function copyJsonFiles() {
@@ -76,9 +66,6 @@ const command = process.argv[2];
 switch (command) {
   case 'generate-version':
     generateVersion();
-    break;
-  case 'sync-manifest-version':
-    syncManifestVersion();
     break;
   case 'copy-json':
     copyJsonFiles();

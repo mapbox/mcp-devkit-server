@@ -14,7 +14,7 @@ This file provides Claude and developers with essential context, commands, and s
 - `npm run format:fix` — Auto-format code
 - `npx plop create-tool` — Generate a new tool scaffold
 - `npx @modelcontextprotocol/inspector node dist/esm/index.js` — Inspect the MCP server
-- `npx @anthropic-ai/dxt pack` — Create a DXT package for distribution
+- `npm run sync-manifest` — Sync version from package.json to manifest.json
 - `docker build -t mapbox-mcp-devkit .` — Build Docker image
 - `docker run mapbox/mcp-devkit-server ...` — Run server in Docker
 
