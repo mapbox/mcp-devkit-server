@@ -11,6 +11,13 @@ export class CreateTokenTool extends MapboxApiBasedTool<
   readonly name = 'create_token_tool';
   readonly description =
     'Create a new Mapbox public access token with specified scopes and optional URL restrictions.';
+  readonly annotations = {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: true,
+    title: 'Create Mapbox Token Tool'
+  };
 
   constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: CreateTokenSchema });

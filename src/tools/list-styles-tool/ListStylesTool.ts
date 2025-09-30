@@ -8,6 +8,13 @@ export class ListStylesTool extends MapboxApiBasedTool<
   name = 'list_styles_tool';
   description =
     'List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.';
+  readonly annotations = {
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true,
+    title: 'List Mapbox Styles Tool'
+  };
 
   constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: ListStylesSchema });

@@ -10,6 +10,13 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
 > {
   name = 'delete_style_tool';
   description = 'Delete a Mapbox style by ID';
+  readonly annotations = {
+    readOnlyHint: false,
+    destructiveHint: true,
+    idempotentHint: true,
+    openWorldHint: true,
+    title: 'Delete Mapbox Style Tool'
+  };
 
   constructor(private fetch: typeof globalThis.fetch = fetchClient) {
     super({ inputSchema: DeleteStyleSchema });
