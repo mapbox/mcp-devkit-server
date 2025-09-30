@@ -16,9 +16,9 @@
     "format:fix": "prettier --write \"./src/**/*.{ts,tsx,js,json,md}\" \"./test/**/*.{ts,tsx,js,json,md}\"",
     "prepare": "husky && node .husky/setup-hooks.js",
     "test": "vitest",
-    "build": "npm run prepare && npm run sync-manifest-version && tshy && npm run generate-version && node scripts/build-helpers.cjs copy-json && node scripts/add-shebang.cjs",
+    "build": "npm run prepare && npm run sync-manifest && tshy && npm run generate-version && node scripts/build-helpers.cjs copy-json && node scripts/add-shebang.cjs",
     "generate-version": "node scripts/build-helpers.cjs generate-version",
-    "sync-manifest-version": "node scripts/build-helpers.cjs sync-manifest-version",
+    "sync-manifest": "node scripts/sync-manifest-version.cjs",
     "dev": "tsc -p tsconfig.json --watch",
     "dev:inspect": "npm run build && npx @modelcontextprotocol/inspector -e MAPBOX_ACCESS_TOKEN=\"$MAPBOX_ACCESS_PRIVATE_TOKEN\" node dist/esm/index.js"
   },

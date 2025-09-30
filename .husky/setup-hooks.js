@@ -9,7 +9,7 @@ execSync('git config core.hooksPath .husky');
 writeFileSync(
   '.husky/pre-commit',
   `#!/usr/bin/env sh
-npm run sync-manifest-version
+npm run sync-manifest
 git add manifest.json
 npx lint-staged`
 );
