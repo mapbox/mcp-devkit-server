@@ -37,11 +37,19 @@ function generateVersion() {
 function syncManifestVersion() {
   const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const manifestJson = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
-  
-  manifestJson.version = packageJson.version;
-  
+
+  const packageVersion = packageJson.version;
+  const manifestVersion = manifestJson.version;
+
+  if (packageVersion === manifestVersion) {
+    console.log(`✓ Versions already in sync: ${packageVersion}`);
+    return;
+  }
+
+  manifestJson.version = packageVersion;
+
   fs.writeFileSync('manifest.json', JSON.stringify(manifestJson, null, 2) + '\n');
-  console.log(`Synced version ${packageJson.version} from package.json to manifest.json`);
+  console.log(`✓ Updated manifest.json version: ${manifestVersion} → ${packageVersion}`);
 }
 
 // Copy JSON files to dist
