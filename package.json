@@ -20,7 +20,7 @@
     "generate-version": "node scripts/build-helpers.cjs generate-version",
     "sync-manifest": "node scripts/sync-manifest-version.cjs",
     "dev": "tsc -p tsconfig.json --watch",
-    "dev:inspect": "npm run build && npx @modelcontextprotocol/inspector -e MAPBOX_ACCESS_TOKEN=\"$MAPBOX_ACCESS_PRIVATE_TOKEN\" node dist/esm/index.js"
+    "dev:inspect": "npx @modelcontextprotocol/inspector -e MAPBOX_ACCESS_TOKEN=\"$MAPBOX_ACCESS_PRIVATE_TOKEN\" npx -y tsx src/index.ts"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": "eslint --fix",
