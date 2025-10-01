@@ -126,7 +126,7 @@ export abstract class BaseTool<InputSchema extends ZodTypeAny> {
     level: 'debug' | 'info' | 'warning' | 'error',
     data: string | Record<string, unknown>
   ): void {
-    if (this.server) {
+    if (this.server?.server) {
       this.server.server.sendLoggingMessage({ level, data });
     }
   }
