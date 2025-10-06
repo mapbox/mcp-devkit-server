@@ -1,4 +1,10 @@
-## 0.4.0 (Unreleased)
+## 0.4.4
+
+### Other
+
+- Add to MCP registry
+
+## 0.4.0
 
 ### Features Added
 
