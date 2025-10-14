@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CoordinateConversionTool } from '../../../src/tools/coordinate-conversion-tool/CoordinateConversionTool.js';
 
@@ -18,7 +21,7 @@ describe('CoordinateConversionTool', () => {
 
     it('should have correct input schema', async () => {
       const { CoordinateConversionSchema } = await import(
-        '../../../src/tools/coordinate-conversion-tool/CoordinateConversionTool.schema.js'
+        '../../../src/tools/coordinate-conversion-tool/CoordinateConversionTool.input.schema.js'
       );
       expect(CoordinateConversionSchema).toBeDefined();
     });

@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CountryBoundingBoxTool } from '../../../src/tools/bounding-box-tool/CountryBoundingBoxTool.js';
 
@@ -138,7 +141,7 @@ describe('CountryBoundingBoxTool', () => {
 
     it('should have correct input schema', async () => {
       const { CountryBoundingBoxSchema } = await import(
-        '../../../src/tools/bounding-box-tool/CountryBoundingBoxTool.schema.js'
+        '../../../src/tools/bounding-box-tool/CountryBoundingBoxTool.input.schema.js'
       );
       expect(CountryBoundingBoxSchema).toBeDefined();
     });

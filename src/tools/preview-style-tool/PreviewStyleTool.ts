@@ -1,9 +1,11 @@
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BaseTool } from '../BaseTool.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   PreviewStyleSchema,
   PreviewStyleInput
-} from './PreviewStyleTool.schema.js';
+} from './PreviewStyleTool.input.schema.js';
+import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 
 export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   readonly name = 'preview_style_tool';
@@ -21,10 +23,8 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     super({ inputSchema: PreviewStyleSchema });
   }
 
-  protected async execute(
-    input: PreviewStyleInput
-  ): Promise<{ type: 'text'; text: string }> {
-    const username = MapboxApiBasedTool.getUserNameFromToken(input.accessToken);
+  async run(input: PreviewStyleInput): Promise<CallToolResult> {
+    const username = getUserNameFromToken(input.accessToken);
 
     // Use the user-provided public token
     const publicToken = input.accessToken;
@@ -51,8 +51,13 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}.html?${params.toString()}${hashFragment}`;
 
     return {
-      type: 'text',
-      text: url
+      content: [
+        {
+          type: 'text',
+          text: url
+        }
+      ],
+      isError: false
     };
   }
 }

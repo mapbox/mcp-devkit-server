@@ -1,6 +1,17 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { MapboxApiBasedTool } from '../../../src/tools/MapboxApiBasedTool.js';
 import { StyleComparisonTool } from '../../../src/tools/style-comparison-tool/StyleComparisonTool.js';
+
+vi.mock('../../../src/utils/jwtUtils.js', (actual) => {
+  return {
+    ...actual,
+    getUserNameFromToken: vi.fn()
+  };
+});
+
+import { getUserNameFromToken } from 'src/utils/jwtUtils.js';
 
 describe('StyleComparisonTool', () => {
   let tool: StyleComparisonTool;
@@ -10,7 +21,7 @@ describe('StyleComparisonTool', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('run', () => {
@@ -37,7 +48,7 @@ describe('StyleComparisonTool', () => {
         before: 'mapbox/streets-v12',
         after: 'mapbox/satellite-v9'
         // Missing accessToken
-      };
+      } as any;
 
       const result = await tool.run(input);
 
@@ -64,9 +75,7 @@ describe('StyleComparisonTool', () => {
 
     it('should handle just style IDs with valid public token', async () => {
       // Mock MapboxApiBasedTool.getUserNameFromToken to return a username
-      vi.spyOn(MapboxApiBasedTool, 'getUserNameFromToken').mockReturnValue(
-        'testuser'
-      );
+      vi.mocked(getUserNameFromToken).mockReturnValue('testuser');
 
       const input = {
         before: 'style-id-1',
@@ -117,13 +126,11 @@ describe('StyleComparisonTool', () => {
 
     it('should return error for style ID without valid username in token', async () => {
       // Mock getUserNameFromToken to throw an error
-      vi.spyOn(MapboxApiBasedTool, 'getUserNameFromToken').mockImplementation(
-        () => {
-          throw new Error(
-            'MAPBOX_ACCESS_TOKEN does not contain username in payload'
-          );
-        }
-      );
+      vi.mocked(getUserNameFromToken).mockImplementation(() => {
+        throw new Error(
+          'MAPBOX_ACCESS_TOKEN does not contain username in payload'
+        );
+      });
 
       const input = {
         before: 'style-id-only',

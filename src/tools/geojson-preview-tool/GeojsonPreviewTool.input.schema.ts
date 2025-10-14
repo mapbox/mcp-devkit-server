@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { z } from 'zod';
 
 // Simplified GeoJSON schema for maximum MCP client compatibility
