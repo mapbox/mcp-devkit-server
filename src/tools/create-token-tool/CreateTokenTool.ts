@@ -1,12 +1,19 @@
-import { fetchClient } from '../../utils/fetchRequest.js';
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { HttpRequest } from '../../utils/types.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   CreateTokenSchema,
   CreateTokenInput
-} from './CreateTokenTool.schema.js';
+} from './CreateTokenTool.input.schema.js';
+import { CreateTokenOutputSchema } from './CreateTokenTool.output.schema.js';
+import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 
 export class CreateTokenTool extends MapboxApiBasedTool<
-  typeof CreateTokenSchema
+  typeof CreateTokenSchema,
+  typeof CreateTokenOutputSchema
 > {
   readonly name = 'create_token_tool';
   readonly description =
@@ -19,15 +26,19 @@ export class CreateTokenTool extends MapboxApiBasedTool<
     title: 'Create Mapbox Token Tool'
   };
 
-  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
-    super({ inputSchema: CreateTokenSchema });
+  constructor(params: { httpRequest: HttpRequest }) {
+    super({
+      inputSchema: CreateTokenSchema,
+      outputSchema: CreateTokenOutputSchema,
+      httpRequest: params.httpRequest
+    });
   }
 
   protected async execute(
     input: CreateTokenInput,
     accessToken?: string
-  ): Promise<{ type: 'text'; text: string }> {
-    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
+  ): Promise<CallToolResult> {
+    const username = getUserNameFromToken(accessToken);
 
     this.log(
       'info',
@@ -57,38 +68,53 @@ export class CreateTokenTool extends MapboxApiBasedTool<
       body.expires = input.expires;
     }
 
-    try {
-      const response = await this.fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(body)
-      });
+    const response = await this.httpRequest(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        this.log(
-          'error',
-          `CreateTokenTool: API Error - Status: ${response.status}, Body: ${errorBody}`
-        );
-        throw new Error(
-          `Failed to create token: ${response.status} ${response.statusText}`
-        );
-      }
-
-      const data = await response.json();
-      this.log('info', `CreateTokenTool: Successfully created token`);
-
-      return {
-        type: 'text',
-        text: JSON.stringify(data, null, 2)
-      };
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error(`Failed to create token: ${String(error)}`);
+    if (!response.ok) {
+      const errorBody = await response.text();
+      this.log(
+        'error',
+        `CreateTokenTool: API Error - Status: ${response.status}, Body: ${errorBody}`
+      );
+      throw new Error(
+        `Failed to create token: ${response.status} ${response.statusText}`
+      );
     }
+
+    const data = await response.json();
+    const parseResult = CreateTokenOutputSchema.safeParse(data);
+    if (!parseResult.success) {
+      this.log(
+        'error',
+        `CreateTokenTool: Output schema validation failed\n${parseResult.error}`
+      );
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `CreateTokenTool: Response does not conform to output schema:\n${parseResult.error}`
+          }
+        ],
+        isError: true
+      };
+    }
+    this.log('info', `CreateTokenTool: Successfully created token`);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(parseResult.data, null, 2)
+        }
+      ],
+      structuredContent: parseResult.data,
+      isError: false
+    };
   }
 }

@@ -1,11 +1,20 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BaseTool } from '../BaseTool.js';
+import {
+  CoordinateConversionOutput,
+  CoordinateConversionOutputSchema
+} from './CoordinateConversionTool.output.schema.js';
 import {
   CoordinateConversionSchema,
   CoordinateConversionInput
-} from './CoordinateConversionTool.schema.js';
+} from './CoordinateConversionTool.input.schema.js';
 
 export class CoordinateConversionTool extends BaseTool<
-  typeof CoordinateConversionSchema
+  typeof CoordinateConversionSchema,
+  typeof CoordinateConversionOutputSchema
 > {
   readonly name = 'coordinate_conversion_tool';
   readonly description =
@@ -19,28 +28,33 @@ export class CoordinateConversionTool extends BaseTool<
   };
 
   constructor() {
-    super({ inputSchema: CoordinateConversionSchema });
+    super({
+      inputSchema: CoordinateConversionSchema,
+      outputSchema: CoordinateConversionOutputSchema
+    });
   }
 
-  protected async execute(
-    input: CoordinateConversionInput
-  ): Promise<{ type: 'text'; text: string }> {
+  async run(input: CoordinateConversionInput): Promise<CallToolResult> {
     const { coordinates, from, to } = input;
 
     if (from === to) {
+      const outputResult: CoordinateConversionOutput = {
+        input: coordinates,
+        output: coordinates,
+        from,
+        to,
+        message: 'No conversion needed - source and target are the same'
+      };
+
       return {
-        type: 'text',
-        text: JSON.stringify(
+        content: [
           {
-            input: coordinates,
-            output: coordinates,
-            from,
-            to,
-            message: 'No conversion needed - source and target are the same'
-          },
-          null,
-          2
-        )
+            type: 'text',
+            text: JSON.stringify(outputResult, null, 2)
+          }
+        ],
+        isError: false,
+        structuredContent: outputResult
       };
     }
 
@@ -54,18 +68,23 @@ export class CoordinateConversionTool extends BaseTool<
       throw new Error(`Unsupported conversion: ${from} to ${to}`);
     }
 
+    const outputResult: CoordinateConversionOutput = {
+      input: coordinates,
+      output: result,
+      from,
+      to,
+      message: 'Conversion successful'
+    };
+
     return {
-      type: 'text',
-      text: JSON.stringify(
+      content: [
         {
-          input: coordinates,
-          output: result,
-          from,
-          to
-        },
-        null,
-        2
-      )
+          type: 'text',
+          text: JSON.stringify(outputResult, null, 2)
+        }
+      ],
+      isError: false,
+      structuredContent: outputResult
     };
   }
 

@@ -1,12 +1,18 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BaseTool } from '../BaseTool.js';
 import {
   CountryBoundingBoxSchema,
   CountryBoundingBoxInput
-} from './CountryBoundingBoxTool.schema.js';
+} from './CountryBoundingBoxTool.input.schema.js';
+import { CountryBoundingBoxOutputSchema } from './CountryBoundingBoxTool.output.schema.js';
 import boundariesData from './BoundariesData.js';
 
 export class CountryBoundingBoxTool extends BaseTool<
-  typeof CountryBoundingBoxSchema
+  typeof CountryBoundingBoxSchema,
+  typeof CountryBoundingBoxOutputSchema
 > {
   readonly name = 'country_bounding_box_tool';
   readonly description =
@@ -26,12 +32,13 @@ export class CountryBoundingBoxTool extends BaseTool<
     >;
 
   constructor() {
-    super({ inputSchema: CountryBoundingBoxSchema });
+    super({
+      inputSchema: CountryBoundingBoxSchema,
+      outputSchema: CountryBoundingBoxOutputSchema
+    });
   }
 
-  protected async execute(
-    input: CountryBoundingBoxInput
-  ): Promise<{ type: 'text'; text: string }> {
+  async run(input: CountryBoundingBoxInput): Promise<CallToolResult> {
     const { iso_3166_1 } = input;
     const upperCaseCode = iso_3166_1.toUpperCase();
     const bbox = this.boundariesData[upperCaseCode];
@@ -43,8 +50,16 @@ export class CountryBoundingBoxTool extends BaseTool<
     }
 
     return {
-      type: 'text',
-      text: JSON.stringify(bbox, null, 2)
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(bbox, null, 2)
+        }
+      ],
+      structuredContent: {
+        bbox
+      },
+      isError: false
     };
   }
 

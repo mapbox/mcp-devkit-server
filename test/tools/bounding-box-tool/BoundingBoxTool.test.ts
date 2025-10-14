@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BoundingBoxTool } from '../../../src/tools/bounding-box-tool/BoundingBoxTool.js';
 
@@ -268,7 +271,7 @@ describe('BoundingBoxTool', () => {
 
     it('should have correct input schema', async () => {
       const { BoundingBoxSchema } = await import(
-        '../../../src/tools/bounding-box-tool/BoundingBoxTool.schema.js'
+        '../../../src/tools/bounding-box-tool/BoundingBoxTool.input.schema.js'
       );
       expect(BoundingBoxSchema).toBeDefined();
       expect(BoundingBoxSchema.shape.geojson).toBeDefined();
