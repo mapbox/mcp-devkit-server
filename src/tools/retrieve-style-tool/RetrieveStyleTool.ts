@@ -47,9 +47,7 @@ export class RetrieveStyleTool extends MapboxApiBasedTool<
     const response = await this.httpRequest(url);
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to retrieve style: ${response.status} ${response.statusText}`
-      );
+      return this.handleApiError(response, 'retrieve style');
     }
 
     const rawData = await response.json();
@@ -72,10 +70,16 @@ export class RetrieveStyleTool extends MapboxApiBasedTool<
       content: [
         {
           type: 'text',
-          text: JSON.stringify(filterExpandedMapboxStyles(data))
+          text: JSON.stringify(
+            { data: filterExpandedMapboxStyles(data) },
+            null,
+            2
+          )
         }
       ],
-      structuredContent: filterExpandedMapboxStyles(data),
+      structuredContent: {
+        data: filterExpandedMapboxStyles(data)
+      },
       isError: false
     };
   }

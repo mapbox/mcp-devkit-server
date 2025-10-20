@@ -67,6 +67,34 @@ describe('ListStylesTool', () => {
     assertHeadersSent(mockHttpRequest);
   });
 
+  it('handles scope/permission errors with helpful message', async () => {
+    const mockHeaders = new Map([['content-type', 'application/json']]);
+    const { httpRequest, mockHttpRequest } = setupHttpRequest({
+      ok: false,
+      status: 403,
+      statusText: 'Forbidden',
+      headers: {
+        get: (name: string) => mockHeaders.get(name.toLowerCase())
+      } as Headers,
+      json: async () => ({
+        message: 'This API requires a token with styles:list scope.'
+      })
+    });
+
+    const result = await new ListStylesTool({ httpRequest }).run({});
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].type).toBe('text');
+    const errorText = (result.content[0] as { type: 'text'; text: string })
+      .text;
+    expect(errorText).toContain(
+      'This API requires a token with styles:list scope'
+    );
+    expect(errorText).toContain('appropriate scopes');
+    expect(errorText).toContain('MAPBOX_ACCESS_TOKEN');
+    assertHeadersSent(mockHttpRequest);
+  });
+
   it('extracts username from token for API call', async () => {
     const { httpRequest, mockHttpRequest } = setupHttpRequest({
       ok: true,
@@ -134,18 +162,24 @@ describe('ListStylesTool', () => {
   it('returns style list on success', async () => {
     const mockStyles = [
       {
-        version: 8,
         id: 'style1',
         name: 'Test Style 1',
         owner: 'testuser',
+        created: '2020-05-05T08:27:39.280Z',
+        modified: '2020-05-05T08:27:41.353Z',
+        visibility: 'private' as const,
+        version: 8,
         sources: {},
         layers: []
       },
       {
-        version: 8,
         id: 'style2',
         name: 'Test Style 2',
         owner: 'testuser',
+        created: '2020-05-06T08:27:39.280Z',
+        modified: '2020-05-06T08:27:41.353Z',
+        visibility: 'public' as const,
+        version: 8,
         sources: {},
         layers: []
       }
@@ -164,8 +198,61 @@ describe('ListStylesTool', () => {
 
     const content = result.content[0];
     if (content.type === 'text') {
-      const parsedResponse = JSON.parse(content.text);
+      const parsedResponse = JSON.parse(content.text).data;
       expect(parsedResponse).toEqual(mockStyles);
+    }
+
+    assertHeadersSent(mockHttpRequest);
+  });
+
+  it('handles styles without layers field (real API response)', async () => {
+    // This matches the actual production API response format
+    const mockStyles = [
+      {
+        center: [139.7667, 35.681249],
+        created: '2020-05-05T08:27:39.280Z',
+        id: 'ck9tnguii0ipm1ipf54wqhhwm',
+        modified: '2020-05-05T08:27:41.353Z',
+        name: 'Yahoo! Japan Streets',
+        owner: 'svc-okta-mapbox-staff-access',
+        sources: {
+          composite: {
+            url: 'mapbox://mapbox.mapbox-streets-v8,mapbox.road-detail-v1-33,mapbox.transit-v2',
+            type: 'vector'
+          }
+        },
+        version: 8,
+        visibility: 'private' as const,
+        zoom: 16,
+        protected: false
+      }
+    ];
+
+    const { httpRequest, mockHttpRequest } = setupHttpRequest({
+      ok: true,
+      json: async () => mockStyles
+    });
+
+    const result = await new ListStylesTool({ httpRequest }).run({});
+
+    expect(result.isError).toBe(false);
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].type).toBe('text');
+
+    const content = result.content[0];
+    if (content.type === 'text') {
+      const parsedResponse = JSON.parse(content.text).data;
+      expect(parsedResponse).toHaveLength(1);
+      expect(parsedResponse[0]).toMatchObject({
+        id: 'ck9tnguii0ipm1ipf54wqhhwm',
+        name: 'Yahoo! Japan Streets',
+        owner: 'svc-okta-mapbox-staff-access',
+        visibility: 'private',
+        version: 8,
+        protected: false
+      });
+      // Verify layers field is not required
+      expect(parsedResponse[0].layers).toBeUndefined();
     }
 
     assertHeadersSent(mockHttpRequest);

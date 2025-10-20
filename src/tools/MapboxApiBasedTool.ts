@@ -10,6 +10,14 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../utils/types.js';
 
+/**
+ * Standard error response format from Mapbox API
+ */
+interface MapboxApiError {
+  message?: string;
+  [key: string]: unknown;
+}
+
 export abstract class MapboxApiBasedTool<
   InputSchema extends ZodTypeAny,
   OutputSchema extends ZodTypeAny = ZodTypeAny
@@ -109,6 +117,64 @@ export abstract class MapboxApiBasedTool<
         isError: true
       };
     }
+  }
+
+  /**
+   * Handles HTTP error responses from Mapbox API.
+   * Attempts to parse the error response body to extract helpful messages.
+   *
+   * @param response - The failed HTTP response
+   * @param operation - Description of the operation that failed (e.g., "list styles", "create token")
+   * @returns A CallToolResult with error details
+   */
+  protected async handleApiError(
+    response: Response,
+    operation: string
+  ): Promise<CallToolResult> {
+    let errorMessage = `Failed to ${operation}: ${response.status} ${response.statusText}`;
+
+    try {
+      // Try to parse the response as JSON to get more details
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = (await response.json()) as MapboxApiError;
+
+        // Mapbox API typically returns { "message": "..." } for errors
+        if (errorData.message) {
+          errorMessage = `Failed to ${operation}: ${errorData.message}`;
+
+          // Check if it's a scope/permission error
+          if (
+            errorData.message.toLowerCase().includes('scope') ||
+            errorData.message.toLowerCase().includes('permission')
+          ) {
+            errorMessage +=
+              '\n\nThis operation requires a token with appropriate scopes. Please check your MAPBOX_ACCESS_TOKEN has the necessary permissions.';
+          }
+        }
+      } else {
+        // If not JSON, try to get text
+        const errorText = await response.text();
+        if (errorText) {
+          errorMessage += `\n${errorText}`;
+        }
+      }
+    } catch (parseError) {
+      // If we can't parse the error body, just use the basic message
+      this.log('warning', `Failed to parse error response: ${parseError}`);
+    }
+
+    this.log('error', `${this.name}: ${errorMessage}`);
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: errorMessage
+        }
+      ],
+      isError: true
+    };
   }
 
   /**

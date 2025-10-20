@@ -60,15 +60,7 @@ export class ListStylesTool extends MapboxApiBasedTool<
     const response = await this.httpRequest(url);
 
     if (!response.ok) {
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `Failed to list styles: ${response.status} ${response.statusText}`
-          }
-        ],
-        isError: true
-      };
+      return this.handleApiError(response, 'list styles');
     }
 
     const data = await response.json();
@@ -94,7 +86,7 @@ export class ListStylesTool extends MapboxApiBasedTool<
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(parseResult.data, null, 2)
+          text: JSON.stringify({ data: parseResult.data }, null, 2)
         }
       ],
       structuredContent: {

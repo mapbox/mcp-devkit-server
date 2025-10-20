@@ -82,9 +82,13 @@ export abstract class BaseTool<
 
     // Add outputSchema if provided
     if (this.outputSchema) {
+      // Wrap the output schema in a data property since all tools return { data: ... }
+      const wrappedSchema = z.object({
+        data: this.outputSchema
+      });
       config.outputSchema =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this.outputSchema as unknown as z.ZodObject<any>).shape;
+        (wrappedSchema as unknown as z.ZodObject<any>).shape;
     }
 
     return server.registerTool(this.name, config, (args, extra) =>

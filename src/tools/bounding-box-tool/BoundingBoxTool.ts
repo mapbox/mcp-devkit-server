@@ -71,11 +71,11 @@ export class BoundingBoxTool extends BaseTool<
       content: [
         {
           type: 'text',
-          text: JSON.stringify(bbox, null, 2)
+          text: JSON.stringify({ data: bbox }, null, 2)
         }
       ],
       structuredContent: {
-        bbox
+        data: bbox
       },
       isError: false
     };

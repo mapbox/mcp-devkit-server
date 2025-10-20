@@ -124,10 +124,12 @@ export class CreateTokenTool extends MapboxApiBasedTool<
       content: [
         {
           type: 'text',
-          text: JSON.stringify(parseResult.data, null, 2)
+          text: JSON.stringify({ data: parseResult.data }, null, 2)
         }
       ],
-      structuredContent: parseResult.data,
+      structuredContent: {
+        data: parseResult.data
+      },
       isError: false
     };
   }

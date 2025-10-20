@@ -163,7 +163,9 @@ describe('ListTokensTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
 
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(2);
       expect(responseData.count).toBe(2);
       expect(responseData.tokens[0].id).toBe('cktest123');
@@ -211,7 +213,9 @@ describe('ListTokensTool', () => {
       const result = await tool.run({ default: true });
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(1);
       expect(responseData.tokens[0].default).toBe(true);
 
@@ -257,7 +261,9 @@ describe('ListTokensTool', () => {
       });
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(1);
 
       // Verify all parameters were included in the request
@@ -299,7 +305,9 @@ describe('ListTokensTool', () => {
       const result = await tool.run({ limit: 10 });
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(1);
       expect(responseData.next_start).toBe('cktest999');
     });
@@ -335,7 +343,9 @@ describe('ListTokensTool', () => {
       const result = await tool.run({ start: 'cktest789' });
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(1);
       expect(responseData.next_start).toBe('cktest999');
     });
@@ -384,7 +394,9 @@ describe('ListTokensTool', () => {
       const result = await tool.run({});
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(1);
       expect(responseData.next_start).toBeUndefined();
     });
@@ -415,7 +427,9 @@ describe('ListTokensTool', () => {
       const result = await tool.run({ limit: 10 });
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(1);
       expect(responseData.next_start).toBeUndefined();
     });
@@ -446,7 +460,9 @@ describe('ListTokensTool', () => {
       const result = await tool.run({ usage: 'pk' });
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(1);
       expect(responseData.tokens[0].usage).toBe('pk');
 
@@ -550,7 +566,9 @@ describe('ListTokensTool', () => {
       const result = await tool.run({});
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.tokens).toHaveLength(1);
       expect(responseData.count).toBe(1);
     });

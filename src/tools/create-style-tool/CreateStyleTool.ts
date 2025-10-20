@@ -53,15 +53,7 @@ export class CreateStyleTool extends MapboxApiBasedTool<
     });
 
     if (!response.ok) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to create style: ${response.status} ${response.statusText}`
-          }
-        ],
-        isError: true
-      };
+      return this.handleApiError(response, 'create style');
     }
 
     const rawData = await response.json();
@@ -84,10 +76,16 @@ export class CreateStyleTool extends MapboxApiBasedTool<
       content: [
         {
           type: 'text',
-          text: JSON.stringify(filterExpandedMapboxStyles(data), null, 2)
+          text: JSON.stringify(
+            { data: filterExpandedMapboxStyles(data) },
+            null,
+            2
+          )
         }
       ],
-      structuredContent: filterExpandedMapboxStyles(data),
+      structuredContent: {
+        data: filterExpandedMapboxStyles(data)
+      },
       isError: false
     };
   }

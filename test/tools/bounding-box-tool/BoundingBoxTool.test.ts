@@ -25,9 +25,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -73.9857, 40.7484, -73.9857, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        data: [-73.9857, 40.7484, -73.9857, 40.7484]
+      });
     });
 
     it('should calculate bounding box for a Point with string input', async () => {
@@ -41,9 +41,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -73.9857, 40.7484, -73.9857, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        data: [-73.9857, 40.7484, -73.9857, 40.7484]
+      });
     });
 
     it('should calculate bounding box for a LineString', async () => {
@@ -61,9 +61,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -73.9919, 40.7484, -73.9857, 40.7614
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        data: [-73.9919, 40.7484, -73.9857, 40.7614]
+      });
     });
 
     it('should calculate bounding box for a Polygon', async () => {
@@ -85,9 +85,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -73.9919, 40.7484, -73.9857, 40.7614
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        data: [-73.9919, 40.7484, -73.9857, 40.7614]
+      });
     });
 
     it('should calculate bounding box for a FeatureCollection', async () => {
@@ -118,9 +118,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -74.006, 40.7128, -73.9857, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        data: [-74.006, 40.7128, -73.9857, 40.7484]
+      });
     });
 
     it('should calculate bounding box for a MultiPoint', async () => {
@@ -138,9 +138,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -74.006, 40.7128, -73.9352, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        data: [-74.006, 40.7128, -73.9352, 40.7484]
+      });
     });
 
     it('should calculate bounding box for a MultiPolygon', async () => {
@@ -173,7 +173,7 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([0, 0, 3, 3]);
+      expect(JSON.parse(textContent.text)).toEqual({ data: [0, 0, 3, 3] });
     });
 
     it('should calculate bounding box for a GeometryCollection', async () => {
@@ -199,9 +199,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -74.006, 40.7128, -73.9352, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        data: [-74.006, 40.7128, -73.9352, 40.7484]
+      });
     });
 
     it('should handle Feature with null geometry', async () => {

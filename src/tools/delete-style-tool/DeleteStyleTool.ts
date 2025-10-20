@@ -39,9 +39,7 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
     });
 
     if (response.status !== 204) {
-      throw new Error(
-        `Failed to delete style: ${response.status} ${response.statusText}`
-      );
+      return this.handleApiError(response, 'delete style');
     }
 
     return {

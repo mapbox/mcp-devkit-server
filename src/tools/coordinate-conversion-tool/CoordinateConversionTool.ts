@@ -52,11 +52,13 @@ export class CoordinateConversionTool extends BaseTool<
         content: [
           {
             type: 'text',
-            text: JSON.stringify(outputResult, null, 2)
+            text: JSON.stringify({ data: outputResult }, null, 2)
           }
         ],
         isError: false,
-        structuredContent: outputResult
+        structuredContent: {
+          data: outputResult
+        }
       };
     }
 
@@ -107,11 +109,13 @@ export class CoordinateConversionTool extends BaseTool<
       content: [
         {
           type: 'text',
-          text: JSON.stringify(outputResult, null, 2)
+          text: JSON.stringify({ data: outputResult }, null, 2)
         }
       ],
       isError: false,
-      structuredContent: outputResult
+      structuredContent: {
+        data: outputResult
+      }
     };
   }
 

@@ -224,17 +224,29 @@ export const BaseStylePropertiesSchema = z
       .optional()
       .describe('Base URL for sprite image and metadata'),
     glyphs: z.string().optional().describe('URL template for glyph sets'),
-    light: LightSchema.optional().describe(
-      'Global light source (deprecated, use lights)'
-    ),
-    lights: LightsSchema.optional().describe('Array of 3D light sources'),
-    terrain: TerrainSchema.optional().describe('Global terrain elevation'),
-    fog: z.record(z.any()).optional().describe('Fog properties'),
-    projection: z.record(z.any()).optional().describe('Map projection'),
-    transition: TransitionSchema.optional().describe(
-      'Default transition timing'
-    ),
-    imports: z.array(StyleImportSchema).optional().describe('Imported styles')
+    light: LightSchema.optional()
+      .nullable()
+      .describe('Global light source (deprecated, use lights)'),
+    lights: LightsSchema.optional()
+      .nullable()
+      .describe('Array of 3D light sources'),
+    terrain: TerrainSchema.optional()
+      .nullable()
+      .describe('Global terrain elevation'),
+    fog: z.record(z.any()).optional().nullable().describe('Fog properties'),
+    projection: z
+      .record(z.any())
+      .optional()
+      .nullable()
+      .describe('Map projection'),
+    transition: TransitionSchema.optional()
+      .nullable()
+      .describe('Default transition timing'),
+    imports: z
+      .array(StyleImportSchema)
+      .optional()
+      .nullable()
+      .describe('Imported styles')
   })
   .passthrough();
 

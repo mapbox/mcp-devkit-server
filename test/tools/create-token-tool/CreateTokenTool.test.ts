@@ -169,7 +169,9 @@ describe('CreateTokenTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
 
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData).toMatchObject({
         token: mockResponse.token,
         note: mockResponse.note,
@@ -223,7 +225,9 @@ describe('CreateTokenTool', () => {
       });
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.allowedUrls).toEqual(mockResponse.allowedUrls);
 
       // Verify the request body included allowedUrls
@@ -263,7 +267,9 @@ describe('CreateTokenTool', () => {
       });
 
       expect(result.isError).toBe(false);
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      const responseData = JSON.parse(
+        (result.content[0] as TextContent).text
+      ).data;
       expect(responseData.expires).toEqual(expiresAt);
 
       // Verify the request body included expires

@@ -121,10 +121,12 @@ export class TilequeryTool extends MapboxApiBasedTool<
       content: [
         {
           type: 'text',
-          text: JSON.stringify(data, null, 2)
+          text: JSON.stringify({ data }, null, 2)
         }
       ],
-      structuredContent: data,
+      structuredContent: {
+        data
+      },
       isError: false
     };
   }
