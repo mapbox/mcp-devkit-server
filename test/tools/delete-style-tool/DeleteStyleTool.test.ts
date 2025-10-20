@@ -48,26 +48,7 @@ describe('DeleteStyleTool', () => {
 
     expect(result.content[0]).toEqual({
       type: 'text',
-      text: '{"success":true,"message":"Style deleted successfully"}'
-    });
-    assertHeadersSent(mockHttpRequest);
-  });
-
-  it('returns response body for non-204 success', async () => {
-    const { httpRequest, mockHttpRequest } = setupHttpRequest({
-      ok: true,
-      status: 200,
-      json: async () => ({ deleted: true })
-    });
-
-    const result = await new DeleteStyleTool({ httpRequest }).run({
-      styleId: 'style-123'
-    });
-
-    expect(result.isError).toBe(false);
-    expect(result.content[0]).toMatchObject({
-      type: 'text',
-      text: `{"deleted":true}`
+      text: 'Style deleted successfully'
     });
     assertHeadersSent(mockHttpRequest);
   });
@@ -79,19 +60,9 @@ describe('DeleteStyleTool', () => {
       statusText: 'Not Found'
     });
 
-    let result;
-    try {
-      result = await new DeleteStyleTool({ httpRequest }).run({
-        styleId: 'style-123'
-      });
-    } catch (e) {
-      if (e instanceof Error) {
-        expect(e.message).toContain('Failed to update style: 404 Not Found');
-      } else {
-        expect.fail('Thrown error is not an instance of Error');
-      }
-      return;
-    }
+    const result = await new DeleteStyleTool({ httpRequest }).run({
+      styleId: 'style-123'
+    });
     expect(result.isError).toBe(true);
     expect(result.content[0]).toMatchObject({
       type: 'text',

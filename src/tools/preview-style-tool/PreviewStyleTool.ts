@@ -23,8 +23,21 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     super({ inputSchema: PreviewStyleSchema });
   }
 
-  async run(input: PreviewStyleInput): Promise<CallToolResult> {
-    const username = getUserNameFromToken(input.accessToken);
+  protected async execute(input: PreviewStyleInput): Promise<CallToolResult> {
+    let userName: string;
+    try {
+      userName = getUserNameFromToken(input.accessToken);
+    } catch (error) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: error instanceof Error ? error.message : String(error)
+          }
+        ]
+      };
+    }
 
     // Use the user-provided public token
     const publicToken = input.accessToken;
@@ -48,7 +61,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     const hashFragment =
       hashParams.length > 0 ? `#${hashParams.join('/')}` : '';
 
-    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}.html?${params.toString()}${hashFragment}`;
+    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${userName}/${input.styleId}.html?${params.toString()}${hashFragment}`;
 
     return {
       content: [

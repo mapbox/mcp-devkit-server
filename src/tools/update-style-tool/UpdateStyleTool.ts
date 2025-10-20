@@ -5,8 +5,8 @@ import type { HttpRequest } from '../../utils/types.js';
 import { filterExpandedMapboxStyles } from '../../utils/styleUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
-  MapboxStyleInputSchema,
-  MapboxStyleInput
+  UpdateStyleInput,
+  UpdateStyleInputSchema
 } from './UpdateStyleTool.input.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
@@ -16,7 +16,7 @@ import {
 } from './UpdateStyleTool.output.schema.js';
 
 export class UpdateStyleTool extends MapboxApiBasedTool<
-  typeof MapboxStyleInputSchema,
+  typeof UpdateStyleInputSchema,
   typeof MapboxStyleOutputSchema
 > {
   name = 'update_style_tool';
@@ -31,14 +31,14 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
 
   constructor(params: { httpRequest: HttpRequest }) {
     super({
-      inputSchema: MapboxStyleInputSchema,
+      inputSchema: UpdateStyleInputSchema,
       outputSchema: MapboxStyleOutputSchema,
       httpRequest: params.httpRequest
     });
   }
 
   protected async execute(
-    input: MapboxStyleInput,
+    input: UpdateStyleInput,
     accessToken?: string
   ): Promise<CallToolResult> {
     const username = getUserNameFromToken(accessToken);

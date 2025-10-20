@@ -9,7 +9,10 @@ import {
   ListTokensInput
 } from './ListTokensTool.input.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
-import { ListTokensOutputSchema } from './ListTokensTool.output.schema.js';
+import {
+  ListTokensOutputSchema,
+  TokenObjectSchema
+} from './ListTokensTool.output.schema.js';
 
 export class ListTokensTool extends MapboxApiBasedTool<
   typeof ListTokensSchema,
@@ -39,10 +42,31 @@ export class ListTokensTool extends MapboxApiBasedTool<
     accessToken?: string
   ): Promise<CallToolResult> {
     if (!accessToken) {
-      throw new Error('MAPBOX_ACCESS_TOKEN is not set');
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: 'MAPBOX_ACCESS_TOKEN is not set'
+          }
+        ]
+      };
     }
 
-    const username = getUserNameFromToken(accessToken);
+    let userName;
+    try {
+      userName = getUserNameFromToken(accessToken);
+    } catch (error) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: `Invalid access token: ${(error as Error).message}`
+          }
+        ]
+      };
+    }
 
     this.log(
       'info',
@@ -70,7 +94,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
     }
 
     let url: string | null =
-      `${MapboxApiBasedTool.mapboxApiEndpoint}tokens/v2/${username}?${params.toString()}`;
+      `${MapboxApiBasedTool.mapboxApiEndpoint}tokens/v2/${userName}?${params.toString()}`;
     const allTokens: unknown[] = [];
     let pageCount = 0;
     let nextPageUrl: string | null = null;
@@ -118,9 +142,6 @@ export class ListTokensTool extends MapboxApiBasedTool<
           : (data as { tokens?: unknown[] }).tokens || [];
 
         // Validate tokens array against TokenObjectSchema
-        const { TokenObjectSchema } = await import(
-          './ListTokensTool.output.schema.js'
-        );
         const parseResult = TokenObjectSchema.array().safeParse(tokens);
         if (!parseResult.success) {
           this.log(
@@ -196,7 +217,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
         content: [
           {
             type: 'text',
-            text: JSON.stringify(result, null, 2)
+            text: JSON.stringify(result)
           }
         ],
         structuredContent: result,

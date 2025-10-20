@@ -9,9 +9,17 @@ export const MapboxStyleInputSchema = BaseStylePropertiesSchema.extend({
   name: z
     .string()
     .describe('Human-readable name for the style (REQUIRED for updates)')
+    .optional()
   // These fields should NOT be included in input - they're read-only
   // If present, they'll be ignored or cause API errors
 }).passthrough();
 
-// Type exports
-export type MapboxStyleInput = z.infer<typeof MapboxStyleInputSchema>;
+export const UpdateStyleInputSchema = z.object({
+  styleId: z.string().describe('Style ID to update'),
+  name: z.string().optional().describe('New name for the style'),
+  style: MapboxStyleInputSchema.optional().describe(
+    'Updated Mapbox style specification object'
+  )
+});
+
+export type UpdateStyleInput = z.infer<typeof UpdateStyleInputSchema>;

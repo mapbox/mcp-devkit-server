@@ -35,10 +35,27 @@ export abstract class BaseTool<
   /**
    * Tool logic to be implemented by subclasses.
    */
-  abstract run(
+  async run(
     rawInput: unknown,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     extra?: RequestHandlerExtra<any, any>
+  ): Promise<CallToolResult> {
+    try {
+      const input = this.inputSchema.parse(rawInput);
+      const accessToken =
+        extra?.authInfo?.token || process.env.MAPBOX_ACCESS_TOKEN;
+      return this.execute(input, accessToken);
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: (error as Error).message }]
+      };
+    }
+  }
+
+  protected abstract execute(
+    inputSchema: z.infer<InputSchema>,
+    accessToken?: string
   ): Promise<CallToolResult>;
 
   /**

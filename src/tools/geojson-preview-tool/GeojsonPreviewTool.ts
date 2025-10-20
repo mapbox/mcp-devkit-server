@@ -49,7 +49,7 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
     );
   }
 
-  async run(input: GeojsonPreviewInput): Promise<CallToolResult> {
+  protected async execute(input: GeojsonPreviewInput): Promise<CallToolResult> {
     try {
       // Parse and validate JSON format
       const geojsonData = JSON.parse(input.geojson);

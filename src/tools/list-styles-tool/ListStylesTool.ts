@@ -59,6 +59,18 @@ export class ListStylesTool extends MapboxApiBasedTool<
 
     const response = await this.httpRequest(url);
 
+    if (!response.ok) {
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `Failed to list styles: ${response.status} ${response.statusText}`
+          }
+        ],
+        isError: true
+      };
+    }
+
     const data = await response.json();
     const parseResult = ListStylesOutputSchema.safeParse(data);
     if (!parseResult.success) {

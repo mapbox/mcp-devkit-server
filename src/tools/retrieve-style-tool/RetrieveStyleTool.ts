@@ -72,7 +72,7 @@ export class RetrieveStyleTool extends MapboxApiBasedTool<
       content: [
         {
           type: 'text',
-          text: JSON.stringify(filterExpandedMapboxStyles(data), null, 2)
+          text: JSON.stringify(filterExpandedMapboxStyles(data))
         }
       ],
       structuredContent: filterExpandedMapboxStyles(data),

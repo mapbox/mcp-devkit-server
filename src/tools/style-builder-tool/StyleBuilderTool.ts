@@ -129,7 +129,9 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
     super({ inputSchema: StyleBuilderToolSchema });
   }
 
-  async run(input: StyleBuilderToolInput): Promise<CallToolResult> {
+  protected async execute(
+    input: StyleBuilderToolInput
+  ): Promise<CallToolResult> {
     try {
       const result = this.buildStyle(input);
       const { style, corrections, layerHelp, availableProperties } = result;

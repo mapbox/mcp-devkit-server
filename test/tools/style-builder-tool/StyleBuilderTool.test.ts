@@ -46,7 +46,7 @@ describe('StyleBuilderTool', () => {
     it('should handle dark mode', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Dark Mode Style',
-        base_style: 'streets' as any, // Use classic style to test background color
+        base_style: 'streets-v12', // Use classic style to test background color
         layers: [],
         global_settings: {
           mode: 'dark',
@@ -285,7 +285,7 @@ describe('StyleBuilderTool', () => {
       // Test with classic style
       const input: StyleBuilderToolInput = {
         style_name: 'Essential Layers Test',
-        base_style: 'streets' as any, // Use classic style
+        base_style: 'streets-v12', // Use classic style
         layers: [] // No layers specified
       };
 
@@ -372,8 +372,7 @@ describe('StyleBuilderTool', () => {
             width: 3,
             zoom_based: true,
             min_zoom: 10,
-            max_zoom: 18,
-            render_type: 'symbol'
+            max_zoom: 18
           }
         ]
       };
@@ -412,8 +411,7 @@ describe('StyleBuilderTool', () => {
               motorway: '#ff0000',
               primary: '#ff8800',
               secondary: '#ffff00'
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
@@ -453,8 +451,7 @@ describe('StyleBuilderTool', () => {
               ['>', ['get', 'height'], 50],
               '#ff8800',
               '#808080'
-            ],
-            render_type: 'symbol'
+            ]
           }
         ]
       };
@@ -488,8 +485,7 @@ describe('StyleBuilderTool', () => {
             opacity: 0.8,
             zoom_based: true,
             min_zoom: 14,
-            max_zoom: 16,
-            render_type: 'symbol'
+            max_zoom: 16
           }
         ]
       };
@@ -521,7 +517,7 @@ describe('StyleBuilderTool', () => {
       const tool = new StyleBuilderTool();
       const input: StyleBuilderToolInput = {
         style_name: 'Transit Test',
-        base_style: 'streets' as any,
+        base_style: 'streets-v12',
         layers: [
           {
             layer_type: 'transit',
@@ -558,7 +554,7 @@ describe('StyleBuilderTool', () => {
       const tool = new StyleBuilderTool();
       const input: StyleBuilderToolInput = {
         style_name: 'Multi Transit Test',
-        base_style: 'streets' as any,
+        base_style: 'streets-v12',
         layers: [
           {
             layer_type: 'transit',
@@ -604,8 +600,7 @@ describe('StyleBuilderTool', () => {
             color: '#9370DB',
             filter_properties: {
               toll: true
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
@@ -839,13 +834,12 @@ describe('StyleBuilderTool', () => {
     it('should generate Classic style with sources', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Classic Style Test',
-        base_style: 'streets' as any,
+        base_style: 'streets-v12',
         layers: [
           {
             layer_type: 'water',
             action: 'color',
-            color: '#0099ff',
-            render_type: 'symbol'
+            color: '#0099ff'
           }
         ]
       };
@@ -937,8 +931,7 @@ describe('StyleBuilderTool', () => {
           {
             layer_type: 'water',
             action: 'color',
-            color: '#0099ff',
-            render_type: 'symbol'
+            color: '#0099ff'
           }
         ],
         base_style: 'standard'

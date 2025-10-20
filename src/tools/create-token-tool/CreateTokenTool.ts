@@ -59,7 +59,15 @@ export class CreateTokenTool extends MapboxApiBasedTool<
 
     if (input.allowedUrls) {
       if (input.allowedUrls.length > 100) {
-        throw new Error('Maximum 100 allowed URLs per token');
+        return {
+          content: [
+            {
+              type: 'text',
+              text: 'Maximum 100 allowed URLs per token'
+            }
+          ],
+          isError: true
+        };
       }
       body.allowedUrls = input.allowedUrls;
     }
@@ -82,9 +90,15 @@ export class CreateTokenTool extends MapboxApiBasedTool<
         'error',
         `CreateTokenTool: API Error - Status: ${response.status}, Body: ${errorBody}`
       );
-      throw new Error(
-        `Failed to create token: ${response.status} ${response.statusText}`
-      );
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Failed to create token: ${response.status} ${response.statusText}`
+          }
+        ],
+        isError: true
+      };
     }
 
     const data = await response.json();

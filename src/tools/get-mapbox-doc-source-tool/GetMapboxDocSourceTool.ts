@@ -32,7 +32,7 @@ export class GetMapboxDocSourceTool extends BaseTool<
     this.httpRequest = params.httpRequest;
   }
 
-  async run(
+  protected async execute(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _input: GetMapboxDocSourceInput
   ): Promise<CallToolResult> {
@@ -67,7 +67,15 @@ export class GetMapboxDocSourceTool extends BaseTool<
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      throw new Error(`Failed to fetch Mapbox documentation: ${errorMessage}`);
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Failed to fetch Mapbox documentation: ${errorMessage}`
+          }
+        ],
+        isError: true
+      };
     }
   }
 }

@@ -56,10 +56,29 @@ export class StyleComparisonTool extends BaseTool<
     }
   }
 
-  async run(input: StyleComparisonInput): Promise<CallToolResult> {
-    // Process style IDs to get username/styleId format
-    const beforeStyleId = this.processStyleId(input.before, input.accessToken);
-    const afterStyleId = this.processStyleId(input.after, input.accessToken);
+  protected async execute(
+    input: StyleComparisonInput
+  ): Promise<CallToolResult> {
+    let beforeStyleId;
+    let afterStyleId;
+    try {
+      // Process style IDs to get username/styleId format
+      beforeStyleId = this.processStyleId(input.before, input.accessToken);
+      afterStyleId = this.processStyleId(input.after, input.accessToken);
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text:
+              error instanceof Error
+                ? error.message
+                : 'An unknown error occurred'
+          }
+        ],
+        isError: true
+      };
+    }
 
     // Build the comparison URL
     const params = new URLSearchParams();

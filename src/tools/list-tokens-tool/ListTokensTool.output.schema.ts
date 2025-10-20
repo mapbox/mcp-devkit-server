@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 export const TokenObjectSchema = z.object({
   id: z.string().describe('Token ID'),
-  name: z.string().describe('Token name'),
   scopes: z.array(z.string()).describe('Array of scopes assigned to the token'),
   token: z.string().describe('The actual token string'),
   created: z.string().describe('ISO 8601 creation timestamp'),

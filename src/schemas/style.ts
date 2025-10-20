@@ -199,40 +199,44 @@ const StyleImportSchema = z
   .passthrough();
 
 // Base Style properties (shared between input and output)
-export const BaseStylePropertiesSchema = z.object({
-  // Required Style Spec properties
-  version: z
-    .literal(8)
-    .describe('Style specification version number. Must be 8'),
-  sources: z.record(SourceSchema).describe('Data source specifications'),
-  layers: z.array(LayerSchema).describe('Layers in draw order'),
+export const BaseStylePropertiesSchema = z
+  .object({
+    // Required Style Spec properties
+    version: z
+      .literal(8)
+      .describe('Style specification version number. Must be 8'),
+    sources: z.record(SourceSchema).describe('Data source specifications'),
+    layers: z.array(LayerSchema).describe('Layers in draw order'),
 
-  // Optional Style Spec properties
-  metadata: z
-    .record(z.any())
-    .optional()
-    .describe('Arbitrary properties for tracking'),
-  center: CoordinatesSchema.optional().describe(
-    'Default map center [longitude, latitude]'
-  ),
-  zoom: z.number().optional().describe('Default zoom level'),
-  bearing: z.number().optional().describe('Default bearing in degrees'),
-  pitch: z.number().optional().describe('Default pitch in degrees'),
-  sprite: z
-    .string()
-    .optional()
-    .describe('Base URL for sprite image and metadata'),
-  glyphs: z.string().optional().describe('URL template for glyph sets'),
-  light: LightSchema.optional().describe(
-    'Global light source (deprecated, use lights)'
-  ),
-  lights: LightsSchema.optional().describe('Array of 3D light sources'),
-  terrain: TerrainSchema.optional().describe('Global terrain elevation'),
-  fog: z.record(z.any()).optional().describe('Fog properties'),
-  projection: z.record(z.any()).optional().describe('Map projection'),
-  transition: TransitionSchema.optional().describe('Default transition timing'),
-  imports: z.array(StyleImportSchema).optional().describe('Imported styles')
-});
+    // Optional Style Spec properties
+    metadata: z
+      .record(z.any())
+      .optional()
+      .describe('Arbitrary properties for tracking'),
+    center: CoordinatesSchema.optional().describe(
+      'Default map center [longitude, latitude]'
+    ),
+    zoom: z.number().optional().describe('Default zoom level'),
+    bearing: z.number().optional().describe('Default bearing in degrees'),
+    pitch: z.number().optional().describe('Default pitch in degrees'),
+    sprite: z
+      .string()
+      .optional()
+      .describe('Base URL for sprite image and metadata'),
+    glyphs: z.string().optional().describe('URL template for glyph sets'),
+    light: LightSchema.optional().describe(
+      'Global light source (deprecated, use lights)'
+    ),
+    lights: LightsSchema.optional().describe('Array of 3D light sources'),
+    terrain: TerrainSchema.optional().describe('Global terrain elevation'),
+    fog: z.record(z.any()).optional().describe('Fog properties'),
+    projection: z.record(z.any()).optional().describe('Map projection'),
+    transition: TransitionSchema.optional().describe(
+      'Default transition timing'
+    ),
+    imports: z.array(StyleImportSchema).optional().describe('Imported styles')
+  })
+  .passthrough();
 
 export type MapboxSource = z.infer<typeof SourceSchema>;
 export type MapboxLayer = z.infer<typeof LayerSchema>;

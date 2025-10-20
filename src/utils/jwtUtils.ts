@@ -1,6 +1,8 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
+import process from 'node:process';
+
 export function mapboxAccessToken() {
   return process.env.MAPBOX_ACCESS_TOKEN;
 }
@@ -14,8 +16,8 @@ export function mapboxApiEndpoint() {
  * Mapbox tokens are JWT tokens where the payload contains the username.
  * @throws Error if the token is not set, invalid, or doesn't contain username
  */
-export function getUserNameFromToken(access_token?: string): string {
-  const token = access_token || mapboxAccessToken();
+export function getUserNameFromToken(accessToken?: string): string {
+  const token = accessToken || mapboxAccessToken();
   if (!token) {
     throw new Error(
       'No access token provided. Please set MAPBOX_ACCESS_TOKEN environment variable or pass it as an argument.'

@@ -59,7 +59,8 @@ This is the Mapbox developer documentation for LLMs.
   it('should handle HTTP errors', async () => {
     const { httpRequest } = setupHttpRequest({
       ok: false,
-      status: 404
+      status: 404,
+      statusText: 'Not Found'
     });
 
     const tool = new GetMapboxDocSourceTool({ httpRequest });
@@ -73,7 +74,7 @@ This is the Mapbox developer documentation for LLMs.
       expect(result.content[0].text).toContain(
         'Failed to fetch Mapbox documentation'
       );
-      expect(result.content[0].text).toContain('HTTP error! status: 404');
+      expect(result.content[0].text).toContain('Not Found');
     }
   });
 

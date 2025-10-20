@@ -3,15 +3,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { StyleComparisonTool } from '../../../src/tools/style-comparison-tool/StyleComparisonTool.js';
-
-vi.mock('../../../src/utils/jwtUtils.js', (actual) => {
-  return {
-    ...actual,
-    getUserNameFromToken: vi.fn()
-  };
-});
-
-import { getUserNameFromToken } from 'src/utils/jwtUtils.js';
+import * as jwtUtils from '../../../src/utils/jwtUtils.js';
 
 describe('StyleComparisonTool', () => {
   let tool: StyleComparisonTool;
@@ -74,8 +66,7 @@ describe('StyleComparisonTool', () => {
     });
 
     it('should handle just style IDs with valid public token', async () => {
-      // Mock MapboxApiBasedTool.getUserNameFromToken to return a username
-      vi.mocked(getUserNameFromToken).mockReturnValue('testuser');
+      vi.spyOn(jwtUtils, 'getUserNameFromToken').mockReturnValue('testuser');
 
       const input = {
         before: 'style-id-1',
@@ -111,8 +102,8 @@ describe('StyleComparisonTool', () => {
 
     it('should reject invalid token formats', async () => {
       const input = {
-        before: 'mapbox/streets-v12',
-        after: 'mapbox/outdoors-v12',
+        before: 'streets-v12',
+        after: 'outdoors-v12',
         accessToken: 'invalid.token'
       };
 
@@ -126,7 +117,7 @@ describe('StyleComparisonTool', () => {
 
     it('should return error for style ID without valid username in token', async () => {
       // Mock getUserNameFromToken to throw an error
-      vi.mocked(getUserNameFromToken).mockImplementation(() => {
+      vi.spyOn(jwtUtils, 'getUserNameFromToken').mockImplementation(() => {
         throw new Error(
           'MAPBOX_ACCESS_TOKEN does not contain username in payload'
         );
@@ -143,7 +134,7 @@ describe('StyleComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Could not determine username');
+      ).toContain('Could not determine username for style ID');
     });
 
     it('should properly encode URL parameters', async () => {

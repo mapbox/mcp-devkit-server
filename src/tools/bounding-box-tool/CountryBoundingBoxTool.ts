@@ -38,15 +38,23 @@ export class CountryBoundingBoxTool extends BaseTool<
     });
   }
 
-  async run(input: CountryBoundingBoxInput): Promise<CallToolResult> {
+  protected async execute(
+    input: CountryBoundingBoxInput
+  ): Promise<CallToolResult> {
     const { iso_3166_1 } = input;
     const upperCaseCode = iso_3166_1.toUpperCase();
     const bbox = this.boundariesData[upperCaseCode];
 
     if (!bbox) {
-      throw new Error(
-        `Country code "${iso_3166_1}" not found. Please use a valid ISO 3166-1 country code (e.g., "CN", "US", "AE").`
-      );
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Country code "${iso_3166_1}" not found. Please use a valid ISO 3166-1 country code (e.g., "CN", "US", "AE").`
+          }
+        ],
+        isError: true
+      };
     }
 
     return {

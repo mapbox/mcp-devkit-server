@@ -1,7 +1,7 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import { describe, it, expect, afterEach, vi, beforeAll } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
   setupHttpRequest,
   assertHeadersSent
@@ -15,10 +15,7 @@ const payload = Buffer.from(JSON.stringify({ u: 'testuser' })).toString(
   'base64'
 );
 const mockToken = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
-
-beforeAll(() => {
-  process.env.MAPBOX_ACCESS_TOKEN = mockToken;
-});
+process.env.MAPBOX_ACCESS_TOKEN = mockToken;
 
 type TextContent = { type: 'text'; text: string };
 
@@ -138,7 +135,8 @@ describe('ListTokensTool', () => {
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test123',
           scopes: ['styles:read', 'fonts:read'],
           created: '2023-01-01T00:00:00.000Z',
-          modified: '2023-01-01T00:00:00.000Z'
+          modified: '2023-01-01T00:00:00.000Z',
+          default: false
         },
         {
           id: 'cktest456',
@@ -147,7 +145,8 @@ describe('ListTokensTool', () => {
           token: 'sk.eyJ1IjoidGVzdHVzZXIifQ.test456',
           scopes: ['styles:read', 'fonts:read', 'tokens:read'],
           created: '2023-02-01T00:00:00.000Z',
-          modified: '2023-02-01T00:00:00.000Z'
+          modified: '2023-02-01T00:00:00.000Z',
+          default: false
         }
       ];
 
@@ -232,7 +231,8 @@ describe('ListTokensTool', () => {
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
@@ -276,7 +276,8 @@ describe('ListTokensTool', () => {
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
@@ -312,7 +313,8 @@ describe('ListTokensTool', () => {
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
@@ -347,11 +349,11 @@ describe('ListTokensTool', () => {
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
-      const { httpRequest, mockHttpRequest } = setupHttpRequest();
       // First page with Link header
       const headers1 = new Headers();
       headers1.set(
@@ -362,6 +364,9 @@ describe('ListTokensTool', () => {
       // Second page without Link header (end of results)
       const headers2 = new Headers();
 
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      // Reset from default response
+      mockHttpRequest.mockReset();
       mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers: headers1,
@@ -393,7 +398,8 @@ describe('ListTokensTool', () => {
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
@@ -423,7 +429,8 @@ describe('ListTokensTool', () => {
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.pub123',
           scopes: ['styles:read'],
           created: '2023-04-01T00:00:00.000Z',
-          modified: '2023-04-01T00:00:00.000Z'
+          modified: '2023-04-01T00:00:00.000Z',
+          default: false
         }
       ];
 
@@ -524,7 +531,10 @@ describe('ListTokensTool', () => {
             note: 'Test token',
             usage: 'pk',
             token: 'pk.test',
-            scopes: ['styles:read']
+            scopes: ['styles:read'],
+            created: '2023-04-01T00:00:00.000Z',
+            modified: '2023-04-01T00:00:00.000Z',
+            default: false
           }
         ]
       };

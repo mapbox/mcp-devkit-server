@@ -39,12 +39,20 @@ describe('CreateStyleTool', () => {
   it('sends custom header', async () => {
     const { httpRequest, mockHttpRequest } = setupHttpRequest({
       ok: true,
-      json: async () => ({ id: 'new-style-id', name: 'Test Style' })
+      json: async () => ({
+        id: 'new-style-id',
+        name: 'Test Style',
+        version: 8,
+        sources: {},
+        layers: []
+      })
     });
 
     await new CreateStyleTool({ httpRequest }).run({
       name: 'Test Style',
-      style: { version: 8, sources: {}, layers: [] }
+      version: 8,
+      sources: {},
+      layers: []
     });
     assertHeadersSent(mockHttpRequest);
   });
@@ -58,7 +66,9 @@ describe('CreateStyleTool', () => {
 
     const result = await new CreateStyleTool({ httpRequest }).run({
       name: 'Test Style',
-      style: { version: 8, sources: {}, layers: [] }
+      version: 8,
+      sources: {},
+      layers: []
     });
 
     expect(result.isError).toBe(true);

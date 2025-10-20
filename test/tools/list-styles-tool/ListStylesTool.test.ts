@@ -133,8 +133,22 @@ describe('ListStylesTool', () => {
 
   it('returns style list on success', async () => {
     const mockStyles = [
-      { id: 'style1', name: 'Test Style 1', owner: 'testuser' },
-      { id: 'style2', name: 'Test Style 2', owner: 'testuser' }
+      {
+        version: 8,
+        id: 'style1',
+        name: 'Test Style 1',
+        owner: 'testuser',
+        sources: {},
+        layers: []
+      },
+      {
+        version: 8,
+        id: 'style2',
+        name: 'Test Style 2',
+        owner: 'testuser',
+        sources: {},
+        layers: []
+      }
     ];
 
     const { httpRequest, mockHttpRequest } = setupHttpRequest({

@@ -53,9 +53,15 @@ export class CreateStyleTool extends MapboxApiBasedTool<
     });
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to create style: ${response.status} ${response.statusText}`
-      );
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Failed to create style: ${response.status} ${response.statusText}`
+          }
+        ],
+        isError: true
+      };
     }
 
     const rawData = await response.json();

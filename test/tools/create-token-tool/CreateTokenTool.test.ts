@@ -149,7 +149,9 @@ describe('CreateTokenTool', () => {
         id: 'cktest123',
         scopes: ['styles:read', 'fonts:read'],
         created: '2024-01-01T00:00:00.000Z',
-        modified: '2024-01-01T00:00:00.000Z'
+        modified: '2024-01-01T00:00:00.000Z',
+        usage: 'pk',
+        default: false
       };
 
       const { httpRequest, mockHttpRequest } = setupHttpRequest({
@@ -202,7 +204,9 @@ describe('CreateTokenTool', () => {
         scopes: ['styles:read'],
         created: '2024-01-01T00:00:00.000Z',
         modified: '2024-01-01T00:00:00.000Z',
-        allowedUrls: ['https://example.com', 'https://app.example.com']
+        allowedUrls: ['https://example.com', 'https://app.example.com'],
+        usage: 'pk',
+        default: false
       };
 
       const { httpRequest, mockHttpRequest } = setupHttpRequest({
@@ -240,7 +244,9 @@ describe('CreateTokenTool', () => {
         scopes: ['styles:read'],
         created: '2024-01-01T00:00:00.000Z',
         modified: '2024-01-01T00:00:00.000Z',
-        expires: expiresAt
+        expires: expiresAt,
+        usage: 'pk',
+        default: false
       };
 
       const { mockHttpRequest, httpRequest } = setupHttpRequest({
@@ -306,7 +312,7 @@ describe('CreateTokenTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const errorText = (result.content[0] as TextContent).text;
-      expect(errorText).toContain('Network error');
+      expect(errorText).toContain('Network Error');
     });
 
     it('uses custom API endpoint when provided', async () => {

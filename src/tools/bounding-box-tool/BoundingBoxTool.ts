@@ -39,17 +39,33 @@ export class BoundingBoxTool extends BaseTool<
     });
   }
 
-  async run(input: BoundingBoxInput): Promise<CallToolResult> {
+  protected async execute(input: BoundingBoxInput): Promise<CallToolResult> {
     const { geojson } = input;
 
-    // Parse GeoJSON if it's a string
-    const geojsonObject =
-      typeof geojson === 'string'
-        ? (JSON.parse(geojson) as GeoJSON)
-        : (geojson as GeoJSON);
-
     // Calculate bounding box
-    const bbox = this.calculateBoundingBox(geojsonObject);
+    let bbox;
+    try {
+      // Parse GeoJSON if it's a string
+      const geojsonObject =
+        typeof geojson === 'string'
+          ? (JSON.parse(geojson) as GeoJSON)
+          : (geojson as GeoJSON);
+
+      bbox = this.calculateBoundingBox(geojsonObject);
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error calculating bounding box: ${(error as Error).message}`
+          }
+        ],
+        structuredContent: {
+          error: (error as Error).message
+        },
+        isError: true
+      };
+    }
 
     return {
       content: [
