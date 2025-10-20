@@ -26,7 +26,7 @@ describe('BoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       expect(JSON.parse(textContent.text)).toEqual({
-        data: [-73.9857, 40.7484, -73.9857, 40.7484]
+        data: { bbox: [-73.9857, 40.7484, -73.9857, 40.7484] }
       });
     });
 
@@ -42,7 +42,7 @@ describe('BoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       expect(JSON.parse(textContent.text)).toEqual({
-        data: [-73.9857, 40.7484, -73.9857, 40.7484]
+        data: { bbox: [-73.9857, 40.7484, -73.9857, 40.7484] }
       });
     });
 
@@ -62,7 +62,7 @@ describe('BoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       expect(JSON.parse(textContent.text)).toEqual({
-        data: [-73.9919, 40.7484, -73.9857, 40.7614]
+        data: { bbox: [-73.9919, 40.7484, -73.9857, 40.7614] }
       });
     });
 
@@ -86,7 +86,7 @@ describe('BoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       expect(JSON.parse(textContent.text)).toEqual({
-        data: [-73.9919, 40.7484, -73.9857, 40.7614]
+        data: { bbox: [-73.9919, 40.7484, -73.9857, 40.7614] }
       });
     });
 
@@ -119,7 +119,7 @@ describe('BoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       expect(JSON.parse(textContent.text)).toEqual({
-        data: [-74.006, 40.7128, -73.9857, 40.7484]
+        data: { bbox: [-74.006, 40.7128, -73.9857, 40.7484] }
       });
     });
 
@@ -139,7 +139,7 @@ describe('BoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       expect(JSON.parse(textContent.text)).toEqual({
-        data: [-74.006, 40.7128, -73.9352, 40.7484]
+        data: { bbox: [-74.006, 40.7128, -73.9352, 40.7484] }
       });
     });
 
@@ -173,7 +173,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual({ data: [0, 0, 3, 3] });
+      expect(JSON.parse(textContent.text)).toEqual({
+        data: { bbox: [0, 0, 3, 3] }
+      });
     });
 
     it('should calculate bounding box for a GeometryCollection', async () => {
@@ -200,7 +202,7 @@ describe('BoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       expect(JSON.parse(textContent.text)).toEqual({
-        data: [-74.006, 40.7128, -73.9352, 40.7484]
+        data: { bbox: [-74.006, 40.7128, -73.9352, 40.7484] }
       });
     });
 
