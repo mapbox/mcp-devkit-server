@@ -217,12 +217,10 @@ export class ListTokensTool extends MapboxApiBasedTool<
         content: [
           {
             type: 'text',
-            text: JSON.stringify({ data: result }, null, 2)
+            text: JSON.stringify(result, null, 2)
           }
         ],
-        structuredContent: {
-          data: result
-        },
+        structuredContent: result,
         isError: false
       };
     } catch (error) {

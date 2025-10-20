@@ -40,6 +40,13 @@ const StyleMetadataSchema = z
   })
   .passthrough(); // Allow additional fields from API
 
-export const ListStylesOutputSchema = z.array(StyleMetadataSchema);
+// API returns an array of styles
+const StylesArraySchema = z.array(StyleMetadataSchema);
+
+// But structuredContent wraps it in an object
+export const ListStylesOutputSchema = z.object({
+  styles: StylesArraySchema
+});
 
 export type ListStylesOutput = z.infer<typeof ListStylesOutputSchema>;
+export { StylesArraySchema };

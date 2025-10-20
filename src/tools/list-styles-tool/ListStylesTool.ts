@@ -8,7 +8,10 @@ import {
   ListStylesSchema,
   ListStylesInput
 } from './ListStylesTool.input.schema.js';
-import { ListStylesOutputSchema } from './ListStylesTool.output.schema.js';
+import {
+  ListStylesOutputSchema,
+  StylesArraySchema
+} from './ListStylesTool.output.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 
 export class ListStylesTool extends MapboxApiBasedTool<
@@ -64,7 +67,8 @@ export class ListStylesTool extends MapboxApiBasedTool<
     }
 
     const data = await response.json();
-    const parseResult = ListStylesOutputSchema.safeParse(data);
+    // Validate the API response (which is an array)
+    const parseResult = StylesArraySchema.safeParse(data);
     if (!parseResult.success) {
       this.log(
         'error',
@@ -86,12 +90,11 @@ export class ListStylesTool extends MapboxApiBasedTool<
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify({ data: parseResult.data }, null, 2)
+          text: JSON.stringify(parseResult.data, null, 2)
         }
       ],
-      structuredContent: {
-        data: parseResult.data
-      },
+      // Wrap the array in an object for structuredContent
+      structuredContent: { styles: parseResult.data },
       isError: false
     };
   }

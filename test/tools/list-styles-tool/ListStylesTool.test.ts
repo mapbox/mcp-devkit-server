@@ -198,8 +198,16 @@ describe('ListStylesTool', () => {
 
     const content = result.content[0];
     if (content.type === 'text') {
-      const parsedResponse = JSON.parse(content.text).data;
+      const parsedResponse = JSON.parse(content.text);
       expect(parsedResponse).toEqual(mockStyles);
+    }
+
+    // Verify structuredContent has the expected shape
+    if (result.structuredContent) {
+      expect(result.structuredContent).toHaveProperty('styles');
+      expect(
+        (result.structuredContent as { styles: unknown[] }).styles
+      ).toEqual(mockStyles);
     }
 
     assertHeadersSent(mockHttpRequest);
@@ -241,7 +249,7 @@ describe('ListStylesTool', () => {
 
     const content = result.content[0];
     if (content.type === 'text') {
-      const parsedResponse = JSON.parse(content.text).data;
+      const parsedResponse = JSON.parse(content.text);
       expect(parsedResponse).toHaveLength(1);
       expect(parsedResponse[0]).toMatchObject({
         id: 'ck9tnguii0ipm1ipf54wqhhwm',

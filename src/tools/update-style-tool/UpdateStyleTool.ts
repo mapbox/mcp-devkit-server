@@ -80,16 +80,10 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
       content: [
         {
           type: 'text',
-          text: JSON.stringify(
-            { data: filterExpandedMapboxStyles(data) },
-            null,
-            2
-          )
+          text: JSON.stringify(filterExpandedMapboxStyles(data), null, 2)
         }
       ],
-      structuredContent: {
-        data: filterExpandedMapboxStyles(data)
-      },
+      structuredContent: filterExpandedMapboxStyles(data),
       isError: false
     };
   }

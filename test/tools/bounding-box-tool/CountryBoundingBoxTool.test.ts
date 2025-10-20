@@ -22,7 +22,7 @@ describe('CountryBoundingBoxTool', () => {
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
       expect(bbox).toEqual({
-        data: { bbox: [73.599819, 21.144707, 134.762115, 53.424591] }
+        bbox: [73.599819, 21.144707, 134.762115, 53.424591]
       });
     });
 
@@ -34,7 +34,7 @@ describe('CountryBoundingBoxTool', () => {
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
       expect(bbox).toEqual({
-        data: { bbox: [-168.069693, 25.133463, -67.292669, 71.284212] }
+        bbox: [-168.069693, 25.133463, -67.292669, 71.284212]
       });
     });
 
@@ -46,7 +46,7 @@ describe('CountryBoundingBoxTool', () => {
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
       expect(bbox).toEqual({
-        data: { bbox: [51.590737, 22.705773, 56.376954, 26.050548] }
+        bbox: [51.590737, 22.705773, 56.376954, 26.050548]
       });
     });
 
@@ -58,7 +58,7 @@ describe('CountryBoundingBoxTool', () => {
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
       expect(bbox).toEqual({
-        data: { bbox: [73.599819, 21.144707, 134.762115, 53.424591] }
+        bbox: [73.599819, 21.144707, 134.762115, 53.424591]
       });
     });
 
@@ -70,7 +70,7 @@ describe('CountryBoundingBoxTool', () => {
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
       expect(bbox).toEqual({
-        data: { bbox: [-168.069693, 25.133463, -67.292669, 71.284212] }
+        bbox: [-168.069693, 25.133463, -67.292669, 71.284212]
       });
     });
 
@@ -175,7 +175,7 @@ describe('CountryBoundingBoxTool', () => {
         if (!result.isError) {
           expect(result.content[0]).toHaveProperty('type', 'text');
           const textContent = result.content[0] as TextContent;
-          const bbox = JSON.parse(textContent.text).data.bbox;
+          const bbox = JSON.parse(textContent.text).bbox;
           expect(Array.isArray(bbox)).toBe(true);
           expect(bbox).toHaveLength(4);
         }

@@ -41,7 +41,7 @@ describe('CoordinateConversionTool', () => {
 
       const parsed = JSON.parse(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).data;
+      );
       expect(parsed.input).toEqual([-74.006, 40.7128]);
       expect(parsed.from).toBe('wgs84');
       expect(parsed.to).toBe('epsg3857');
@@ -65,7 +65,7 @@ describe('CoordinateConversionTool', () => {
 
       const parsed = JSON.parse(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).data;
+      );
       const [x, y] = parsed.output;
       expect(x).toBeCloseTo(0, 6);
       expect(y).toBeCloseTo(0, 6);
@@ -84,7 +84,7 @@ describe('CoordinateConversionTool', () => {
 
       const parsed = JSON.parse(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).data;
+      );
       const [x, y] = parsed.output;
       expect(x).toBeCloseTo(0, 6);
       expect(y).toBeGreaterThan(19000000); // Should be a very large Y value
@@ -135,7 +135,7 @@ describe('CoordinateConversionTool', () => {
 
       const parsed = JSON.parse(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).data;
+      );
       const [lon, lat] = parsed.output;
       expect(lon).toBeCloseTo(-74.006, 3);
       expect(lat).toBeCloseTo(40.7128, 3);
@@ -154,7 +154,7 @@ describe('CoordinateConversionTool', () => {
 
       const parsed = JSON.parse(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).data;
+      );
       const [lon, lat] = parsed.output;
       expect(lon).toBeCloseTo(0, 6);
       expect(lat).toBeCloseTo(0, 6);
@@ -192,7 +192,7 @@ describe('CoordinateConversionTool', () => {
 
       const mercatorCoords = JSON.parse(
         (toMercator.content[0] as { type: 'text'; text: string }).text
-      ).data.output;
+      ).output;
 
       // Convert EPSG:3857 -> WGS84
       const backToWgs84 = await tool.run({
@@ -203,7 +203,7 @@ describe('CoordinateConversionTool', () => {
 
       const finalCoords = JSON.parse(
         (backToWgs84.content[0] as { type: 'text'; text: string }).text
-      ).data.output;
+      ).output;
 
       expect(finalCoords[0]).toBeCloseTo(originalCoords[0], 6);
       expect(finalCoords[1]).toBeCloseTo(originalCoords[1], 6);
@@ -224,7 +224,7 @@ describe('CoordinateConversionTool', () => {
 
       const parsed = JSON.parse(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).data;
+      );
       expect(parsed.input).toEqual([-74.006, 40.7128]);
       expect(parsed.output).toEqual([-74.006, 40.7128]);
       expect(parsed.message).toContain('No conversion needed');

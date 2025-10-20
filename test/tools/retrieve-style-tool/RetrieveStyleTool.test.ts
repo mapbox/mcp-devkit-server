@@ -50,7 +50,7 @@ describe('RetrieveStyleTool', () => {
 
     expect(result.content[0]).toMatchObject({
       type: 'text',
-      text: JSON.stringify({ data: styleData }, null, 2)
+      text: JSON.stringify(styleData, null, 2)
     });
     assertHeadersSent(mockHttpRequest);
   });
@@ -127,7 +127,7 @@ describe('RetrieveStyleTool', () => {
 
     const content = result.content[0];
     if (content.type === 'text') {
-      const parsedResponse = JSON.parse(content.text).data;
+      const parsedResponse = JSON.parse(content.text);
       expect(parsedResponse.terrain).toBeNull();
       expect(parsedResponse.fog).toBeNull();
       expect(parsedResponse.lights).toBeNull();
