@@ -86,15 +86,15 @@ export class ListStylesTool extends MapboxApiBasedTool<
     }
     this.log('info', `ListStylesTool: Successfully listed styles`);
 
+    const wrappedData = { styles: parseResult.data };
     return {
       content: [
         {
           type: 'text' as const,
-          text: JSON.stringify(parseResult.data, null, 2)
+          text: JSON.stringify(wrappedData, null, 2)
         }
       ],
-      // Wrap the array in an object for structuredContent
-      structuredContent: { styles: parseResult.data },
+      structuredContent: wrappedData,
       isError: false
     };
   }

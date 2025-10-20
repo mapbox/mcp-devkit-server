@@ -9,7 +9,7 @@ const CoordinatesSchema = z.tuple([z.number(), z.number()]);
 // Vector Tileset Feature Schema
 const VectorTilequeryFeatureSchema = z.object({
   type: z.literal('Feature'),
-  id: z.union([z.string(), z.number()]),
+  id: z.string().describe('Feature identifier'),
   geometry: z.object({
     type: z.literal('Point'),
     coordinates: CoordinatesSchema
@@ -30,7 +30,7 @@ const VectorTilequeryFeatureSchema = z.object({
           .describe('The vector tile layer of the feature result')
       })
     })
-    .passthrough() // Allow additional properties from the original feature
+    .and(z.record(z.any())) // Allow additional properties from the original feature
 });
 
 // Rasterarray Tileset Feature Schema
@@ -50,7 +50,11 @@ const RasterarrayTilequeryFeatureSchema = z.object({
         .describe('The maxzoom level at which the point value was extracted'),
       units: z.string().describe('The unit of measurement for the point value')
     }),
-    val: z.number().describe('Point value at the requested location')
+    val: z
+      .union([z.number(), z.array(z.number())])
+      .describe(
+        'Point value at the requested location (number for single-band, array for multi-dimensional data)'
+      )
   })
 });
 

@@ -199,7 +199,8 @@ describe('ListStylesTool', () => {
     const content = result.content[0];
     if (content.type === 'text') {
       const parsedResponse = JSON.parse(content.text);
-      expect(parsedResponse).toEqual(mockStyles);
+      expect(parsedResponse).toHaveProperty('styles');
+      expect(parsedResponse.styles).toEqual(mockStyles);
     }
 
     // Verify structuredContent has the expected shape
@@ -250,8 +251,9 @@ describe('ListStylesTool', () => {
     const content = result.content[0];
     if (content.type === 'text') {
       const parsedResponse = JSON.parse(content.text);
-      expect(parsedResponse).toHaveLength(1);
-      expect(parsedResponse[0]).toMatchObject({
+      expect(parsedResponse).toHaveProperty('styles');
+      expect(parsedResponse.styles).toHaveLength(1);
+      expect(parsedResponse.styles[0]).toMatchObject({
         id: 'ck9tnguii0ipm1ipf54wqhhwm',
         name: 'Yahoo! Japan Streets',
         owner: 'svc-okta-mapbox-staff-access',
@@ -260,7 +262,7 @@ describe('ListStylesTool', () => {
         protected: false
       });
       // Verify layers field is not required
-      expect(parsedResponse[0].layers).toBeUndefined();
+      expect(parsedResponse.styles[0].layers).toBeUndefined();
     }
 
     assertHeadersSent(mockHttpRequest);

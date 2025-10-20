@@ -23,8 +23,12 @@ export const MapboxStyleOutputSchema = BaseStylePropertiesSchema.extend({
   visibility: z
     .enum(['public', 'private'])
     .describe('Style visibility setting'),
+  protected: z
+    .boolean()
+    .optional()
+    .describe('Whether style is protected from modifications'),
   draft: z.boolean().optional().describe('Whether this is a draft version')
-}).passthrough();
+});
 
 // Type exports
 export type MapboxStyleOutput = z.infer<typeof MapboxStyleOutputSchema>;

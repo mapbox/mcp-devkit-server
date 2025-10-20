@@ -151,6 +151,7 @@ describe('CreateTokenTool', () => {
         created: '2024-01-01T00:00:00.000Z',
         modified: '2024-01-01T00:00:00.000Z',
         usage: 'pk',
+        client: 'api',
         default: false
       };
 
@@ -206,6 +207,7 @@ describe('CreateTokenTool', () => {
         modified: '2024-01-01T00:00:00.000Z',
         allowedUrls: ['https://example.com', 'https://app.example.com'],
         usage: 'pk',
+        client: 'api',
         default: false
       };
 
@@ -246,6 +248,7 @@ describe('CreateTokenTool', () => {
         modified: '2024-01-01T00:00:00.000Z',
         expires: expiresAt,
         usage: 'pk',
+        client: 'api',
         default: false
       };
 
@@ -328,7 +331,10 @@ describe('CreateTokenTool', () => {
           id: 'cktest',
           scopes: ['styles:read'],
           created: '2024-01-01T00:00:00.000Z',
-          modified: '2024-01-01T00:00:00.000Z'
+          modified: '2024-01-01T00:00:00.000Z',
+          usage: 'pk',
+          client: 'api',
+          default: false
         };
 
         const { mockHttpRequest, httpRequest } = setupHttpRequest({

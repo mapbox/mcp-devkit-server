@@ -83,7 +83,7 @@ export abstract class BaseTool<
     // Add outputSchema if provided
     if (this.outputSchema) {
       // Pass the schema shape directly - don't wrap
-      // The MCP SDK will validate structuredContent.data against this schema
+      // The MCP SDK will validate structuredContent against this schema
       config.outputSchema =
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (this.outputSchema as unknown as z.ZodObject<any>).shape;
