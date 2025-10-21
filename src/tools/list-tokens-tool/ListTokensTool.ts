@@ -118,20 +118,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
         });
 
         if (!response.ok) {
-          const errorBody = await response.text();
-          this.log(
-            'error',
-            `ListTokensTool: API Error - Status: ${response.status}, Body: ${errorBody}`
-          );
-          return {
-            isError: true,
-            content: [
-              {
-                type: 'text',
-                text: `Failed to list tokens: ${response.status} ${response.statusText}`
-              }
-            ]
-          };
+          return this.handleApiError(response, 'list tokens');
         }
 
         const data = await response.json();

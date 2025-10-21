@@ -74,27 +74,7 @@ export class TilequeryTool extends MapboxApiBasedTool<
     const response = await this.httpRequest(url.toString());
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Tilequery request failed: ${response.status} ${response.statusText}. ${errorText}`
-      );
-    }
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      this.log(
-        'error',
-        `SearchAndGeocodeTool: API Error - Status: ${response.status}, Body: ${errorBody}`
-      );
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to search: ${response.status} ${response.statusText}`
-          }
-        ],
-        isError: true
-      };
+      return this.handleApiError(response, 'query tile');
     }
 
     const rawData = await response.json();

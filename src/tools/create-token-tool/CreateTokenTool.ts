@@ -84,21 +84,8 @@ export class CreateTokenTool extends MapboxApiBasedTool<
       body: JSON.stringify(body)
     });
 
-    if (!response.ok) {
-      const errorBody = await response.text();
-      this.log(
-        'error',
-        `CreateTokenTool: API Error - Status: ${response.status}, Body: ${errorBody}`
-      );
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to create token: ${response.status} ${response.statusText}`
-          }
-        ],
-        isError: true
-      };
+    if (response.status !== 204) {
+      return this.handleApiError(response, 'create token');
     }
 
     const data = await response.json();
