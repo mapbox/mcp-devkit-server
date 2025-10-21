@@ -84,7 +84,7 @@ export class CreateTokenTool extends MapboxApiBasedTool<
       body: JSON.stringify(body)
     });
 
-    if (response.status !== 204) {
+    if (!response.ok) {
       return this.handleApiError(response, 'create token');
     }
 
