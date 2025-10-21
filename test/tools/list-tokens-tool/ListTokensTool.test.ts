@@ -1,20 +1,21 @@
-import { describe, it, expect, afterEach, vi, beforeAll } from 'vitest';
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
-  setupFetch,
+  setupHttpRequest,
   assertHeadersSent
-} from '../../utils/fetchRequestUtils.js';
+} from '../../utils/httpPipelineUtils.js';
 import { MapboxApiBasedTool } from '../../../src/tools/MapboxApiBasedTool.js';
 import { ListTokensTool } from '../../../src/tools/list-tokens-tool/ListTokensTool.js';
+import { HttpRequest } from '../../../src//utils/types.js';
 
 // Create a token with username in the payload
 const payload = Buffer.from(JSON.stringify({ u: 'testuser' })).toString(
   'base64'
 );
 const mockToken = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
-
-beforeAll(() => {
-  process.env.MAPBOX_ACCESS_TOKEN = mockToken;
-});
+process.env.MAPBOX_ACCESS_TOKEN = mockToken;
 
 type TextContent = { type: 'text'; text: string };
 
@@ -23,8 +24,8 @@ describe('ListTokensTool', () => {
     vi.clearAllMocks();
   });
 
-  function createListTokensTool(fetchImpl?: typeof fetch): ListTokensTool {
-    const tool = new ListTokensTool(fetchImpl);
+  function createListTokensTool(httpRequest: HttpRequest): ListTokensTool {
+    const tool = new ListTokensTool({ httpRequest });
     // Mock the log method to prevent actual logging during tests
     tool['log'] = vi.fn();
     return tool;
@@ -32,7 +33,8 @@ describe('ListTokensTool', () => {
 
   describe('tool metadata', () => {
     it('should have correct name and description', () => {
-      const tool = createListTokensTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = createListTokensTool(httpRequest);
 
       expect(tool.name).toBe('list_tokens_tool');
       expect(tool.description).toBe(
@@ -42,7 +44,7 @@ describe('ListTokensTool', () => {
 
     it('should have correct input schema', async () => {
       const { ListTokensSchema } = await import(
-        '../../../src/tools/list-tokens-tool/ListTokensTool.schema.js'
+        '../../../src/tools/list-tokens-tool/ListTokensTool.input.schema.js'
       );
       expect(ListTokensSchema).toBeDefined();
     });
@@ -50,7 +52,8 @@ describe('ListTokensTool', () => {
 
   describe('validation', () => {
     it('validates limit range', async () => {
-      const tool = createListTokensTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = createListTokensTool(httpRequest);
       const result = await tool.run({ limit: 101 });
 
       expect(result.isError).toBe(true);
@@ -60,7 +63,8 @@ describe('ListTokensTool', () => {
     });
 
     it('validates sortby enum values', async () => {
-      const tool = createListTokensTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = createListTokensTool(httpRequest);
       const result = await tool.run({
         sortby: 'invalid' as unknown as 'created' | 'modified'
       });
@@ -70,7 +74,8 @@ describe('ListTokensTool', () => {
     });
 
     it('validates usage enum values', async () => {
-      const tool = createListTokensTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = createListTokensTool(httpRequest);
       const result = await tool.run({
         usage: 'invalid' as unknown as 'pk'
       });
@@ -92,8 +97,7 @@ describe('ListTokensTool', () => {
         vi.stubEnv('MAPBOX_ACCESS_TOKEN', invalidToken);
 
         // Setup fetch mock to prevent actual API calls
-        const { mockFetch, fetch } = setupFetch();
-        mockFetch.mockResolvedValueOnce({
+        const { httpRequest } = setupHttpRequest({
           ok: true,
           status: 200,
           statusText: 'OK',
@@ -101,7 +105,7 @@ describe('ListTokensTool', () => {
           json: async () => []
         } as Response);
 
-        const toolWithInvalidToken = createListTokensTool(fetch);
+        const toolWithInvalidToken = createListTokensTool(httpRequest);
 
         const result = await toolWithInvalidToken.run({});
 
@@ -128,30 +132,33 @@ describe('ListTokensTool', () => {
           id: 'cktest123',
           note: 'Default public token',
           usage: 'pk',
+          client: 'api',
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test123',
           scopes: ['styles:read', 'fonts:read'],
           created: '2023-01-01T00:00:00.000Z',
-          modified: '2023-01-01T00:00:00.000Z'
+          modified: '2023-01-01T00:00:00.000Z',
+          default: false
         },
         {
           id: 'cktest456',
           note: 'Secret token',
           usage: 'sk',
+          client: 'api',
           token: 'sk.eyJ1IjoidGVzdHVzZXIifQ.test456',
           scopes: ['styles:read', 'fonts:read', 'tokens:read'],
           created: '2023-02-01T00:00:00.000Z',
-          modified: '2023-02-01T00:00:00.000Z'
+          modified: '2023-02-01T00:00:00.000Z',
+          default: false
         }
       ];
 
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest({
         ok: true,
         headers: new Headers(),
         json: async () => mockTokens
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
 
       const result = await tool.run({});
 
@@ -165,7 +172,7 @@ describe('ListTokensTool', () => {
       expect(responseData.tokens[1].id).toBe('cktest456');
 
       // Verify the request
-      expect(mockFetch).toHaveBeenCalledWith(
+      expect(mockHttpRequest).toHaveBeenCalledWith(
         expect.stringContaining(
           'https://api.mapbox.com/tokens/v2/testuser?access_token='
         ),
@@ -178,7 +185,7 @@ describe('ListTokensTool', () => {
       );
 
       // Verify User-Agent header was sent
-      assertHeadersSent(mockFetch);
+      assertHeadersSent(mockHttpRequest);
     });
 
     it('filters by default token', async () => {
@@ -187,6 +194,7 @@ describe('ListTokensTool', () => {
           id: 'ckdefault',
           note: 'Default public token',
           usage: 'pk',
+          client: 'api',
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.default',
           default: true,
           scopes: ['styles:read', 'fonts:read'],
@@ -195,14 +203,14 @@ describe('ListTokensTool', () => {
         }
       ];
 
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         json: async () => mockTokens
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
       const result = await tool.run({ default: true });
 
       expect(result.isError).toBe(false);
@@ -211,7 +219,7 @@ describe('ListTokensTool', () => {
       expect(responseData.tokens[0].default).toBe(true);
 
       // Verify the request included the default parameter
-      expect(mockFetch).toHaveBeenCalledWith(
+      expect(mockHttpRequest).toHaveBeenCalledWith(
         expect.stringContaining('default=true'),
         expect.any(Object)
       );
@@ -223,27 +231,29 @@ describe('ListTokensTool', () => {
           id: 'cktest789',
           note: 'Token 3',
           usage: 'pk',
+          client: 'api',
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
-      const { mockFetch, fetch } = setupFetch();
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
       const headers = new Headers();
       headers.set(
         'Link',
         '<https://api.mapbox.com/tokens/v2/testuser?limit=10&start=cktest999>; rel="next"'
       );
 
-      mockFetch.mockResolvedValueOnce({
+      mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers,
         json: async () => mockTokens
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
       const result = await tool.run({
         limit: 10,
         start: 'cktest789',
@@ -255,7 +265,7 @@ describe('ListTokensTool', () => {
       expect(responseData.tokens).toHaveLength(1);
 
       // Verify all parameters were included in the request
-      const callUrl = mockFetch.mock.calls[0][0] as string;
+      const callUrl = mockHttpRequest.mock.calls[0][0] as string;
       expect(callUrl).toContain('limit=10');
       expect(callUrl).toContain('start=cktest789');
       expect(callUrl).toContain('sortby=created');
@@ -267,27 +277,29 @@ describe('ListTokensTool', () => {
           id: 'cktest789',
           note: 'Token 3',
           usage: 'pk',
+          client: 'api',
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
-      const { mockFetch, fetch } = setupFetch();
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
       const headers = new Headers();
       headers.set(
         'Link',
         '<https://api.mapbox.com/tokens/v2/testuser?limit=10&start=cktest999>; rel="next"'
       );
 
-      mockFetch.mockResolvedValueOnce({
+      mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers,
         json: async () => mockTokens
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
 
       const result = await tool.run({ limit: 10 });
 
@@ -303,27 +315,28 @@ describe('ListTokensTool', () => {
           id: 'cktest789',
           note: 'Token 3',
           usage: 'pk',
+          client: 'api',
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
-      const { mockFetch, fetch } = setupFetch();
       const headers = new Headers();
       headers.set(
         'Link',
         '<https://api.mapbox.com/tokens/v2/testuser?limit=10&start=cktest999>; rel="next"'
       );
 
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest } = setupHttpRequest({
         ok: true,
         headers,
         json: async () => mockTokens
-      } as Response);
+      });
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
 
       const result = await tool.run({ start: 'cktest789' });
 
@@ -339,14 +352,15 @@ describe('ListTokensTool', () => {
           id: 'cktest789',
           note: 'Token 3',
           usage: 'pk',
+          client: 'api',
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
-      const { mockFetch, fetch } = setupFetch();
       // First page with Link header
       const headers1 = new Headers();
       headers1.set(
@@ -357,19 +371,22 @@ describe('ListTokensTool', () => {
       // Second page without Link header (end of results)
       const headers2 = new Headers();
 
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      // Reset from default response
+      mockHttpRequest.mockReset();
+      mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers: headers1,
         json: async () => mockTokens
       } as Response);
 
-      mockFetch.mockResolvedValueOnce({
+      mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers: headers2,
         json: async () => [] // Empty array for second page
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
 
       const result = await tool.run({});
 
@@ -385,21 +402,23 @@ describe('ListTokensTool', () => {
           id: 'cktest789',
           note: 'Token 3',
           usage: 'pk',
+          client: 'api',
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test789',
           scopes: ['styles:read'],
           created: '2023-03-01T00:00:00.000Z',
-          modified: '2023-03-01T00:00:00.000Z'
+          modified: '2023-03-01T00:00:00.000Z',
+          default: false
         }
       ];
 
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         json: async () => mockTokens
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
 
       const result = await tool.run({ limit: 10 });
 
@@ -415,21 +434,23 @@ describe('ListTokensTool', () => {
           id: 'pktest123',
           note: 'Public token',
           usage: 'pk',
+          client: 'api',
           token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.pub123',
           scopes: ['styles:read'],
           created: '2023-04-01T00:00:00.000Z',
-          modified: '2023-04-01T00:00:00.000Z'
+          modified: '2023-04-01T00:00:00.000Z',
+          default: false
         }
       ];
 
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         json: async () => mockTokens
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
 
       const result = await tool.run({ usage: 'pk' });
 
@@ -439,15 +460,15 @@ describe('ListTokensTool', () => {
       expect(responseData.tokens[0].usage).toBe('pk');
 
       // Verify the usage parameter was included
-      expect(mockFetch).toHaveBeenCalledWith(
+      expect(mockHttpRequest).toHaveBeenCalledWith(
         expect.stringContaining('usage=pk'),
         expect.any(Object)
       );
     });
 
     it('handles API errors gracefully', async () => {
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      mockHttpRequest.mockResolvedValueOnce({
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
@@ -455,7 +476,7 @@ describe('ListTokensTool', () => {
           '{"message": "Invalid access token", "code": "TokenInvalid"}'
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
 
       const result = await tool.run({});
 
@@ -466,10 +487,10 @@ describe('ListTokensTool', () => {
     });
 
     it('handles network errors', async () => {
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      mockHttpRequest.mockRejectedValueOnce(new Error('Network error'));
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
       const result = await tool.run({});
 
       expect(result.isError).toBe(true);
@@ -487,18 +508,18 @@ describe('ListTokensTool', () => {
 
         const mockTokens: object[] = [];
 
-        const { mockFetch, fetch } = setupFetch();
-        mockFetch.mockResolvedValueOnce({
+        const { httpRequest, mockHttpRequest } = setupHttpRequest();
+        mockHttpRequest.mockResolvedValueOnce({
           ok: true,
           headers: new Headers(),
           json: async () => mockTokens
         } as Response);
 
-        const tool = createListTokensTool(fetch);
+        const tool = createListTokensTool(httpRequest);
 
         await tool.run({});
 
-        expect(mockFetch).toHaveBeenCalledWith(
+        expect(mockHttpRequest).toHaveBeenCalledWith(
           expect.stringContaining('https://api.staging.mapbox.com/tokens/v2/'),
           expect.any(Object)
         );
@@ -518,20 +539,24 @@ describe('ListTokensTool', () => {
             id: 'cktest123',
             note: 'Test token',
             usage: 'pk',
+            client: 'api',
             token: 'pk.test',
-            scopes: ['styles:read']
+            scopes: ['styles:read'],
+            created: '2023-04-01T00:00:00.000Z',
+            modified: '2023-04-01T00:00:00.000Z',
+            default: false
           }
         ]
       };
 
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      mockHttpRequest.mockResolvedValueOnce({
         ok: true,
         headers: new Headers(),
         json: async () => mockResponse
       } as Response);
 
-      const tool = createListTokensTool(fetch);
+      const tool = createListTokensTool(httpRequest);
       const result = await tool.run({});
 
       expect(result.isError).toBe(false);

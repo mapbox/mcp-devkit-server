@@ -1,8 +1,11 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import {
-  setupFetch,
+  setupHttpRequest,
   assertHeadersSent
-} from '../../utils/fetchRequestUtils.js';
+} from '../../utils/httpPipelineUtils.js';
 import { CreateStyleTool } from '../../../src/tools/create-style-tool/CreateStyleTool.js';
 
 const mockToken =
@@ -19,42 +22,53 @@ describe('CreateStyleTool', () => {
 
   describe('tool metadata', () => {
     it('should have correct name and description', () => {
-      const tool = new CreateStyleTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = new CreateStyleTool({ httpRequest });
       expect(tool.name).toBe('create_style_tool');
       expect(tool.description).toBe('Create a new Mapbox style');
     });
 
     it('should have correct input schema', async () => {
-      const { CreateStyleSchema } = await import(
-        '../../../src/tools/create-style-tool/CreateStyleTool.schema.js'
+      const { MapboxStyleInputSchema } = await import(
+        '../../../src/tools/create-style-tool/CreateStyleTool.input.schema.js'
       );
-      expect(CreateStyleSchema).toBeDefined();
+      expect(MapboxStyleInputSchema).toBeDefined();
     });
   });
 
   it('sends custom header', async () => {
-    const { fetch, mockFetch } = setupFetch({
+    const { httpRequest, mockHttpRequest } = setupHttpRequest({
       ok: true,
-      json: async () => ({ id: 'new-style-id', name: 'Test Style' })
+      json: async () => ({
+        id: 'new-style-id',
+        name: 'Test Style',
+        version: 8,
+        sources: {},
+        layers: []
+      })
     });
 
-    await new CreateStyleTool(fetch).run({
+    await new CreateStyleTool({ httpRequest }).run({
       name: 'Test Style',
-      style: { version: 8, sources: {}, layers: [] }
+      version: 8,
+      sources: {},
+      layers: []
     });
-    assertHeadersSent(mockFetch);
+    assertHeadersSent(mockHttpRequest);
   });
 
   it('handles fetch errors gracefully', async () => {
-    const { fetch, mockFetch } = setupFetch({
+    const { httpRequest, mockHttpRequest } = setupHttpRequest({
       ok: false,
       status: 400,
       statusText: 'Bad Request'
     });
 
-    const result = await new CreateStyleTool(fetch).run({
+    const result = await new CreateStyleTool({ httpRequest }).run({
       name: 'Test Style',
-      style: { version: 8, sources: {}, layers: [] }
+      version: 8,
+      sources: {},
+      layers: []
     });
 
     expect(result.isError).toBe(true);
@@ -62,6 +76,6 @@ describe('CreateStyleTool', () => {
       type: 'text',
       text: 'Failed to create style: 400 Bad Request'
     });
-    assertHeadersSent(mockFetch);
+    assertHeadersSent(mockHttpRequest);
   });
 });

@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BoundingBoxTool } from '../../../src/tools/bounding-box-tool/BoundingBoxTool.js';
 
@@ -22,9 +25,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -73.9857, 40.7484, -73.9857, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        bbox: [-73.9857, 40.7484, -73.9857, 40.7484]
+      });
     });
 
     it('should calculate bounding box for a Point with string input', async () => {
@@ -38,9 +41,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -73.9857, 40.7484, -73.9857, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        bbox: [-73.9857, 40.7484, -73.9857, 40.7484]
+      });
     });
 
     it('should calculate bounding box for a LineString', async () => {
@@ -58,9 +61,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -73.9919, 40.7484, -73.9857, 40.7614
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        bbox: [-73.9919, 40.7484, -73.9857, 40.7614]
+      });
     });
 
     it('should calculate bounding box for a Polygon', async () => {
@@ -82,9 +85,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -73.9919, 40.7484, -73.9857, 40.7614
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        bbox: [-73.9919, 40.7484, -73.9857, 40.7614]
+      });
     });
 
     it('should calculate bounding box for a FeatureCollection', async () => {
@@ -115,9 +118,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -74.006, 40.7128, -73.9857, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        bbox: [-74.006, 40.7128, -73.9857, 40.7484]
+      });
     });
 
     it('should calculate bounding box for a MultiPoint', async () => {
@@ -135,9 +138,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -74.006, 40.7128, -73.9352, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        bbox: [-74.006, 40.7128, -73.9352, 40.7484]
+      });
     });
 
     it('should calculate bounding box for a MultiPolygon', async () => {
@@ -170,7 +173,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([0, 0, 3, 3]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        bbox: [0, 0, 3, 3]
+      });
     });
 
     it('should calculate bounding box for a GeometryCollection', async () => {
@@ -196,9 +201,9 @@ describe('BoundingBoxTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
-      expect(JSON.parse(textContent.text)).toEqual([
-        -74.006, 40.7128, -73.9352, 40.7484
-      ]);
+      expect(JSON.parse(textContent.text)).toEqual({
+        bbox: [-74.006, 40.7128, -73.9352, 40.7484]
+      });
     });
 
     it('should handle Feature with null geometry', async () => {
@@ -268,7 +273,7 @@ describe('BoundingBoxTool', () => {
 
     it('should have correct input schema', async () => {
       const { BoundingBoxSchema } = await import(
-        '../../../src/tools/bounding-box-tool/BoundingBoxTool.schema.js'
+        '../../../src/tools/bounding-box-tool/BoundingBoxTool.input.schema.js'
       );
       expect(BoundingBoxSchema).toBeDefined();
       expect(BoundingBoxSchema.shape.geojson).toBeDefined();
