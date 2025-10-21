@@ -1,4 +1,13 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type {
+  ReadResourceResult,
+  ServerNotification,
+  ServerRequest
+} from '@modelcontextprotocol/sdk/types.js';
 
 /**
  * Base class for MCP resources
@@ -27,10 +36,8 @@ export abstract class BaseResource {
   /**
    * Callback to read the resource content
    */
-  protected abstract readCallback(
+  public abstract readCallback(
     uri: URL,
-    extra: unknown
-  ): Promise<{
-    contents: Array<{ uri: string; mimeType: string; text: string }>;
-  }>;
+    extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+  ): Promise<ReadResourceResult>;
 }

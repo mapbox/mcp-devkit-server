@@ -43,6 +43,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "get_latest_mapbox_docs_tool",
   },
   {
+    "className": "GetReferenceTool",
+    "description": "Get Mapbox reference documentation including Streets v8 field definitions, token scopes, layer type mappings, and style specifications. Use this tool to understand what fields, scopes, or layer types are available before creating styles or tokens.",
+    "toolName": "get_reference_tool",
+  },
+  {
     "className": "ListStylesTool",
     "description": "List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.",
     "toolName": "list_styles_tool",

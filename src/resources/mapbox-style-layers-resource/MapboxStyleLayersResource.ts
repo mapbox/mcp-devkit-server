@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { BaseResource } from '../BaseResource.js';
 
 /**
@@ -11,7 +14,7 @@ export class MapboxStyleLayersResource extends BaseResource {
     'Mapbox GL JS style specification reference for layer types, paint/layout properties, and Streets v8 source layers';
   readonly mimeType = 'text/markdown';
 
-  protected async readCallback(uri: URL) {
+  public async readCallback(uri: URL, _extra: unknown) {
     // Generate comprehensive markdown documentation
     const markdown = this.generateMarkdown();
 
