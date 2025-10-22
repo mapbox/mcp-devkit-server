@@ -1,13 +1,13 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { expect, vi } from 'vitest';
 import type { Mock } from 'vitest';
-import { HttpPipeline, UserAgentPolicy } from '../../src/utils/httpPipeline.js';
+import {
+  PolicyPipeline,
+  UserAgentPolicy
+} from '../../src/utils/fetchRequest.js';
 
-export function setupHttpRequest(overrides?: Partial<Response>) {
-  const mockHttpRequest = vi.fn();
-  mockHttpRequest.mockResolvedValue({
+export function setupFetch(overrides?: any) {
+  const mockFetch = vi.fn();
+  mockFetch.mockResolvedValue({
     ok: true,
     status: 200,
     statusText: 'OK',
@@ -18,10 +18,10 @@ export function setupHttpRequest(overrides?: Partial<Response>) {
 
   // Build a real pipeline with UserAgentPolicy
   const userAgent = 'TestServer/1.0.0 (default, no-tag, abcdef)';
-  const pipeline = new HttpPipeline(mockHttpRequest);
+  const pipeline = new PolicyPipeline(mockFetch);
   pipeline.usePolicy(new UserAgentPolicy(userAgent));
 
-  return { httpRequest: pipeline.execute.bind(pipeline), mockHttpRequest };
+  return { fetch: pipeline.fetch.bind(pipeline), mockFetch };
 }
 
 export function assertHeadersSent(mockFetch: Mock) {

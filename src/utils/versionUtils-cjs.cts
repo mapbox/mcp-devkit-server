@@ -1,6 +1,3 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 

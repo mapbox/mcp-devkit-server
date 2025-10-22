@@ -1,17 +1,12 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TilequeryTool } from '../../../src/tools/tilequery-tool/TilequeryTool.js';
-import { TilequeryInput } from '../../../src/tools/tilequery-tool/TilequeryTool.input.schema.js';
-import { setupHttpRequest } from '../../utils/httpPipelineUtils.js';
+import { TilequeryInput } from '../../../src/tools/tilequery-tool/TilequeryTool.schema.js';
 
 describe('TilequeryTool', () => {
   let tool: TilequeryTool;
 
   beforeEach(() => {
-    const { httpRequest } = setupHttpRequest();
-    tool = new TilequeryTool({ httpRequest });
+    tool = new TilequeryTool();
   });
 
   describe('constructor', () => {

@@ -1,6 +1,3 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { z } from 'zod';
 
 // Define a loose GeoJSON schema that accepts any valid GeoJSON structure

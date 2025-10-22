@@ -1,7 +1,3 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type {
   GeoJSON,
   Feature,
@@ -14,13 +10,9 @@ import { BaseTool } from '../BaseTool.js';
 import {
   BoundingBoxSchema,
   BoundingBoxInput
-} from './BoundingBoxTool.input.schema.js';
-import { BoundingBoxOutputSchema } from './BoundingBoxTool.output.schema.js';
+} from './BoundingBoxTool.schema.js';
 
-export class BoundingBoxTool extends BaseTool<
-  typeof BoundingBoxSchema,
-  typeof BoundingBoxOutputSchema
-> {
+export class BoundingBoxTool extends BaseTool<typeof BoundingBoxSchema> {
   readonly name = 'bounding_box_tool';
   readonly description =
     'Calculates bounding box of given GeoJSON content, returns as [minX, minY, maxX, maxY]';
@@ -33,49 +25,26 @@ export class BoundingBoxTool extends BaseTool<
   };
 
   constructor() {
-    super({
-      inputSchema: BoundingBoxSchema,
-      outputSchema: BoundingBoxOutputSchema
-    });
+    super({ inputSchema: BoundingBoxSchema });
   }
 
-  protected async execute(input: BoundingBoxInput): Promise<CallToolResult> {
+  protected async execute(
+    input: BoundingBoxInput
+  ): Promise<{ type: 'text'; text: string }> {
     const { geojson } = input;
 
-    // Calculate bounding box
-    let bbox;
-    try {
-      // Parse GeoJSON if it's a string
-      const geojsonObject =
-        typeof geojson === 'string'
-          ? (JSON.parse(geojson) as GeoJSON)
-          : (geojson as GeoJSON);
+    // Parse GeoJSON if it's a string
+    const geojsonObject =
+      typeof geojson === 'string'
+        ? (JSON.parse(geojson) as GeoJSON)
+        : (geojson as GeoJSON);
 
-      bbox = this.calculateBoundingBox(geojsonObject);
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Error calculating bounding box: ${(error as Error).message}`
-          }
-        ],
-        structuredContent: {
-          error: (error as Error).message
-        },
-        isError: true
-      };
-    }
+    // Calculate bounding box
+    const bbox = this.calculateBoundingBox(geojsonObject);
 
     return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({ bbox }, null, 2)
-        }
-      ],
-      structuredContent: { bbox },
-      isError: false
+      type: 'text',
+      text: JSON.stringify(bbox, null, 2)
     };
   }
 
@@ -161,5 +130,14 @@ export class BoundingBoxTool extends BaseTool<
     }
 
     return [minX, minY, maxX, maxY];
+  }
+
+  private isPosition(coords: unknown): coords is Position {
+    return (
+      Array.isArray(coords) &&
+      coords.length >= 2 &&
+      typeof coords[0] === 'number' &&
+      typeof coords[1] === 'number'
+    );
   }
 }

@@ -1,13 +1,9 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { HttpRequest } from '../../utils/types.js';
+import { fetchClient } from '../../utils/fetchRequest.js';
 import { BaseTool } from '../BaseTool.js';
 import {
   GetMapboxDocSourceSchema,
   GetMapboxDocSourceInput
-} from './GetMapboxDocSourceTool.input.schema.js';
+} from './GetMapboxDocSourceTool.schema.js';
 
 export class GetMapboxDocSourceTool extends BaseTool<
   typeof GetMapboxDocSourceSchema
@@ -23,59 +19,31 @@ export class GetMapboxDocSourceTool extends BaseTool<
     title: 'Get Mapbox Documentation Tool'
   };
 
-  private httpRequest: HttpRequest;
-
-  constructor(params: { httpRequest: HttpRequest }) {
-    super({
-      inputSchema: GetMapboxDocSourceSchema
-    });
-    this.httpRequest = params.httpRequest;
+  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
+    super({ inputSchema: GetMapboxDocSourceSchema });
   }
 
   protected async execute(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _input: GetMapboxDocSourceInput
-  ): Promise<CallToolResult> {
+  ): Promise<{ type: 'text'; text: string }> {
     try {
-      const response = await this.httpRequest(
-        'https://docs.mapbox.com/llms.txt'
-      );
+      const response = await this.fetch('https://docs.mapbox.com/llms.txt');
 
       if (!response.ok) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Failed to fetch Mapbox documentation: ${response.statusText}`
-            }
-          ],
-          isError: true
-        };
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const content = await response.text();
 
       return {
-        content: [
-          {
-            type: 'text',
-            text: content
-          }
-        ],
-        isError: false
+        type: 'text',
+        text: content
       };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `Failed to fetch Mapbox documentation: ${errorMessage}`
-          }
-        ],
-        isError: true
-      };
+      throw new Error(`Failed to fetch Mapbox documentation: ${errorMessage}`);
     }
   }
 }

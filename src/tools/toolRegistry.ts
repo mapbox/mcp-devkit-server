@@ -1,6 +1,3 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { BoundingBoxTool } from './bounding-box-tool/BoundingBoxTool.js';
 import { CountryBoundingBoxTool } from './bounding-box-tool/CountryBoundingBoxTool.js';
 import { CoordinateConversionTool } from './coordinate-conversion-tool/CoordinateConversionTool.js';
@@ -17,26 +14,25 @@ import { StyleBuilderTool } from './style-builder-tool/StyleBuilderTool.js';
 import { StyleComparisonTool } from './style-comparison-tool/StyleComparisonTool.js';
 import { TilequeryTool } from './tilequery-tool/TilequeryTool.js';
 import { UpdateStyleTool } from './update-style-tool/UpdateStyleTool.js';
-import { httpRequest } from '../utils/httpPipeline.js';
 
 // Central registry of all tools
 export const ALL_TOOLS = [
-  new ListStylesTool({ httpRequest }),
-  new CreateStyleTool({ httpRequest }),
-  new RetrieveStyleTool({ httpRequest }),
-  new UpdateStyleTool({ httpRequest }),
-  new DeleteStyleTool({ httpRequest }),
+  new ListStylesTool(),
+  new CreateStyleTool(),
+  new RetrieveStyleTool(),
+  new UpdateStyleTool(),
+  new DeleteStyleTool(),
   new PreviewStyleTool(),
   new StyleBuilderTool(),
   new GeojsonPreviewTool(),
-  new CreateTokenTool({ httpRequest }),
-  new ListTokensTool({ httpRequest }),
+  new CreateTokenTool(),
+  new ListTokensTool(),
   new BoundingBoxTool(),
   new CountryBoundingBoxTool(),
   new CoordinateConversionTool(),
-  new GetMapboxDocSourceTool({ httpRequest }),
+  new GetMapboxDocSourceTool(),
   new StyleComparisonTool(),
-  new TilequeryTool({ httpRequest })
+  new TilequeryTool()
 ] as const;
 
 export type ToolInstance = (typeof ALL_TOOLS)[number];

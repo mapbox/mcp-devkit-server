@@ -1,35 +1,27 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { getVersionInfo } from './versionUtils.js';
-import { type HttpRequest } from './types.js';
 
-function createRandomId(prefix: string): string {
-  return `${prefix}${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-}
-
-export interface HttpPolicy {
+export interface FetchPolicy {
   id: string;
   handle(
     input: string | URL | Request,
     init: RequestInit,
-    next: HttpRequest
+    next: typeof fetch
   ): Promise<Response>;
 }
 
-export class HttpPipeline {
-  private policies: HttpPolicy[] = [];
-  private httpRequestImpl: HttpRequest;
+export class PolicyPipeline {
+  private policies: FetchPolicy[] = [];
+  private fetchImpl: typeof fetch;
 
-  constructor(httpRequestImpl?: HttpRequest) {
-    this.httpRequestImpl = httpRequestImpl ?? fetch;
+  constructor(fetchImpl?: typeof fetch) {
+    this.fetchImpl = fetchImpl ?? fetch;
   }
 
-  usePolicy(policy: HttpPolicy) {
+  usePolicy(policy: FetchPolicy) {
     this.policies.push(policy);
   }
 
-  removePolicy(policyOrId: HttpPolicy | string) {
+  removePolicy(policyOrId: FetchPolicy | string) {
     if (typeof policyOrId === 'string') {
       this.policies = this.policies.filter((p) => p.id !== policyOrId);
     } else {
@@ -37,7 +29,7 @@ export class HttpPipeline {
     }
   }
 
-  findPolicyById(id: string): HttpPolicy | undefined {
+  findPolicyById(id: string): FetchPolicy | undefined {
     return this.policies.find((p) => p.id === id);
   }
 
@@ -45,7 +37,7 @@ export class HttpPipeline {
     return this.policies;
   }
 
-  async execute(
+  async fetch(
     input: string | URL | Request,
     init: RequestInit = {}
   ): Promise<Response> {
@@ -55,32 +47,31 @@ export class HttpPipeline {
       options: RequestInit
     ): Promise<Response> => {
       if (i < this.policies.length) {
-        return this.policies[i].handle(
-          req,
-          options,
-          (nextReq: string | URL | Request, nextOptions?: RequestInit) =>
-            dispatch(i + 1, nextReq, nextOptions || {})
+        return this.policies[i].handle(req, options, (nextReq, nextOptions) =>
+          dispatch(i + 1, nextReq, nextOptions!)
         );
       }
-      return this.httpRequestImpl(req, options); // Use injected httpRequest
+      return this.fetchImpl(req, options); // Use injected fetch
     };
     return dispatch(0, input, init);
   }
 }
 
-export class UserAgentPolicy implements HttpPolicy {
+export class UserAgentPolicy implements FetchPolicy {
   id: string;
 
   constructor(
     private userAgent: string,
     id?: string
   ) {
-    this.id = id ?? createRandomId('user-agent-');
+    this.id =
+      id ??
+      `user-agent-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
   async handle(
     input: string | URL | Request,
     init: RequestInit,
-    next: HttpRequest
+    next: typeof fetch
   ): Promise<Response> {
     let headers: Headers | Record<string, string>;
 
@@ -115,7 +106,7 @@ export class UserAgentPolicy implements HttpPolicy {
   }
 }
 
-export class RetryPolicy implements HttpPolicy {
+export class RetryPolicy implements FetchPolicy {
   id: string;
 
   constructor(
@@ -124,13 +115,15 @@ export class RetryPolicy implements HttpPolicy {
     private maxDelayMs: number = 2000,
     id?: string
   ) {
-    this.id = id ?? createRandomId('retry-');
+    this.id =
+      id ??
+      `retry-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
   }
 
   async handle(
     input: string | URL | Request,
     init: RequestInit,
-    next: HttpRequest
+    next: typeof fetch
   ): Promise<Response> {
     let attempt = 0;
     let lastError: Response | undefined;
@@ -160,12 +153,12 @@ export class RetryPolicy implements HttpPolicy {
   }
 }
 
-const pipeline = new HttpPipeline();
+const pipeline = new PolicyPipeline();
 const versionInfo = getVersionInfo();
 pipeline.usePolicy(
   UserAgentPolicy.fromVersionInfo(versionInfo, 'system-user-agent-policy')
 );
 pipeline.usePolicy(new RetryPolicy(3, 200, 2000, 'system-retry-policy'));
 
-export const httpRequest = pipeline.execute.bind(pipeline);
-export const systemHttpPipeline = pipeline;
+export const fetchClient = pipeline.fetch.bind(pipeline);
+export const systemFetchPipeline = pipeline;
