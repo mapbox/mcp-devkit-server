@@ -1,11 +1,20 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BaseTool } from '../BaseTool.js';
+import {
+  CoordinateConversionOutput,
+  CoordinateConversionOutputSchema
+} from './CoordinateConversionTool.output.schema.js';
 import {
   CoordinateConversionSchema,
   CoordinateConversionInput
-} from './CoordinateConversionTool.schema.js';
+} from './CoordinateConversionTool.input.schema.js';
 
 export class CoordinateConversionTool extends BaseTool<
-  typeof CoordinateConversionSchema
+  typeof CoordinateConversionSchema,
+  typeof CoordinateConversionOutputSchema
 > {
   readonly name = 'coordinate_conversion_tool';
   readonly description =
@@ -19,53 +28,90 @@ export class CoordinateConversionTool extends BaseTool<
   };
 
   constructor() {
-    super({ inputSchema: CoordinateConversionSchema });
+    super({
+      inputSchema: CoordinateConversionSchema,
+      outputSchema: CoordinateConversionOutputSchema
+    });
   }
 
   protected async execute(
     input: CoordinateConversionInput
-  ): Promise<{ type: 'text'; text: string }> {
+  ): Promise<CallToolResult> {
     const { coordinates, from, to } = input;
 
     if (from === to) {
+      const outputResult: CoordinateConversionOutput = {
+        input: coordinates,
+        output: coordinates,
+        from,
+        to,
+        message: 'No conversion needed - source and target are the same'
+      };
+
       return {
-        type: 'text',
-        text: JSON.stringify(
+        content: [
           {
-            input: coordinates,
-            output: coordinates,
-            from,
-            to,
-            message: 'No conversion needed - source and target are the same'
-          },
-          null,
-          2
-        )
+            type: 'text',
+            text: JSON.stringify(outputResult, null, 2)
+          }
+        ],
+        isError: false,
+        structuredContent: outputResult
       };
     }
 
     let result: [number, number];
 
-    if (from === 'wgs84' && to === 'epsg3857') {
-      result = this.wgs84ToEpsg3857(coordinates[0], coordinates[1]);
-    } else if (from === 'epsg3857' && to === 'wgs84') {
-      result = this.epsg3857ToWgs84(coordinates[0], coordinates[1]);
-    } else {
-      throw new Error(`Unsupported conversion: ${from} to ${to}`);
+    const method =
+      from === 'wgs84' && to === 'epsg3857'
+        ? this.wgs84ToEpsg3857.bind(this)
+        : from === 'epsg3857' && to === 'wgs84'
+          ? this.epsg3857ToWgs84.bind(this)
+          : undefined;
+
+    if (!method) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Unsupported conversion: ${from} to ${to}`
+          }
+        ],
+        isError: true
+      };
     }
 
+    try {
+      result = method(coordinates[0], coordinates[1]);
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `Error during conversion: ${(error as Error).message}`
+          }
+        ],
+        isError: true
+      };
+    }
+
+    const outputResult: CoordinateConversionOutput = {
+      input: coordinates,
+      output: result,
+      from,
+      to,
+      message: 'Conversion successful'
+    };
+
     return {
-      type: 'text',
-      text: JSON.stringify(
+      content: [
         {
-          input: coordinates,
-          output: result,
-          from,
-          to
-        },
-        null,
-        2
-      )
+          type: 'text',
+          text: JSON.stringify(outputResult, null, 2)
+        }
+      ],
+      isError: false,
+      structuredContent: outputResult
     };
   }
 

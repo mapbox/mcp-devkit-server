@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { z } from 'zod';
 
 export const CoordinateConversionSchema = z.object({

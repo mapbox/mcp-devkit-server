@@ -1,9 +1,14 @@
-import { fetchClient } from '../../utils/fetchRequest.js';
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { HttpRequest } from '../../utils/types.js';
+import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   DeleteStyleSchema,
   DeleteStyleInput
-} from './DeleteStyleTool.schema.js';
+} from './DeleteStyleTool.input.schema.js';
 
 export class DeleteStyleTool extends MapboxApiBasedTool<
   typeof DeleteStyleSchema
@@ -18,33 +23,33 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
     title: 'Delete Mapbox Style Tool'
   };
 
-  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
-    super({ inputSchema: DeleteStyleSchema });
+  constructor(params: { httpRequest: HttpRequest }) {
+    super({ inputSchema: DeleteStyleSchema, httpRequest: params.httpRequest });
   }
 
   protected async execute(
     input: DeleteStyleInput,
     accessToken?: string
-  ): Promise<any> {
-    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
+  ): Promise<CallToolResult> {
+    const username = getUserNameFromToken(accessToken);
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;
 
-    const response = await this.fetch(url, {
+    const response = await this.httpRequest(url, {
       method: 'DELETE'
     });
 
-    if (!response.ok) {
-      throw new Error(
-        `Failed to delete style: ${response.status} ${response.statusText}`
-      );
+    if (response.status !== 204) {
+      return this.handleApiError(response, 'delete style');
     }
 
-    // Delete typically returns 204 No Content
-    if (response.status === 204) {
-      return { success: true, message: 'Style deleted successfully' };
-    }
-
-    const data = await response.json();
-    return data;
+    return {
+      content: [
+        {
+          type: 'text',
+          text: 'Style deleted successfully'
+        }
+      ],
+      isError: false
+    };
   }
 }

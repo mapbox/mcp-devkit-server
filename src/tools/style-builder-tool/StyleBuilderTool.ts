@@ -1,8 +1,12 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { BaseTool } from '../BaseTool.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import {
   StyleBuilderToolSchema,
   type StyleBuilderToolInput
-} from './StyleBuilderTool.schema.js';
+} from './StyleBuilderTool.input.schema.js';
 // Using STREETS_V8_FIELDS as single source of truth instead of MAPBOX_STYLE_LAYERS
 import { STREETS_V8_FIELDS } from '../../constants/mapboxStreetsV8Fields.js';
 import type { Layer, Filter, MapboxStyle } from '../../types/mapbox-style.js';
@@ -52,7 +56,6 @@ const SOURCE_LAYER_GEOMETRY: Record<
 
 export class StyleBuilderTool extends BaseTool<typeof StyleBuilderToolSchema> {
   name = 'style_builder_tool';
-  private currentSourceLayer?: string; // Track current source layer for better error messages
   readonly annotations = {
     readOnlyHint: true,
     destructiveHint: false,
@@ -126,7 +129,9 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
     super({ inputSchema: StyleBuilderToolSchema });
   }
 
-  protected async execute(input: StyleBuilderToolInput) {
+  protected async execute(
+    input: StyleBuilderToolInput
+  ): Promise<CallToolResult> {
     try {
       const result = this.buildStyle(input);
       const { style, corrections, layerHelp, availableProperties } = result;
@@ -1435,9 +1440,6 @@ ${JSON.stringify(style, null, 2)}
   ): { filter: Filter | null; corrections: string[] } {
     const filters: unknown[] = [];
     const corrections: string[] = [];
-
-    // Set current source layer for better error messages
-    this.currentSourceLayer = sourceLayer;
 
     // Get field definitions for this source layer
     const layerFields =

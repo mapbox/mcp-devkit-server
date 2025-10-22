@@ -1,9 +1,13 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { GeoJSON } from 'geojson';
 import { BaseTool } from '../BaseTool.js';
 import {
   GeojsonPreviewSchema,
   GeojsonPreviewInput
-} from './GeojsonPreviewTool.schema.js';
+} from './GeojsonPreviewTool.input.schema.js';
 
 export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
   name = 'geojson_preview_tool';
@@ -45,16 +49,22 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
     );
   }
 
-  protected async execute(
-    input: GeojsonPreviewInput
-  ): Promise<{ type: 'text'; text: string }> {
+  protected async execute(input: GeojsonPreviewInput): Promise<CallToolResult> {
     try {
       // Parse and validate JSON format
       const geojsonData = JSON.parse(input.geojson);
 
       // Validate GeoJSON structure
       if (!this.isValidGeoJSON(geojsonData)) {
-        throw new Error('Invalid GeoJSON structure');
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: 'GeoJSON processing failed: Invalid GeoJSON structure'
+            }
+          ]
+        };
       }
 
       // Generate geojson.io URL
@@ -63,13 +73,26 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
       const geojsonIOUrl = `https://geojson.io/#data=data:application/json,${encodedGeoJSON}`;
 
       return {
-        type: 'text',
-        text: geojsonIOUrl
+        isError: false,
+        content: [
+          {
+            type: 'text',
+            text: geojsonIOUrl
+          }
+        ]
       };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      throw new Error(`GeoJSON processing failed: ${errorMessage}`);
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text: `GeoJSON processing failed: ${errorMessage}`
+          }
+        ]
+      };
     }
   }
 }

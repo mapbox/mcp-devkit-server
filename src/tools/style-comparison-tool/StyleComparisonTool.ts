@@ -1,9 +1,13 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BaseTool } from '../BaseTool.js';
-import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   StyleComparisonSchema,
   StyleComparisonInput
 } from './StyleComparisonTool.schema.js';
+import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 
 export class StyleComparisonTool extends BaseTool<
   typeof StyleComparisonSchema
@@ -39,7 +43,7 @@ export class StyleComparisonTool extends BaseTool<
 
     // If it's just a style ID, try to get username from the token
     try {
-      const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
+      const username = getUserNameFromToken(accessToken);
       return `${username}/${style}`;
     } catch (error) {
       throw new Error(
@@ -54,10 +58,27 @@ export class StyleComparisonTool extends BaseTool<
 
   protected async execute(
     input: StyleComparisonInput
-  ): Promise<{ type: 'text'; text: string }> {
-    // Process style IDs to get username/styleId format
-    const beforeStyleId = this.processStyleId(input.before, input.accessToken);
-    const afterStyleId = this.processStyleId(input.after, input.accessToken);
+  ): Promise<CallToolResult> {
+    let beforeStyleId;
+    let afterStyleId;
+    try {
+      // Process style IDs to get username/styleId format
+      beforeStyleId = this.processStyleId(input.before, input.accessToken);
+      afterStyleId = this.processStyleId(input.after, input.accessToken);
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text:
+              error instanceof Error
+                ? error.message
+                : 'An unknown error occurred'
+          }
+        ],
+        isError: true
+      };
+    }
 
     // Build the comparison URL
     const params = new URLSearchParams();
@@ -79,8 +100,13 @@ export class StyleComparisonTool extends BaseTool<
     }
 
     return {
-      type: 'text',
-      text: url
+      content: [
+        {
+          type: 'text',
+          text: url
+        }
+      ],
+      isError: false
     };
   }
 }
