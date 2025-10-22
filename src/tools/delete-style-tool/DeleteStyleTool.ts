@@ -1,14 +1,9 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { HttpRequest } from '../../utils/types.js';
-import { getUserNameFromToken } from '../../utils/jwtUtils.js';
+import { fetchClient } from '../../utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   DeleteStyleSchema,
   DeleteStyleInput
-} from './DeleteStyleTool.input.schema.js';
+} from './DeleteStyleTool.schema.js';
 
 export class DeleteStyleTool extends MapboxApiBasedTool<
   typeof DeleteStyleSchema
@@ -23,33 +18,33 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
     title: 'Delete Mapbox Style Tool'
   };
 
-  constructor(params: { httpRequest: HttpRequest }) {
-    super({ inputSchema: DeleteStyleSchema, httpRequest: params.httpRequest });
+  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
+    super({ inputSchema: DeleteStyleSchema });
   }
 
   protected async execute(
     input: DeleteStyleInput,
     accessToken?: string
-  ): Promise<CallToolResult> {
-    const username = getUserNameFromToken(accessToken);
+  ): Promise<any> {
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;
 
-    const response = await this.httpRequest(url, {
+    const response = await this.fetch(url, {
       method: 'DELETE'
     });
 
-    if (response.status !== 204) {
-      return this.handleApiError(response, 'delete style');
+    if (!response.ok) {
+      throw new Error(
+        `Failed to delete style: ${response.status} ${response.statusText}`
+      );
     }
 
-    return {
-      content: [
-        {
-          type: 'text',
-          text: 'Style deleted successfully'
-        }
-      ],
-      isError: false
-    };
+    // Delete typically returns 204 No Content
+    if (response.status === 204) {
+      return { success: true, message: 'Style deleted successfully' };
+    }
+
+    const data = await response.json();
+    return data;
   }
 }

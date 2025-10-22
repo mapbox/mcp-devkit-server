@@ -1,22 +1,9 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { HttpRequest } from '../../utils/types.js';
+import { fetchClient } from '../../utils/fetchRequest.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
-import {
-  ListTokensSchema,
-  ListTokensInput
-} from './ListTokensTool.input.schema.js';
-import { getUserNameFromToken } from '../../utils/jwtUtils.js';
-import {
-  ListTokensOutputSchema,
-  TokenObjectSchema
-} from './ListTokensTool.output.schema.js';
+import { ListTokensSchema, ListTokensInput } from './ListTokensTool.schema.js';
 
 export class ListTokensTool extends MapboxApiBasedTool<
-  typeof ListTokensSchema,
-  typeof ListTokensOutputSchema
+  typeof ListTokensSchema
 > {
   readonly name = 'list_tokens_tool';
   readonly description =
@@ -29,44 +16,19 @@ export class ListTokensTool extends MapboxApiBasedTool<
     title: 'List Mapbox Tokens Tool'
   };
 
-  constructor(params: { httpRequest: HttpRequest }) {
-    super({
-      inputSchema: ListTokensSchema,
-      outputSchema: ListTokensOutputSchema,
-      httpRequest: params.httpRequest
-    });
+  constructor(private fetchImpl: typeof fetch = fetchClient) {
+    super({ inputSchema: ListTokensSchema });
   }
 
   protected async execute(
     input: ListTokensInput,
     accessToken?: string
-  ): Promise<CallToolResult> {
+  ): Promise<{ type: 'text'; text: string }> {
     if (!accessToken) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text: 'MAPBOX_ACCESS_TOKEN is not set'
-          }
-        ]
-      };
+      throw new Error('MAPBOX_ACCESS_TOKEN is not set');
     }
 
-    let userName;
-    try {
-      userName = getUserNameFromToken(accessToken);
-    } catch (error) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text: `Invalid access token: ${(error as Error).message}`
-          }
-        ]
-      };
-    }
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
 
     this.log(
       'info',
@@ -94,7 +56,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
     }
 
     let url: string | null =
-      `${MapboxApiBasedTool.mapboxApiEndpoint}tokens/v2/${userName}?${params.toString()}`;
+      `${MapboxApiBasedTool.mapboxApiEndpoint}tokens/v2/${username}?${params.toString()}`;
     const allTokens: unknown[] = [];
     let pageCount = 0;
     let nextPageUrl: string | null = null;
@@ -110,7 +72,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
         this.log('info', `ListTokensTool: Fetching page ${pageCount}`);
         this.log('debug', `ListTokensTool: Fetching URL: ${url}`);
 
-        const response = await this.httpRequest(url, {
+        const response = await this.fetchImpl(url, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json'
@@ -118,7 +80,14 @@ export class ListTokensTool extends MapboxApiBasedTool<
         });
 
         if (!response.ok) {
-          return this.handleApiError(response, 'list tokens');
+          const errorBody = await response.text();
+          this.log(
+            'error',
+            `ListTokensTool: API Error - Status: ${response.status}, Body: ${errorBody}`
+          );
+          throw new Error(
+            `Failed to list tokens: ${response.status} ${response.statusText}`
+          );
         }
 
         const data = await response.json();
@@ -128,24 +97,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
           ? data
           : (data as { tokens?: unknown[] }).tokens || [];
 
-        // Validate tokens array against TokenObjectSchema
-        const parseResult = TokenObjectSchema.array().safeParse(tokens);
-        if (!parseResult.success) {
-          this.log(
-            'error',
-            `ListTokensTool: Token array schema validation failed\n${parseResult.error}`
-          );
-          return {
-            isError: true,
-            content: [
-              {
-                type: 'text',
-                text: `ListTokensTool: Response does not conform to token array schema:\n${parseResult.error}`
-              }
-            ]
-          };
-        }
-        allTokens.push(...parseResult.data);
+        allTokens.push(...tokens);
         this.log(
           'info',
           `ListTokensTool: Retrieved ${tokens.length} tokens on page ${pageCount}`
@@ -201,26 +153,14 @@ export class ListTokensTool extends MapboxApiBasedTool<
       }
 
       return {
-        content: [
-          {
-            type: 'text',
-            text: JSON.stringify(result, null, 2)
-          }
-        ],
-        structuredContent: result,
-        isError: false
+        type: 'text',
+        text: JSON.stringify(result, null, 2)
       };
     } catch (error) {
-      this.log('error', `ListTokensTool: Unexpected error: ${error}`);
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text: `ListTokensTool: Unexpected error: ${error}`
-          }
-        ]
-      };
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to list tokens: ${String(error)}`);
     }
   }
 

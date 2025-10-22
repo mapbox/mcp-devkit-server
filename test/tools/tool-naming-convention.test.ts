@@ -3,7 +3,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { BaseTool } from '../../src/tools/BaseTool.js';
 import { pathToFileURL } from 'node:url';
-import { setupHttpRequest } from '../utils/httpPipelineUtils.js';
 
 async function discoverTools(): Promise<any[]> {
   const toolsDir = path.resolve(
@@ -11,9 +10,6 @@ async function discoverTools(): Promise<any[]> {
     '../../src/tools'
   );
   const tools: any[] = [];
-
-  // Setup httpRequest for tools that need it
-  const { httpRequest } = setupHttpRequest();
 
   // Find all directories that end with '-tool'
   const entries = fs.readdirSync(toolsDir, { withFileTypes: true });
@@ -43,17 +39,7 @@ async function discoverTools(): Promise<any[]> {
         );
 
         for (const toolClass of toolClasses) {
-          try {
-            // Try to instantiate with httpRequest parameter (for MapboxApiBasedTool subclasses)
-            tools.push(new (toolClass as any)({ httpRequest }));
-          } catch (error) {
-            // Fall back to no-arg constructor (for other tools)
-            try {
-              tools.push(new (toolClass as any)());
-            } catch (innerError) {
-              throw error; // Re-throw the original error
-            }
-          }
+          tools.push(new (toolClass as any)());
         }
       } catch (error) {
         console.warn(

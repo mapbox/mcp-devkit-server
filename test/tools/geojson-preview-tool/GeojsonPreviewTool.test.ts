@@ -1,6 +1,3 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { GeojsonPreviewTool } from '../../../src/tools/geojson-preview-tool/GeojsonPreviewTool.js';
 
@@ -20,7 +17,7 @@ describe('GeojsonPreviewTool', () => {
 
     it('should have correct input schema', async () => {
       const { GeojsonPreviewSchema } = await import(
-        '../../../src/tools/geojson-preview-tool/GeojsonPreviewTool.input.schema.js'
+        '../../../src/tools/geojson-preview-tool/GeojsonPreviewTool.schema.js'
       );
       expect(GeojsonPreviewSchema).toBeDefined();
     });

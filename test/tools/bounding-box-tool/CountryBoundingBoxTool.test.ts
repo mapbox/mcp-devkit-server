@@ -1,6 +1,3 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CountryBoundingBoxTool } from '../../../src/tools/bounding-box-tool/CountryBoundingBoxTool.js';
 
@@ -21,9 +18,7 @@ describe('CountryBoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
-      expect(bbox).toEqual({
-        bbox: [73.599819, 21.144707, 134.762115, 53.424591]
-      });
+      expect(bbox).toEqual([73.599819, 21.144707, 134.762115, 53.424591]);
     });
 
     it('should return bounding box for valid country code - United States (US)', async () => {
@@ -33,9 +28,7 @@ describe('CountryBoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
-      expect(bbox).toEqual({
-        bbox: [-168.069693, 25.133463, -67.292669, 71.284212]
-      });
+      expect(bbox).toEqual([-168.069693, 25.133463, -67.292669, 71.284212]);
     });
 
     it('should return bounding box for valid country code - UAE (AE)', async () => {
@@ -45,9 +38,7 @@ describe('CountryBoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
-      expect(bbox).toEqual({
-        bbox: [51.590737, 22.705773, 56.376954, 26.050548]
-      });
+      expect(bbox).toEqual([51.590737, 22.705773, 56.376954, 26.050548]);
     });
 
     it('should handle lowercase country codes', async () => {
@@ -57,9 +48,7 @@ describe('CountryBoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
-      expect(bbox).toEqual({
-        bbox: [73.599819, 21.144707, 134.762115, 53.424591]
-      });
+      expect(bbox).toEqual([73.599819, 21.144707, 134.762115, 53.424591]);
     });
 
     it('should handle mixed case country codes', async () => {
@@ -69,9 +58,7 @@ describe('CountryBoundingBoxTool', () => {
       expect(result.content[0]).toHaveProperty('type', 'text');
       const textContent = result.content[0] as TextContent;
       const bbox = JSON.parse(textContent.text);
-      expect(bbox).toEqual({
-        bbox: [-168.069693, 25.133463, -67.292669, 71.284212]
-      });
+      expect(bbox).toEqual([-168.069693, 25.133463, -67.292669, 71.284212]);
     });
 
     it('should return error for invalid country code', async () => {
@@ -151,7 +138,7 @@ describe('CountryBoundingBoxTool', () => {
 
     it('should have correct input schema', async () => {
       const { CountryBoundingBoxSchema } = await import(
-        '../../../src/tools/bounding-box-tool/CountryBoundingBoxTool.input.schema.js'
+        '../../../src/tools/bounding-box-tool/CountryBoundingBoxTool.schema.js'
       );
       expect(CountryBoundingBoxSchema).toBeDefined();
     });
@@ -175,7 +162,7 @@ describe('CountryBoundingBoxTool', () => {
         if (!result.isError) {
           expect(result.content[0]).toHaveProperty('type', 'text');
           const textContent = result.content[0] as TextContent;
-          const bbox = JSON.parse(textContent.text).bbox;
+          const bbox = JSON.parse(textContent.text);
           expect(Array.isArray(bbox)).toBe(true);
           expect(bbox).toHaveLength(4);
         }

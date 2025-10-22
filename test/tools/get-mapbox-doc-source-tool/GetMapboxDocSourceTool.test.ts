@@ -1,14 +1,10 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { describe, expect, it } from 'vitest';
 import { GetMapboxDocSourceTool } from '../../../src/tools/get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
-import { setupHttpRequest } from '../../utils/httpPipelineUtils.js';
+import { setupFetch } from 'test/utils/fetchRequestUtils.js';
 
 describe('GetMapboxDocSourceTool', () => {
   it('should have correct name and description', () => {
-    const { httpRequest } = setupHttpRequest();
-    const tool = new GetMapboxDocSourceTool({ httpRequest });
+    const tool = new GetMapboxDocSourceTool();
 
     expect(tool.name).toBe('get_latest_mapbox_docs_tool');
     expect(tool.description).toContain(
@@ -30,23 +26,21 @@ This is the Mapbox developer documentation for LLMs.
 ## APIs  
 - Geocoding API for address search
 - Directions API for routing`;
-    const { httpRequest, mockHttpRequest } = setupHttpRequest({
+
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       status: 200,
       text: () => Promise.resolve(mockContent)
     });
 
-    const tool = new GetMapboxDocSourceTool({ httpRequest });
+    const tool = new GetMapboxDocSourceTool(fetch);
     const result = await tool.run({});
 
-    expect(mockHttpRequest).toHaveBeenCalledWith(
-      'https://docs.mapbox.com/llms.txt',
-      {
-        headers: {
-          'User-Agent': 'TestServer/1.0.0 (default, no-tag, abcdef)'
-        }
+    expect(mockFetch).toHaveBeenCalledWith('https://docs.mapbox.com/llms.txt', {
+      headers: {
+        'User-Agent': 'TestServer/1.0.0 (default, no-tag, abcdef)'
       }
-    );
+    });
     expect(result.content).toHaveLength(1);
     expect(result.content[0].type).toBe('text');
 
@@ -57,13 +51,12 @@ This is the Mapbox developer documentation for LLMs.
   });
 
   it('should handle HTTP errors', async () => {
-    const { httpRequest } = setupHttpRequest({
+    const { fetch } = setupFetch({
       ok: false,
-      status: 404,
-      statusText: 'Not Found'
+      status: 404
     });
 
-    const tool = new GetMapboxDocSourceTool({ httpRequest });
+    const tool = new GetMapboxDocSourceTool(fetch);
 
     const result = await tool.run({});
 
@@ -74,16 +67,17 @@ This is the Mapbox developer documentation for LLMs.
       expect(result.content[0].text).toContain(
         'Failed to fetch Mapbox documentation'
       );
-      expect(result.content[0].text).toContain('Not Found');
+      expect(result.content[0].text).toContain('HTTP error! status: 404');
     }
   });
 
   it('should handle network errors', async () => {
-    const { httpRequest } = setupHttpRequest({
+    const { fetch } = setupFetch({
       text: () => Promise.reject(new Error('Network error'))
     });
 
-    const tool = new GetMapboxDocSourceTool({ httpRequest });
+    const tool = new GetMapboxDocSourceTool(fetch);
+
     const result = await tool.run({});
 
     expect(result.isError).toBe(true);
@@ -98,11 +92,12 @@ This is the Mapbox developer documentation for LLMs.
   });
 
   it('should handle unknown errors', async () => {
-    const { httpRequest } = setupHttpRequest({
+    const { fetch } = setupFetch({
       text: () => Promise.reject(new Error('Unknown error occurred'))
     });
 
-    const tool = new GetMapboxDocSourceTool({ httpRequest });
+    const tool = new GetMapboxDocSourceTool(fetch);
+
     const result = await tool.run({});
 
     expect(result.isError).toBe(true);
@@ -119,13 +114,13 @@ This is the Mapbox developer documentation for LLMs.
   it('should work with empty input object', async () => {
     const mockContent = 'Test documentation content';
 
-    const { httpRequest } = setupHttpRequest({
+    const { fetch } = setupFetch({
       ok: true,
       status: 200,
       text: () => Promise.resolve(mockContent)
     });
 
-    const tool = new GetMapboxDocSourceTool({ httpRequest });
+    const tool = new GetMapboxDocSourceTool(fetch);
 
     const result = await tool.run({});
 

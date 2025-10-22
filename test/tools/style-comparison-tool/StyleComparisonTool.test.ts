@@ -1,9 +1,6 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { MapboxApiBasedTool } from '../../../src/tools/MapboxApiBasedTool.js';
 import { StyleComparisonTool } from '../../../src/tools/style-comparison-tool/StyleComparisonTool.js';
-import * as jwtUtils from '../../../src/utils/jwtUtils.js';
 
 describe('StyleComparisonTool', () => {
   let tool: StyleComparisonTool;
@@ -13,7 +10,7 @@ describe('StyleComparisonTool', () => {
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('run', () => {
@@ -40,7 +37,7 @@ describe('StyleComparisonTool', () => {
         before: 'mapbox/streets-v12',
         after: 'mapbox/satellite-v9'
         // Missing accessToken
-      } as any;
+      };
 
       const result = await tool.run(input);
 
@@ -66,7 +63,10 @@ describe('StyleComparisonTool', () => {
     });
 
     it('should handle just style IDs with valid public token', async () => {
-      vi.spyOn(jwtUtils, 'getUserNameFromToken').mockReturnValue('testuser');
+      // Mock MapboxApiBasedTool.getUserNameFromToken to return a username
+      vi.spyOn(MapboxApiBasedTool, 'getUserNameFromToken').mockReturnValue(
+        'testuser'
+      );
 
       const input = {
         before: 'style-id-1',
@@ -102,8 +102,8 @@ describe('StyleComparisonTool', () => {
 
     it('should reject invalid token formats', async () => {
       const input = {
-        before: 'streets-v12',
-        after: 'outdoors-v12',
+        before: 'mapbox/streets-v12',
+        after: 'mapbox/outdoors-v12',
         accessToken: 'invalid.token'
       };
 
@@ -117,11 +117,13 @@ describe('StyleComparisonTool', () => {
 
     it('should return error for style ID without valid username in token', async () => {
       // Mock getUserNameFromToken to throw an error
-      vi.spyOn(jwtUtils, 'getUserNameFromToken').mockImplementation(() => {
-        throw new Error(
-          'MAPBOX_ACCESS_TOKEN does not contain username in payload'
-        );
-      });
+      vi.spyOn(MapboxApiBasedTool, 'getUserNameFromToken').mockImplementation(
+        () => {
+          throw new Error(
+            'MAPBOX_ACCESS_TOKEN does not contain username in payload'
+          );
+        }
+      );
 
       const input = {
         before: 'style-id-only',
@@ -134,7 +136,7 @@ describe('StyleComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Could not determine username for style ID');
+      ).toContain('Could not determine username');
     });
 
     it('should properly encode URL parameters', async () => {

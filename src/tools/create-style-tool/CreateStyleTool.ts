@@ -1,23 +1,13 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { HttpRequest } from '../../utils/types.js';
-import { getUserNameFromToken } from '../../utils/jwtUtils.js';
+import { fetchClient } from '../../utils/fetchRequest.js';
 import { filterExpandedMapboxStyles } from '../../utils/styleUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
-  MapboxStyleInputSchema,
-  MapboxStyleInput
-} from './CreateStyleTool.input.schema.js';
-import {
-  MapboxStyleOutput,
-  MapboxStyleOutputSchema
-} from './CreateStyleTool.output.schema.js';
+  CreateStyleSchema,
+  CreateStyleInput
+} from './CreateStyleTool.schema.js';
 
 export class CreateStyleTool extends MapboxApiBasedTool<
-  typeof MapboxStyleInputSchema,
-  typeof MapboxStyleOutputSchema
+  typeof CreateStyleSchema
 > {
   name = 'create_style_tool';
   description = 'Create a new Mapbox style';
@@ -29,58 +19,38 @@ export class CreateStyleTool extends MapboxApiBasedTool<
     title: 'Create Mapbox Style Tool'
   };
 
-  constructor(params: { httpRequest: HttpRequest }) {
-    super({
-      inputSchema: MapboxStyleInputSchema,
-      outputSchema: MapboxStyleOutputSchema,
-      httpRequest: params.httpRequest
-    });
+  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
+    super({ inputSchema: CreateStyleSchema });
   }
 
   protected async execute(
-    input: MapboxStyleInput,
+    input: CreateStyleInput,
     accessToken?: string
-  ): Promise<CallToolResult> {
-    const username = getUserNameFromToken(accessToken);
+  ): Promise<unknown> {
+    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}?access_token=${accessToken}`;
 
-    const response = await this.httpRequest(url, {
+    const payload = {
+      name: input.name,
+      ...input.style
+    };
+
+    const response = await this.fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(input)
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
-      return this.handleApiError(response, 'create style');
-    }
-
-    const rawData = await response.json();
-    // Validate response against schema with graceful fallback
-    let data: MapboxStyleOutput;
-    try {
-      data = MapboxStyleOutputSchema.parse(rawData);
-    } catch (validationError) {
-      this.log(
-        'warning',
-        `Schema validation failed for search response: ${validationError instanceof Error ? validationError.message : 'Unknown validation error'}`
+      throw new Error(
+        `Failed to create style: ${response.status} ${response.statusText}`
       );
-      // Graceful fallback to raw data
-      data = rawData as MapboxStyleOutput;
     }
 
-    this.log('info', `CreateStyleTool: Successfully created style ${data.id}`);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(filterExpandedMapboxStyles(data), null, 2)
-        }
-      ],
-      structuredContent: filterExpandedMapboxStyles(data),
-      isError: false
-    };
+    const data = await response.json();
+    // Return full style but filter out expanded Mapbox styles
+    return filterExpandedMapboxStyles(data);
   }
 }

@@ -1,11 +1,8 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import {
-  setupHttpRequest,
+  setupFetch,
   assertHeadersSent
-} from '../../utils/httpPipelineUtils.js';
+} from '../../utils/fetchRequestUtils.js';
 import { UpdateStyleTool } from '../../../src/tools/update-style-tool/UpdateStyleTool.js';
 
 const mockToken =
@@ -22,36 +19,35 @@ describe('UpdateStyleTool', () => {
 
   describe('tool metadata', () => {
     it('should have correct name and description', () => {
-      const { httpRequest } = setupHttpRequest();
-      const tool = new UpdateStyleTool({ httpRequest });
+      const tool = new UpdateStyleTool();
       expect(tool.name).toBe('update_style_tool');
       expect(tool.description).toBe('Update an existing Mapbox style');
     });
 
     it('should have correct input schema', async () => {
-      const { MapboxStyleInputSchema } = await import(
-        '../../../src/tools/update-style-tool/UpdateStyleTool.input.schema.js'
+      const { UpdateStyleSchema } = await import(
+        '../../../src/tools/update-style-tool/UpdateStyleTool.schema.js'
       );
-      expect(MapboxStyleInputSchema).toBeDefined();
+      expect(UpdateStyleSchema).toBeDefined();
     });
   });
 
   it('sends custom header', async () => {
-    const { httpRequest, mockHttpRequest } = setupHttpRequest({
+    const { fetch, mockFetch } = setupFetch({
       ok: true,
       json: async () => ({ id: 'updated-style-id', name: 'Updated Style' })
     });
 
-    await new UpdateStyleTool({ httpRequest }).run({
+    await new UpdateStyleTool(fetch).run({
       styleId: 'style-123',
       name: 'Updated Style',
       style: { version: 8, sources: {}, layers: [] }
     });
-    assertHeadersSent(mockHttpRequest);
+    assertHeadersSent(mockFetch);
   });
 
   it('handles fetch errors gracefully', async () => {
-    const { httpRequest, mockHttpRequest } = setupHttpRequest({
+    const { fetch, mockFetch } = setupFetch({
       ok: false,
       status: 404,
       statusText: 'Not Found'
@@ -59,7 +55,7 @@ describe('UpdateStyleTool', () => {
 
     let result;
     try {
-      result = await new UpdateStyleTool({ httpRequest }).run({
+      result = await new UpdateStyleTool(fetch).run({
         styleId: 'style-123',
         name: 'Updated Style',
         style: { version: 8, sources: {}, layers: [] }
@@ -78,6 +74,6 @@ describe('UpdateStyleTool', () => {
       type: 'text',
       text: 'Failed to update style: 404 Not Found'
     });
-    assertHeadersSent(mockHttpRequest);
+    assertHeadersSent(mockFetch);
   });
 });

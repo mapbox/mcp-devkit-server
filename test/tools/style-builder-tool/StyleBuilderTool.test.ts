@@ -1,9 +1,6 @@
-// Copyright (c) Mapbox, Inc.
-// Licensed under the MIT License.
-
 import { describe, it, expect, beforeEach } from 'vitest';
 import { StyleBuilderTool } from '../../../src/tools/style-builder-tool/StyleBuilderTool.js';
-import type { StyleBuilderToolInput } from '../../../src/tools/style-builder-tool/StyleBuilderTool.input.schema.js';
+import type { StyleBuilderToolInput } from '../../../src/tools/style-builder-tool/StyleBuilderTool.schema.js';
 
 describe('StyleBuilderTool', () => {
   let tool: StyleBuilderTool;
@@ -26,18 +23,17 @@ describe('StyleBuilderTool', () => {
           {
             layer_type: 'water',
             action: 'color',
-            color: '#0066ff',
-            render_type: 'symbol'
+            color: '#0066ff'
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
 
       expect(result.isError).toBe(false);
       expect(result.content[0].type).toBe('text');
 
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       expect(text).toContain('Style Built Successfully');
       expect(text).toContain('Test Style');
       expect(text).toContain('"#0066ff"');
@@ -46,7 +42,7 @@ describe('StyleBuilderTool', () => {
     it('should handle dark mode', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Dark Mode Style',
-        base_style: 'streets-v12', // Use classic style to test background color
+        base_style: 'streets', // Use classic style to test background color
         layers: [],
         global_settings: {
           mode: 'dark',
@@ -54,10 +50,10 @@ describe('StyleBuilderTool', () => {
         }
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       expect(text).toContain('Mode:** dark');
       expect(text).toContain('#000000');
     });
@@ -73,14 +69,13 @@ describe('StyleBuilderTool', () => {
             layer_type: 'road',
             action: 'color',
             color: '#ff0000',
-            filter_properties: { class: 'primary' },
-            render_type: 'symbol'
+            filter_properties: { class: 'primary' }
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       expect(result.isError).toBe(false);
       expect(text).toContain('#ff0000');
@@ -96,14 +91,13 @@ describe('StyleBuilderTool', () => {
             action: 'highlight',
             color: '#ffff00',
             width: 5,
-            filter_properties: { class: 'major_rail' },
-            render_type: 'symbol'
+            filter_properties: { class: 'major_rail' }
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       expect(result.isError).toBe(false);
       expect(text).toContain('Highlighted');
@@ -117,14 +111,13 @@ describe('StyleBuilderTool', () => {
         layers: [
           {
             layer_type: 'place_label',
-            action: 'hide',
-            render_type: 'symbol'
+            action: 'hide'
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       expect(result.isError).toBe(false);
       expect(text).toContain('Hidden');
@@ -137,14 +130,13 @@ describe('StyleBuilderTool', () => {
         layers: [
           {
             layer_type: 'building',
-            action: 'show',
-            render_type: 'symbol'
+            action: 'show'
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       expect(result.isError).toBe(false);
       expect(text).toContain('Shown');
@@ -162,14 +154,13 @@ describe('StyleBuilderTool', () => {
             action: 'color',
             color: '#ff0000',
             width: 3,
-            filter_properties: { admin_level: 0, maritime: 'false' },
-            render_type: 'symbol'
+            filter_properties: { admin_level: 0, maritime: 'false' }
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       expect(result.isError).toBe(false);
 
@@ -204,14 +195,13 @@ describe('StyleBuilderTool', () => {
             action: 'color',
             color: '#0000ff',
             opacity: 0.5,
-            filter_properties: { admin_level: 1, maritime: 'false' },
-            render_type: 'symbol'
+            filter_properties: { admin_level: 1, maritime: 'false' }
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       expect(result.isError).toBe(false);
 
@@ -240,21 +230,19 @@ describe('StyleBuilderTool', () => {
           {
             layer_type: 'water',
             action: 'color',
-            color: '#0099ff',
-            render_type: 'symbol'
+            color: '#0099ff'
           },
           {
             layer_type: 'landuse',
             filter_properties: { class: 'park' },
             action: 'color',
-            color: '#00ff00',
-            render_type: 'symbol'
+            color: '#00ff00'
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       expect(jsonMatch).toBeTruthy();
@@ -285,12 +273,12 @@ describe('StyleBuilderTool', () => {
       // Test with classic style
       const input: StyleBuilderToolInput = {
         style_name: 'Essential Layers Test',
-        base_style: 'streets-v12', // Use classic style
+        base_style: 'streets', // Use classic style
         layers: [] // No layers specified
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -312,17 +300,16 @@ describe('StyleBuilderTool', () => {
           {
             layer_type: 'unknown_layer' as any,
             action: 'color',
-            color: '#ff0000',
-            render_type: 'symbol'
+            color: '#ff0000'
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
 
       // Should return help message, not error
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       expect(text).toContain('not found');
       expect(text).toContain('Available source layers');
     });
@@ -336,16 +323,15 @@ describe('StyleBuilderTool', () => {
             layer_type: 'road',
             action: 'color',
             color: '#ff0000',
-            filter: ['==', ['get', 'class'], 'motorway'],
-            render_type: 'symbol'
+            filter: ['==', ['get', 'class'], 'motorway']
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -377,10 +363,10 @@ describe('StyleBuilderTool', () => {
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -416,10 +402,10 @@ describe('StyleBuilderTool', () => {
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -456,10 +442,10 @@ describe('StyleBuilderTool', () => {
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -490,10 +476,10 @@ describe('StyleBuilderTool', () => {
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -517,7 +503,7 @@ describe('StyleBuilderTool', () => {
       const tool = new StyleBuilderTool();
       const input: StyleBuilderToolInput = {
         style_name: 'Transit Test',
-        base_style: 'streets-v12',
+        base_style: 'streets',
         layers: [
           {
             layer_type: 'transit',
@@ -525,17 +511,17 @@ describe('StyleBuilderTool', () => {
             color: '#ff0000',
             filter_properties: {
               maki: 'bus'
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
-      const styleJson = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const styleJson = JSON.parse(
+        result.content[0].text.match(/```json\n([\s\S]*?)\n```/)![1]
+      );
 
       const transitLayer = styleJson.layers.find((l: any) =>
         l.id.includes('transit')
@@ -554,24 +540,24 @@ describe('StyleBuilderTool', () => {
       const tool = new StyleBuilderTool();
       const input: StyleBuilderToolInput = {
         style_name: 'Multi Transit Test',
-        base_style: 'streets-v12',
+        base_style: 'streets',
         layers: [
           {
             layer_type: 'transit',
             action: 'highlight',
             filter_properties: {
               maki: ['bus', 'entrance', 'rail-metro']
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
-      const styleJson = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const styleJson = JSON.parse(
+        result.content[0].text.match(/```json\n([\s\S]*?)\n```/)![1]
+      );
 
       const transitLayer = styleJson.layers.find((l: any) =>
         l.id.includes('transit')
@@ -605,11 +591,12 @@ describe('StyleBuilderTool', () => {
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
-      const styleJson = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const styleJson = JSON.parse(
+        result.content[0].text.match(/```json\n([\s\S]*?)\n```/)![1]
+      );
 
       const roadsLayer = styleJson.layers.find((l: any) =>
         l.id.includes('road-toll-true')
@@ -631,16 +618,15 @@ describe('StyleBuilderTool', () => {
             color: '#ff0000',
             filter_properties: {
               class: 'motorway'
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -664,16 +650,15 @@ describe('StyleBuilderTool', () => {
             filter_properties: {
               class: ['motorway', 'trunk'],
               structure: 'bridge'
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -700,16 +685,15 @@ describe('StyleBuilderTool', () => {
               admin_level: 0,
               disputed: 'false',
               maritime: 'false'
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -733,14 +717,13 @@ describe('StyleBuilderTool', () => {
           {
             layer_type: 'water',
             action: 'color',
-            color: '#0099ff',
-            render_type: 'symbol'
+            color: '#0099ff'
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -772,8 +755,7 @@ describe('StyleBuilderTool', () => {
           {
             layer_type: 'water',
             action: 'color',
-            color: '#0099ff',
-            render_type: 'symbol'
+            color: '#0099ff'
           }
         ],
         standard_config: {
@@ -802,8 +784,8 @@ describe('StyleBuilderTool', () => {
         }
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       expect(text).toContain('Standard Config:** 15 properties set');
       expect(text).toContain('Theme: faded');
@@ -834,7 +816,7 @@ describe('StyleBuilderTool', () => {
     it('should generate Classic style with sources', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Classic Style Test',
-        base_style: 'streets-v12',
+        base_style: 'streets',
         layers: [
           {
             layer_type: 'water',
@@ -844,8 +826,8 @@ describe('StyleBuilderTool', () => {
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -876,28 +858,25 @@ describe('StyleBuilderTool', () => {
             layer_type: 'water',
             action: 'color',
             color: '#0099ff',
-            slot: 'bottom',
-            render_type: 'symbol'
+            slot: 'bottom'
           },
           {
             layer_type: 'landuse',
             filter_properties: { class: 'park' },
             action: 'color',
             color: '#00ff00',
-            slot: 'middle',
-            render_type: 'symbol'
+            slot: 'middle'
           },
           {
             layer_type: 'poi_label',
             action: 'show',
-            slot: 'top',
-            render_type: 'symbol'
+            slot: 'top'
           }
         ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -933,12 +912,11 @@ describe('StyleBuilderTool', () => {
             action: 'color',
             color: '#0099ff'
           }
-        ],
-        base_style: 'standard'
+        ]
       };
 
-      const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const result = await tool.execute(input);
+      const text = result.content[0].text;
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -970,16 +948,15 @@ describe('StyleBuilderTool', () => {
             color: '#00ff00',
             filter_properties: {
               type: ['wetland', 'swamp']
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       // No longer expecting auto-correction since we're using the correct layer
       expect(text).toContain('Style Built Successfully');
 
@@ -1013,16 +990,15 @@ describe('StyleBuilderTool', () => {
             color: '#ff0000',
             filter_properties: {
               maki: 'restaurant' // This field only exists in poi_label
-            },
-            render_type: 'symbol'
+            }
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
       expect(text).toContain(
         'Determined source layer "poi_label" from filter properties'
       );
@@ -1038,33 +1014,29 @@ describe('StyleBuilderTool', () => {
           {
             layer_type: 'water',
             action: 'color',
-            color: '#0066ff',
-            render_type: 'symbol'
+            color: '#0066ff'
           },
           {
             layer_type: 'landuse',
             filter_properties: { class: 'park' },
             action: 'highlight',
-            color: '#00ff00',
-            render_type: 'symbol'
+            color: '#00ff00'
           },
           {
             layer_type: 'place_label',
-            action: 'hide',
-            render_type: 'symbol'
+            action: 'hide'
           },
           {
             layer_type: 'building',
-            action: 'show',
-            render_type: 'symbol'
+            action: 'show'
           }
         ]
       };
 
-      const result = await tool.run(input);
+      const result = await tool.execute(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = result.content[0].text;
 
       expect(text).toContain('Layers Configured:** 4');
       expect(text).toContain('Set to #0066ff');
