@@ -2,17 +2,23 @@
 // Licensed under the MIT License.
 
 import { z } from 'zod';
-import { BaseStylePropertiesSchema } from '../../schemas/style.js';
 
-// INPUT Schema - For creating/updating styles (PATCH/POST request body)
-export const MapboxStyleInputSchema = BaseStylePropertiesSchema.extend({
-  name: z
-    .string()
-    .describe('Human-readable name for the style (REQUIRED for updates)')
-    .optional()
-  // These fields should NOT be included in input - they're read-only
-  // If present, they'll be ignored or cause API errors
-}).passthrough();
+// Simplified Mapbox Style Input Schema for updates
+// Only defines essential fields. Additional properties are accepted via .passthrough()
+export const MapboxStyleInputSchema = z
+  .object({
+    name: z.string().optional().describe('Human-readable name for the style'),
+    version: z.literal(8).optional().describe('Style specification version'),
+    sources: z
+      .record(z.any())
+      .optional()
+      .describe('Data source specifications'),
+    layers: z.array(z.any()).optional().describe('Layers in draw order')
+  })
+  .passthrough()
+  .describe(
+    'Mapbox style properties to update. Accepts standard Mapbox Style Specification properties.'
+  );
 
 export const UpdateStyleInputSchema = z.object({
   styleId: z.string().describe('Style ID to update'),
