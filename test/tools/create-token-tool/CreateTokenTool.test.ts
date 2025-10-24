@@ -1,10 +1,14 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 import { describe, it, expect, vi, afterEach, beforeAll } from 'vitest';
 import {
-  setupFetch,
+  setupHttpRequest,
   assertHeadersSent
-} from '../../utils/fetchRequestUtils.js';
+} from '../../utils/httpPipelineUtils.js';
 import { MapboxApiBasedTool } from '../../../src/tools/MapboxApiBasedTool.js';
 import { CreateTokenTool } from '../../../src/tools/create-token-tool/CreateTokenTool.js';
+import { HttpRequest } from 'src/utils/types.js';
 
 // Create a token with username in the payload
 const payload = Buffer.from(JSON.stringify({ u: 'testuser' })).toString(
@@ -23,15 +27,16 @@ describe('CreateTokenTool', () => {
     vi.clearAllMocks();
   });
 
-  function createTokenTool(fetchImpl?: typeof fetch) {
-    const instance = new CreateTokenTool(fetchImpl);
+  function createTokenTool(httpRequest: HttpRequest) {
+    const instance = new CreateTokenTool({ httpRequest });
     instance['log'] = vi.fn();
     return instance;
   }
 
   describe('tool metadata', () => {
     it('should have correct name and description', () => {
-      const tool = createTokenTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = createTokenTool(httpRequest);
       expect(tool.name).toBe('create_token_tool');
       expect(tool.description).toBe(
         'Create a new Mapbox public access token with specified scopes and optional URL restrictions.'
@@ -40,7 +45,7 @@ describe('CreateTokenTool', () => {
 
     it('should have correct input schema', async () => {
       const { CreateTokenSchema } = await import(
-        '../../../src/tools/create-token-tool/CreateTokenTool.schema.js'
+        '../../../src/tools/create-token-tool/CreateTokenTool.input.schema.js'
       );
       expect(CreateTokenSchema).toBeDefined();
     });
@@ -48,7 +53,8 @@ describe('CreateTokenTool', () => {
 
   describe('validation', () => {
     it('validates required input fields', async () => {
-      const tool = createTokenTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = createTokenTool(httpRequest);
       const result = await tool.run({});
 
       expect(result.isError).toBe(true);
@@ -58,7 +64,8 @@ describe('CreateTokenTool', () => {
     });
 
     it('validates allowedUrls array length', async () => {
-      const tool = createTokenTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = createTokenTool(httpRequest);
 
       const urls = new Array(101).fill('https://example.com');
 
@@ -75,7 +82,8 @@ describe('CreateTokenTool', () => {
     });
 
     it('validates invalid scopes', async () => {
-      const tool = createTokenTool();
+      const { httpRequest } = setupHttpRequest();
+      const tool = createTokenTool(httpRequest);
 
       const result = await tool.run({
         note: 'Test token',
@@ -101,8 +109,7 @@ describe('CreateTokenTool', () => {
         vi.stubEnv('MAPBOX_ACCESS_TOKEN', invalidToken);
 
         // Setup fetch mock to prevent actual API calls
-        const { fetch, mockFetch } = setupFetch();
-        mockFetch.mockResolvedValueOnce({
+        const { httpRequest } = setupHttpRequest({
           ok: true,
           status: 200,
           statusText: 'OK',
@@ -110,7 +117,7 @@ describe('CreateTokenTool', () => {
           json: async () => ({ token: 'test-token' })
         } as Response);
 
-        const toolWithInvalidToken = new CreateTokenTool(fetch);
+        const toolWithInvalidToken = new CreateTokenTool({ httpRequest });
         toolWithInvalidToken['log'] = vi.fn();
 
         const result = await toolWithInvalidToken.run({
@@ -142,16 +149,18 @@ describe('CreateTokenTool', () => {
         id: 'cktest123',
         scopes: ['styles:read', 'fonts:read'],
         created: '2024-01-01T00:00:00.000Z',
-        modified: '2024-01-01T00:00:00.000Z'
+        modified: '2024-01-01T00:00:00.000Z',
+        usage: 'pk',
+        client: 'api',
+        default: false
       };
 
-      const { fetch, mockFetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest({
         ok: true,
         json: async () => mockResponse
       } as Response);
 
-      const tool = createTokenTool(fetch);
+      const tool = createTokenTool(httpRequest);
 
       const result = await tool.run({
         note: 'Test token',
@@ -170,7 +179,7 @@ describe('CreateTokenTool', () => {
       });
 
       // Verify the request
-      expect(mockFetch).toHaveBeenCalledWith(
+      expect(mockHttpRequest).toHaveBeenCalledWith(
         `https://api.mapbox.com/tokens/v2/testuser?access_token=eyJhbGciOiJIUzI1NiJ9.${payload}.signature`,
         {
           method: 'POST',
@@ -185,7 +194,7 @@ describe('CreateTokenTool', () => {
       );
 
       // Verify User-Agent header was sent
-      assertHeadersSent(mockFetch);
+      assertHeadersSent(mockHttpRequest);
     });
 
     it('creates a token with allowed URLs', async () => {
@@ -196,16 +205,18 @@ describe('CreateTokenTool', () => {
         scopes: ['styles:read'],
         created: '2024-01-01T00:00:00.000Z',
         modified: '2024-01-01T00:00:00.000Z',
-        allowedUrls: ['https://example.com', 'https://app.example.com']
+        allowedUrls: ['https://example.com', 'https://app.example.com'],
+        usage: 'pk',
+        client: 'api',
+        default: false
       };
 
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest, mockHttpRequest } = setupHttpRequest({
         ok: true,
         json: async () => mockResponse
       } as Response);
 
-      const tool = createTokenTool(fetch);
+      const tool = createTokenTool(httpRequest);
 
       const result = await tool.run({
         note: 'Restricted token',
@@ -218,7 +229,7 @@ describe('CreateTokenTool', () => {
       expect(responseData.allowedUrls).toEqual(mockResponse.allowedUrls);
 
       // Verify the request body included allowedUrls
-      const lastCall = mockFetch.mock.calls[0];
+      const lastCall = mockHttpRequest.mock.calls[0];
       const requestBody = JSON.parse(lastCall[1].body as string);
       expect(requestBody.allowedUrls).toEqual([
         'https://example.com',
@@ -235,16 +246,18 @@ describe('CreateTokenTool', () => {
         scopes: ['styles:read'],
         created: '2024-01-01T00:00:00.000Z',
         modified: '2024-01-01T00:00:00.000Z',
-        expires: expiresAt
+        expires: expiresAt,
+        usage: 'pk',
+        client: 'api',
+        default: false
       };
 
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { mockHttpRequest, httpRequest } = setupHttpRequest({
         ok: true,
         json: async () => mockResponse
       } as Response);
 
-      const tool = createTokenTool(fetch);
+      const tool = createTokenTool(httpRequest);
 
       const result = await tool.run({
         note: 'Token with expiration',
@@ -257,14 +270,13 @@ describe('CreateTokenTool', () => {
       expect(responseData.expires).toEqual(expiresAt);
 
       // Verify the request body included expires
-      const lastCall = mockFetch.mock.calls[0];
+      const lastCall = mockHttpRequest.mock.calls[0];
       const requestBody = JSON.parse(lastCall[1].body as string);
       expect(requestBody.expires).toEqual(expiresAt);
     });
 
     it('handles API errors gracefully', async () => {
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockResolvedValueOnce({
+      const { httpRequest } = setupHttpRequest({
         ok: false,
         status: 401,
         statusText: 'Unauthorized',
@@ -272,7 +284,7 @@ describe('CreateTokenTool', () => {
           '{"message": "Token does not have required scopes", "code": "TokenScopesInvalid"}'
       } as Response);
 
-      const tool = createTokenTool(fetch);
+      const tool = createTokenTool(httpRequest);
 
       const result = await tool.run({
         note: 'Test token',
@@ -286,10 +298,14 @@ describe('CreateTokenTool', () => {
     });
 
     it('handles network errors', async () => {
-      const { mockFetch, fetch } = setupFetch();
-      mockFetch.mockRejectedValueOnce(new Error('Network error'));
+      const { httpRequest } = setupHttpRequest({
+        ok: false,
+        status: 0,
+        statusText: 'Network Error',
+        text: async () => 'Network error'
+      });
 
-      const tool = createTokenTool(fetch);
+      const tool = createTokenTool(httpRequest);
 
       const result = await tool.run({
         note: 'Test token',
@@ -299,7 +315,7 @@ describe('CreateTokenTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const errorText = (result.content[0] as TextContent).text;
-      expect(errorText).toContain('Network error');
+      expect(errorText).toContain('Network Error');
     });
 
     it('uses custom API endpoint when provided', async () => {
@@ -315,16 +331,18 @@ describe('CreateTokenTool', () => {
           id: 'cktest',
           scopes: ['styles:read'],
           created: '2024-01-01T00:00:00.000Z',
-          modified: '2024-01-01T00:00:00.000Z'
+          modified: '2024-01-01T00:00:00.000Z',
+          usage: 'pk',
+          client: 'api',
+          default: false
         };
 
-        const { mockFetch, fetch } = setupFetch();
-        mockFetch.mockResolvedValueOnce({
+        const { mockHttpRequest, httpRequest } = setupHttpRequest({
           ok: true,
           json: async () => mockResponse
         } as Response);
 
-        const toolWithCustomEndpoint = new CreateTokenTool(fetch);
+        const toolWithCustomEndpoint = new CreateTokenTool({ httpRequest });
         toolWithCustomEndpoint['log'] = vi.fn();
 
         await toolWithCustomEndpoint.run({
@@ -332,7 +350,7 @@ describe('CreateTokenTool', () => {
           scopes: ['styles:read']
         });
 
-        expect(mockFetch).toHaveBeenCalledWith(
+        expect(mockHttpRequest).toHaveBeenCalledWith(
           expect.stringContaining('https://api.staging.mapbox.com/tokens/v2/'),
           expect.any(Object)
         );

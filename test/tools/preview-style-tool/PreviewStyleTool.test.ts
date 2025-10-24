@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 process.env.MAPBOX_ACCESS_TOKEN =
   'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
@@ -19,7 +22,7 @@ describe('PreviewStyleTool', () => {
 
     it('should have correct input schema', async () => {
       const { PreviewStyleSchema } = await import(
-        '../../../src/tools/preview-style-tool/PreviewStyleTool.schema.js'
+        '../../../src/tools/preview-style-tool/PreviewStyleTool.input.schema.js'
       );
       expect(PreviewStyleSchema).toBeDefined();
     });
@@ -28,7 +31,9 @@ describe('PreviewStyleTool', () => {
   it('uses user-provided public token and returns preview URL', async () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
-      accessToken: TEST_ACCESS_TOKEN
+      accessToken: TEST_ACCESS_TOKEN,
+      title: false,
+      zoomwheel: false
     });
 
     expect(result.isError).toBe(false);
@@ -43,7 +48,9 @@ describe('PreviewStyleTool', () => {
   it('includes styleId in URL', async () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'my-custom-style',
-      accessToken: TEST_ACCESS_TOKEN
+      accessToken: TEST_ACCESS_TOKEN,
+      title: false,
+      zoomwheel: false
     });
 
     expect(result.content[0]).toMatchObject({
@@ -56,7 +63,8 @@ describe('PreviewStyleTool', () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
       accessToken: TEST_ACCESS_TOKEN,
-      title: true
+      title: true,
+      zoomwheel: false
     });
 
     expect(result.content[0]).toMatchObject({
@@ -69,7 +77,8 @@ describe('PreviewStyleTool', () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
       accessToken: TEST_ACCESS_TOKEN,
-      zoomwheel: false
+      zoomwheel: false,
+      title: false
     });
 
     expect(result.content[0]).toMatchObject({
@@ -81,7 +90,9 @@ describe('PreviewStyleTool', () => {
   it('includes fresh parameter for secure access', async () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
-      accessToken: TEST_ACCESS_TOKEN
+      accessToken: TEST_ACCESS_TOKEN,
+      title: false,
+      zoomwheel: false
     });
 
     expect(result.content[0]).toMatchObject({
@@ -94,7 +105,9 @@ describe('PreviewStyleTool', () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
       accessToken:
-        'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.secret_token'
+        'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.secret_token',
+      title: false,
+      zoomwheel: false
     });
 
     expect(result.isError).toBe(true);
@@ -109,7 +122,9 @@ describe('PreviewStyleTool', () => {
   it('rejects temporary tokens', async () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
-      accessToken: 'tk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.temp_token'
+      accessToken: 'tk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.temp_token',
+      title: false,
+      zoomwheel: false
     });
 
     expect(result.isError).toBe(true);
@@ -124,7 +139,9 @@ describe('PreviewStyleTool', () => {
   it('returns URL on success', async () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
-      accessToken: TEST_ACCESS_TOKEN
+      accessToken: TEST_ACCESS_TOKEN,
+      title: false,
+      zoomwheel: false
     });
 
     expect(result.isError).toBe(false);

@@ -7,9 +7,20 @@ process.env.MAPBOX_ACCESS_TOKEN = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
 import { MapboxApiBasedTool } from '../../src/tools/MapboxApiBasedTool.js';
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { HttpRequest } from '../../src/utils/types.js';
+import { setupHttpRequest } from '../utils/httpPipelineUtils.js';
 
 // Create a minimal implementation of MapboxApiBasedTool for testing
 class TestTool extends MapboxApiBasedTool<typeof TestTool.inputSchema> {
+  // Provide minimal but realistic annotations for the test tool
+  annotations = {
+    title: 'Test Tool',
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: false,
+    destructiveHint: false
+  };
   readonly name = 'test_tool';
   readonly description = 'Tool for testing MapboxApiBasedTool error handling';
 
@@ -17,13 +28,16 @@ class TestTool extends MapboxApiBasedTool<typeof TestTool.inputSchema> {
     testParam: z.string()
   });
 
-  constructor() {
-    super({ inputSchema: TestTool.inputSchema });
+  constructor(params: { httpRequest: HttpRequest }) {
+    super({
+      inputSchema: TestTool.inputSchema,
+      httpRequest: params.httpRequest
+    });
   }
 
   protected async execute(
     _input: z.infer<typeof TestTool.inputSchema>
-  ): Promise<unknown> {
+  ): Promise<CallToolResult> {
     throw new Error('Test error message');
   }
 }
@@ -43,7 +57,8 @@ describe('MapboxApiBasedTool', () => {
       configurable: true
     });
 
-    testTool = new TestTool();
+    const { httpRequest } = setupHttpRequest();
+    testTool = new TestTool({ httpRequest });
     // Mock the log method to test that errors are properly logged
     testTool['log'] = vi.fn();
   });
@@ -55,62 +70,6 @@ describe('MapboxApiBasedTool', () => {
     vi.unstubAllEnvs();
   });
 
-  describe('getUserNameFromToken', () => {
-    it('extracts username from valid token', () => {
-      const testPayload = Buffer.from(
-        JSON.stringify({ u: 'myusername' })
-      ).toString('base64');
-      const spy = vi
-        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
-        .mockReturnValue(`eyJhbGciOiJIUzI1NiJ9.${testPayload}.signature`);
-
-      const username = MapboxApiBasedTool.getUserNameFromToken();
-      expect(username).toBe('myusername');
-
-      spy.mockRestore();
-    });
-
-    it('throws error when token is not set', () => {
-      const spy = vi
-        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
-        .mockReturnValue(undefined);
-
-      expect(() => MapboxApiBasedTool.getUserNameFromToken()).toThrow(
-        'No access token provided. Please set MAPBOX_ACCESS_TOKEN environment variable or pass it as an argument.'
-      );
-
-      spy.mockRestore();
-    });
-
-    it('throws error when token has invalid format', () => {
-      const spy = vi
-        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
-        .mockReturnValue('invalid-token-format');
-
-      expect(() => MapboxApiBasedTool.getUserNameFromToken()).toThrow(
-        'MAPBOX_ACCESS_TOKEN is not in valid JWT format'
-      );
-
-      spy.mockRestore();
-    });
-
-    it('throws error when payload does not contain username', () => {
-      const invalidPayload = Buffer.from(
-        JSON.stringify({ sub: 'test' })
-      ).toString('base64');
-
-      const spy = vi
-        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
-        .mockReturnValue(`eyJhbGciOiJIUzI1NiJ9.${invalidPayload}.signature`);
-
-      expect(() => MapboxApiBasedTool.getUserNameFromToken()).toThrow(
-        'MAPBOX_ACCESS_TOKEN does not contain username in payload'
-      );
-
-      spy.mockRestore();
-    });
-  });
-
   describe('JWT token validation', () => {
     it('throws an error when the token is not in a valid JWT format', async () => {
       const spy = vi
@@ -118,7 +77,8 @@ describe('MapboxApiBasedTool', () => {
         .mockReturnValue('invalid-token-format');
 
       // Create a new instance with the modified token
-      const toolWithInvalidToken = new TestTool();
+      const { httpRequest } = setupHttpRequest();
+      const toolWithInvalidToken = new TestTool({ httpRequest });
       // Mock the log method separately for this instance
       toolWithInvalidToken['log'] = vi.fn();
 
@@ -152,7 +112,10 @@ describe('MapboxApiBasedTool', () => {
       process.env.MAPBOX_ACCESS_TOKEN = `eyJhbGciOiJIUzI1NiJ9.${validPayload}.signature`;
 
       // Override execute to return a success result instead of throwing an error
-      testTool['execute'] = vi.fn().mockResolvedValue({ success: true });
+      testTool['execute'] = vi.fn().mockResolvedValue({
+        content: [{ type: 'text', text: JSON.stringify({ success: true }) }],
+        isError: false
+      });
 
       const result = await testTool.run({ testParam: 'test' });
 
@@ -162,35 +125,6 @@ describe('MapboxApiBasedTool', () => {
       expect(
         JSON.parse((result.content[0] as { type: 'text'; text: string }).text)
       ).toEqual({ success: true });
-    });
-  });
-
-  describe('username extraction from token', () => {
-    it('throws error for invalid JWT format', () => {
-      const spy = vi
-        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
-        .mockReturnValue('invalid-token');
-
-      expect(() => {
-        MapboxApiBasedTool.getUserNameFromToken();
-      }).toThrow('MAPBOX_ACCESS_TOKEN is not in valid JWT format');
-
-      spy.mockRestore();
-    });
-
-    it('throws error when username field is missing', () => {
-      const tokenWithoutUsername =
-        'eyJhbGciOiJIUzI1NiJ9.eyJhIjoidGVzdC1hcGkifQ.signature';
-
-      const spy = vi
-        .spyOn(MapboxApiBasedTool, 'mapboxAccessToken', 'get')
-        .mockReturnValue(tokenWithoutUsername);
-
-      expect(() => {
-        MapboxApiBasedTool.getUserNameFromToken();
-      }).toThrow('MAPBOX_ACCESS_TOKEN does not contain username in payload');
-
-      spy.mockRestore();
     });
   });
 

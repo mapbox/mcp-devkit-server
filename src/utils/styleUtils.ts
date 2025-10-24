@@ -1,3 +1,6 @@
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
 /**
  * Filters out expanded Mapbox styles from imports to reduce response size.
  * This preserves the reference to the style (e.g., mapbox://styles/mapbox/standard)

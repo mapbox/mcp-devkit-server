@@ -1,9 +1,22 @@
-import { fetchClient } from '../../utils/fetchRequest.js';
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { HttpRequest } from '../../utils/types.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
-import { ListStylesSchema, ListStylesInput } from './ListStylesTool.schema.js';
+import {
+  ListStylesSchema,
+  ListStylesInput
+} from './ListStylesTool.input.schema.js';
+import {
+  ListStylesOutputSchema,
+  StylesArraySchema
+} from './ListStylesTool.output.schema.js';
+import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 
 export class ListStylesTool extends MapboxApiBasedTool<
-  typeof ListStylesSchema
+  typeof ListStylesSchema,
+  typeof ListStylesOutputSchema
 > {
   name = 'list_styles_tool';
   description =
@@ -16,15 +29,19 @@ export class ListStylesTool extends MapboxApiBasedTool<
     title: 'List Mapbox Styles Tool'
   };
 
-  constructor(private fetch: typeof globalThis.fetch = fetchClient) {
-    super({ inputSchema: ListStylesSchema });
+  constructor(params: { httpRequest: HttpRequest }) {
+    super({
+      inputSchema: ListStylesSchema,
+      outputSchema: ListStylesOutputSchema,
+      httpRequest: params.httpRequest
+    });
   }
 
   protected async execute(
     input: ListStylesInput,
     accessToken?: string
-  ): Promise<any> {
-    const username = MapboxApiBasedTool.getUserNameFromToken(accessToken);
+  ): Promise<CallToolResult> {
+    const username = getUserNameFromToken(accessToken);
 
     // Build query parameters
     const params = new URLSearchParams();
@@ -43,15 +60,42 @@ export class ListStylesTool extends MapboxApiBasedTool<
 
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}?${params.toString()}`;
 
-    const response = await this.fetch(url);
+    const response = await this.httpRequest(url);
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to list styles: ${response.status} ${response.statusText}`
-      );
+      return this.handleApiError(response, 'list styles');
     }
 
     const data = await response.json();
-    return data;
+    // Validate the API response (which is an array)
+    const parseResult = StylesArraySchema.safeParse(data);
+    if (!parseResult.success) {
+      this.log(
+        'error',
+        `ListStylesTool: Output schema validation failed\n${parseResult.error}`
+      );
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: `ListStylesTool: Response does not conform to output schema:\n${parseResult.error}`
+          }
+        ],
+        isError: true
+      };
+    }
+    this.log('info', `ListStylesTool: Successfully listed styles`);
+
+    const wrappedData = { styles: parseResult.data };
+    return {
+      content: [
+        {
+          type: 'text' as const,
+          text: JSON.stringify(wrappedData, null, 2)
+        }
+      ],
+      structuredContent: wrappedData,
+      isError: false
+    };
   }
 }
