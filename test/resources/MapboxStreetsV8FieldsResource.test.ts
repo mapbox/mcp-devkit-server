@@ -3,7 +3,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { MapboxStreetsV8FieldsResource } from '../../src/resources/mapbox-streets-v8-fields-resource/MapboxStreetsV8FieldsResource.js';
-import { STREETS_V8_FIELDS } from '../../src/constants/mapboxStreetsV8Fields.js';
+import { STREETS_V8_FIELDS } from '../../src/constants/mapboxStreetsV8Fields.trimmed.js';
 
 describe('MapboxStreetsV8FieldsResource', () => {
   let resource: MapboxStreetsV8FieldsResource;

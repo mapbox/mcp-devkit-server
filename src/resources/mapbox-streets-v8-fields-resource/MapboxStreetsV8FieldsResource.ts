@@ -2,7 +2,7 @@
 // Licensed under the MIT License.
 
 import { BaseResource } from '../BaseResource.js';
-import { STREETS_V8_FIELDS } from '../../constants/mapboxStreetsV8Fields.js';
+import { STREETS_V8_FIELDS } from '../../constants/mapboxStreetsV8Fields.trimmed.js';
 
 /**
  * Resource providing Mapbox Streets v8 source layer field definitions
