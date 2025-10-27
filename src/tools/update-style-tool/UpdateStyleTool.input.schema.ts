@@ -3,29 +3,17 @@
 
 import { z } from 'zod';
 
-// Simplified Mapbox Style Input Schema for updates
-// Only defines essential fields. Additional properties are accepted via .passthrough()
-export const MapboxStyleInputSchema = z
-  .object({
-    name: z.string().optional().describe('Human-readable name for the style'),
-    version: z.literal(8).optional().describe('Style specification version'),
-    sources: z
-      .record(z.any())
-      .optional()
-      .describe('Data source specifications'),
-    layers: z.array(z.any()).optional().describe('Layers in draw order')
-  })
-  .passthrough()
-  .describe(
-    'Mapbox style properties to update. Accepts standard Mapbox Style Specification properties.'
-  );
-
+// INPUT Schema - Accepts a complete Mapbox Style Specification as a generic object
+// This avoids complex schemas with .passthrough() that break some MCP clients (Cursor + OpenAI)
 export const UpdateStyleInputSchema = z.object({
   styleId: z.string().describe('Style ID to update'),
   name: z.string().optional().describe('New name for the style'),
-  style: MapboxStyleInputSchema.optional().describe(
-    'Updated Mapbox style specification object'
-  )
+  style: z
+    .record(z.any())
+    .optional()
+    .describe(
+      'Complete Mapbox Style Specification object to update. Must include: version (8), sources, layers. Optional: sprite, glyphs, center, zoom, bearing, pitch, metadata, etc. See https://docs.mapbox.com/mapbox-gl-js/style-spec/'
+    )
 });
 
 export type UpdateStyleInput = z.infer<typeof UpdateStyleInputSchema>;

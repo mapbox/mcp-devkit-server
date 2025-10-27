@@ -7,8 +7,8 @@ import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import { filterExpandedMapboxStyles } from '../../utils/styleUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
-  MapboxStyleInputSchema,
-  MapboxStyleInput
+  CreateStyleInputSchema,
+  CreateStyleInput
 } from './CreateStyleTool.input.schema.js';
 import {
   MapboxStyleOutput,
@@ -16,7 +16,7 @@ import {
 } from './CreateStyleTool.output.schema.js';
 
 export class CreateStyleTool extends MapboxApiBasedTool<
-  typeof MapboxStyleInputSchema,
+  typeof CreateStyleInputSchema,
   typeof MapboxStyleOutputSchema
 > {
   name = 'create_style_tool';
@@ -31,25 +31,31 @@ export class CreateStyleTool extends MapboxApiBasedTool<
 
   constructor(params: { httpRequest: HttpRequest }) {
     super({
-      inputSchema: MapboxStyleInputSchema,
+      inputSchema: CreateStyleInputSchema,
       outputSchema: MapboxStyleOutputSchema,
       httpRequest: params.httpRequest
     });
   }
 
   protected async execute(
-    input: MapboxStyleInput,
+    input: CreateStyleInput,
     accessToken?: string
   ): Promise<CallToolResult> {
     const username = getUserNameFromToken(accessToken);
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}?access_token=${accessToken}`;
+
+    // Merge name into style object for API request
+    const payload = {
+      ...input.style,
+      name: input.name
+    };
 
     const response = await this.httpRequest(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(input)
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {

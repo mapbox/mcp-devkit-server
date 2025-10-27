@@ -71,7 +71,6 @@ This file provides Claude and developers with essential context, commands, and s
 
 ## Known Issues & Warnings
 
-- **Cursor + OpenAI models compatibility issue** - ALL OpenAI models (GPT-4, GPT-3.5, o1, o1-mini) fail with `[invalid_argument]` errors in Cursor when using `create_style_tool` and `update_style_tool` (works fine in VS Code, works fine with Claude in Cursor). Root cause: Cursor can't handle tools with complex input schemas when used with OpenAI models. **Workaround:** Set `CURSOR_OPENAI_MODE=true` to auto-disable the problematic tools. You'll still have 15/17 tools working.
 - Large GeoJSON files may cause slow performance in preview tools
 - Always check token scopes if a tool fails with authentication errors
 - Use `VERBOSE_ERRORS=true` for detailed error output

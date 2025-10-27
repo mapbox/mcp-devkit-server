@@ -29,10 +29,10 @@ describe('CreateStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { MapboxStyleInputSchema } = await import(
+      const { CreateStyleInputSchema } = await import(
         '../../../src/tools/create-style-tool/CreateStyleTool.input.schema.js'
       );
-      expect(MapboxStyleInputSchema).toBeDefined();
+      expect(CreateStyleInputSchema).toBeDefined();
     });
   });
 
@@ -50,9 +50,11 @@ describe('CreateStyleTool', () => {
 
     await new CreateStyleTool({ httpRequest }).run({
       name: 'Test Style',
-      version: 8,
-      sources: {},
-      layers: []
+      style: {
+        version: 8,
+        sources: {},
+        layers: []
+      }
     });
     assertHeadersSent(mockHttpRequest);
   });
@@ -66,9 +68,11 @@ describe('CreateStyleTool', () => {
 
     const result = await new CreateStyleTool({ httpRequest }).run({
       name: 'Test Style',
-      version: 8,
-      sources: {},
-      layers: []
+      style: {
+        version: 8,
+        sources: {},
+        layers: []
+      }
     });
 
     expect(result.isError).toBe(true);

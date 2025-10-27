@@ -29,10 +29,10 @@ describe('UpdateStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { MapboxStyleInputSchema } = await import(
+      const { UpdateStyleInputSchema } = await import(
         '../../../src/tools/update-style-tool/UpdateStyleTool.input.schema.js'
       );
-      expect(MapboxStyleInputSchema).toBeDefined();
+      expect(UpdateStyleInputSchema).toBeDefined();
     });
   });
 
