@@ -38,7 +38,7 @@ describe('ListTokensTool', () => {
 
       expect(tool.name).toBe('list_tokens_tool');
       expect(tool.description).toBe(
-        'List Mapbox access tokens for the authenticated user with optional filtering and pagination. When using pagination, the "start" parameter must be obtained from the "next_start" field of the previous response (it is not a token ID)'
+        'List Mapbox access tokens for the authenticated user with optional filtering and pagination. Returns metadata for all tokens (public and secret), but the actual token value is only included for public tokens (secret token values are omitted for security). When using pagination, the "start" parameter must be obtained from the "next_start" field of the previous response (it is not a token ID)'
       );
     });
 

@@ -93,6 +93,7 @@ Secret tokens (like \`MAPBOX_ACCESS_TOKEN\` environment variable) typically have
 - **Purpose**: List and read token information
 - **Required for**: \`list_tokens_tool\`
 - **Security**: Keep secret, reveals account tokens
+- **Note**: When listing tokens, the actual token value is only returned for public tokens; secret token values are omitted for security (only metadata like id, scopes, and creation date is shown)
 
 ### \`tokens:write\`
 - **Purpose**: Create, update, and delete tokens
