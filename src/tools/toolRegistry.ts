@@ -9,6 +9,7 @@ import { CreateTokenTool } from './create-token-tool/CreateTokenTool.js';
 import { DeleteStyleTool } from './delete-style-tool/DeleteStyleTool.js';
 import { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js';
 import { GetMapboxDocSourceTool } from './get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
+import { GetReferenceTool } from './get-reference-tool/GetReferenceTool.js';
 import { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
 import { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
 import { PreviewStyleTool } from './preview-style-tool/PreviewStyleTool.js';
@@ -35,6 +36,7 @@ export const ALL_TOOLS = [
   new CountryBoundingBoxTool(),
   new CoordinateConversionTool(),
   new GetMapboxDocSourceTool({ httpRequest }),
+  new GetReferenceTool(),
   new StyleComparisonTool(),
   new TilequeryTool({ httpRequest })
 ] as const;

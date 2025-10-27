@@ -16,6 +16,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Getting Your Mapbox Access Token](#getting-your-mapbox-access-token)
   - [Tools](#tools)
     - [Documentation Tools](#documentation-tools)
+    - [Reference Tools](#reference-tools)
     - [Style Management Tools](#style-management-tools)
     - [Token Management Tools](#token-management-tools)
       - [create-token](#create-token)
@@ -24,6 +25,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [GeoJSON Preview tool (Beta)](#geojson-preview-tool-beta)
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
       - [Bounding Box tool](#bounding-box-tool)
+  - [Resources](#resources)
   - [Development](#development)
     - [Testing](#testing)
       - [Tool Snapshot Tests](#tool-snapshot-tests)
@@ -115,6 +117,27 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 - "What's new in the Mapbox ecosystem?"
 
 📖 **[See more examples and interactive demo →](./docs/mapbox-docs-tool-demo.md)**
+
+### Reference Tools
+
+**get_reference_tool** - Access static Mapbox reference documentation and schemas. This tool provides essential reference information that helps AI assistants understand Mapbox concepts and build correct styles and tokens.
+
+> **Note:** This tool exists as a workaround for Claude Desktop's current limitation with MCP resources. Claude Desktop can see resources (via `resources/list`) but doesn't automatically call `resources/read` to fetch their content. This tool provides the same reference data through the tool interface, which Claude Desktop does support. Other MCP clients that fully support the resources protocol can access this data directly as MCP Resources (see [Resources](#resources) section below).
+
+**Available References:**
+
+- **`resource://mapbox-style-layers`** - Mapbox GL JS style specification reference guide covering all layer types (fill, line, symbol, circle, fill-extrusion) and their properties
+- **`resource://mapbox-streets-v8-fields`** - Complete field definitions for all Mapbox Streets v8 source layers, including enumerated values for each field (useful for building filters)
+- **`resource://mapbox-token-scopes`** - Comprehensive token scope reference explaining what each scope allows and which scopes are needed for different operations
+- **`resource://mapbox-layer-type-mapping`** - Mapping of Mapbox Streets v8 source layers to compatible GL JS layer types, with common usage patterns
+
+**Example prompts:**
+
+- "What fields are available for the landuse layer?"
+- "Show me the token scopes reference"
+- "What layer type should I use for roads?"
+- "Get the Streets v8 fields reference"
+- "What scopes do I need to display a map?"
 
 ### Style Management Tools
 
@@ -373,6 +396,42 @@ An array of four numbers representing the bounding box: `[minX, minY, maxX, maxY
 
 - "Calculate the bounding box of this GeoJSON file" (then upload a .geojson file)
 - "What's the bounding box for the coordinates in the uploaded parks.geojson file?"
+
+## Resources
+
+This server exposes static reference documentation as MCP Resources. While these are primarily accessed through the `get_reference_tool`, MCP clients that fully support the resources protocol can access them directly.
+
+**Available Resources:**
+
+1. **Mapbox Style Specification Guide** (`resource://mapbox-style-layers`)
+   - Complete reference for Mapbox GL JS layer types and properties
+   - Covers fill, line, symbol, circle, and fill-extrusion layers
+   - Includes paint and layout properties for each layer type
+
+2. **Mapbox Streets v8 Fields Reference** (`resource://mapbox-streets-v8-fields`)
+   - Field definitions for all Streets v8 source layers
+   - Enumerated values for filterable fields
+   - Essential for building accurate style filters
+   - Example: `landuse` layer has `class` field with values like `park`, `cemetery`, `hospital`, etc.
+
+3. **Mapbox Token Scopes Reference** (`resource://mapbox-token-scopes`)
+   - Comprehensive documentation of token scopes
+   - Explains public vs. secret token scopes
+   - Common scope combinations for different use cases
+   - Best practices for token management
+
+4. **Mapbox Layer Type Mapping** (`resource://mapbox-layer-type-mapping`)
+   - Maps Streets v8 source layers to compatible GL JS layer types
+   - Organized by geometry type (polygon, line, point)
+   - Includes common usage patterns and examples
+   - Helps avoid incompatible layer type/source layer combinations
+
+**Accessing Resources:**
+
+- **Claude Desktop & Most MCP Clients**: Use the `get_reference_tool` to access these references
+- **Future MCP Clients**: May support direct resource access via the MCP resources protocol
+
+**Note:** Resources provide static reference data that doesn't change frequently, while tools provide dynamic, user-specific data (like listing your styles or tokens) and perform actions (like creating styles or tokens).
 
 ## Development
 
