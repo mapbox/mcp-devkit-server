@@ -16,6 +16,14 @@ const config = parseToolConfigFromArgs();
 
 // Get and filter tools based on configuration
 const allTools = getAllTools();
+
+// Cursor + OpenAI models have issues with complex input schemas (create_style_tool, update_style_tool)
+// This provides an easy workaround
+const cursorOpenAiMode = process.env.CURSOR_OPENAI_MODE === 'true';
+if (cursorOpenAiMode && !config.disabledTools) {
+  config.disabledTools = ['create_style_tool', 'update_style_tool'];
+}
+
 const enabledTools = filterTools(allTools, config);
 
 // Create an MCP server
