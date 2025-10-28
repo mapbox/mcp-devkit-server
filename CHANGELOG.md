@@ -4,7 +4,6 @@
 
 - Added structured content with schemas to all tool outputs
 - Added new resources to server with fallback tool support
-- Added quality tests for structured content
 
 ### Bug Fixes
 
