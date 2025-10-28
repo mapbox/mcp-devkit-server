@@ -3,30 +3,17 @@
 
 import { z } from 'zod';
 
-// INPUT Schema - Simplified schema for creating styles
-// Only defines the essential required fields. Additional Mapbox Style Specification
-// properties (sources, layers, sprite, glyphs, etc.) are allowed via .passthrough()
+// INPUT Schema - Accepts a complete Mapbox Style Specification as a generic object
+// This avoids complex schemas with .passthrough() that break some MCP clients (Cursor + OpenAI)
 // Full spec: https://docs.mapbox.com/mapbox-gl-js/style-spec/
-export const MapboxStyleInputSchema = z
-  .object({
-    name: z.string().describe('Human-readable name for the style (REQUIRED)'),
-    version: z
-      .literal(8)
-      .describe('Style specification version number. Must be 8'),
-    // Note: The Mapbox API requires at minimum 'version', 'name', 'sources', and 'layers'.
-    // We only validate 'name' and 'version' here. Other fields like sources, layers, sprite,
-    // glyphs, center, zoom, etc. are passed through without explicit validation to avoid
-    // overwhelming clients with the full 18+ field schema.
-    sources: z
-      .record(z.any())
-      .optional()
-      .describe('Data source specifications'),
-    layers: z.array(z.any()).optional().describe('Layers in draw order')
-  })
-  .passthrough()
-  .describe(
-    'Mapbox style input. Accepts standard Mapbox Style Specification properties. Only key fields are validated; additional properties (center, zoom, bearing, pitch, sprite, glyphs, metadata, etc.) are accepted but not explicitly defined to keep schema manageable.'
-  );
+export const CreateStyleInputSchema = z.object({
+  name: z.string().describe('Human-readable name for the style'),
+  style: z
+    .record(z.any())
+    .describe(
+      'Complete Mapbox Style Specification object. Must include: version (8), sources, layers. Optional: sprite, glyphs, center, zoom, bearing, pitch, metadata, etc. See https://docs.mapbox.com/mapbox-gl-js/style-spec/'
+    )
+});
 
 // Type exports
-export type MapboxStyleInput = z.infer<typeof MapboxStyleInputSchema>;
+export type CreateStyleInput = z.infer<typeof CreateStyleInputSchema>;

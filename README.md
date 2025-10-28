@@ -35,6 +35,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Creating New Tools](#creating-new-tools)
     - [Environment Variables](#environment-variables)
       - [VERBOSE_ERRORS](#verbose_errors)
+  - [Troubleshooting](#troubleshooting)
   - [Contributing](#contributing)
 
 ## Quick Start
@@ -557,6 +558,16 @@ src/tools/your-tool-name-tool/
 Set `VERBOSE_ERRORS=true` to get detailed error messages from the MCP server. This is useful for debugging issues when integrating with MCP clients.
 
 By default, the server returns generic error messages. With verbose errors enabled, you'll receive the actual error details, which can help diagnose API connection issues, invalid parameters, or other problems.
+
+## Troubleshooting
+
+**Issue:** Tools fail with authentication errors
+
+**Solution:** Check that your `MAPBOX_ACCESS_TOKEN` has the required scopes for the tool you're using. See the token scopes section above.
+
+**Issue:** Large GeoJSON files cause slow performance
+
+**Solution:** The GeoJSON preview tool may be slow with very large files. Consider simplifying geometries or using smaller datasets for preview purposes.
 
 ## Contributing
 
