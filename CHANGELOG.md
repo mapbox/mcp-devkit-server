@@ -1,3 +1,9 @@
+## 0.4.6
+
+### Other
+
+- Update to latest MCP registry schema version
+
 ## 0.4.4
 
 ### Other
