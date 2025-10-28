@@ -1,8 +1,19 @@
 ## 0.4.6
 
+### Features Added
+
+- Added structured content with schemas to all tool outputs
+- Added new resources to server with fallback tool support
+- Added quality tests for structured content
+
+### Bug Fixes
+
+- Fixed schema compatibility issues for Cursor and GPT clients
+
 ### Other
 
-- Update to latest MCP registry schema version
+- Updated to latest MCP registry schema version (2025-10-17)
+- Added mcpName field to package.json
 
 ## 0.4.4
 
