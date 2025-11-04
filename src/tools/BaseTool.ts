@@ -11,6 +11,7 @@ import {
   ToolAnnotations
 } from '@modelcontextprotocol/sdk/types.js';
 import { z, ZodTypeAny } from 'zod';
+import type { ToolExecutionContext } from '../utils/tracing.js';
 
 export abstract class BaseTool<
   InputSchema extends ZodTypeAny,
@@ -55,7 +56,8 @@ export abstract class BaseTool<
 
   protected abstract execute(
     inputSchema: z.infer<InputSchema>,
-    accessToken?: string
+    accessToken?: string,
+    context?: ToolExecutionContext
   ): Promise<CallToolResult>;
 
   /**

@@ -3,6 +3,7 @@
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
+import type { ToolExecutionContext } from '../../utils/tracing.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   CreateTokenSchema,
@@ -36,7 +37,8 @@ export class CreateTokenTool extends MapboxApiBasedTool<
 
   protected async execute(
     input: CreateTokenInput,
-    accessToken?: string
+    accessToken: string,
+    _context: ToolExecutionContext
   ): Promise<CallToolResult> {
     const username = getUserNameFromToken(accessToken);
 

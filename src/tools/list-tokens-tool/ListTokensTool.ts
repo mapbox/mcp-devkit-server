@@ -3,6 +3,7 @@
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
+import type { ToolExecutionContext } from '../../utils/tracing.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   ListTokensSchema,
@@ -39,7 +40,8 @@ export class ListTokensTool extends MapboxApiBasedTool<
 
   protected async execute(
     input: ListTokensInput,
-    accessToken?: string
+    accessToken: string,
+    _context: ToolExecutionContext
   ): Promise<CallToolResult> {
     if (!accessToken) {
       return {

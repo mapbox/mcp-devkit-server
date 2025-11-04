@@ -3,6 +3,7 @@
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
+import type { ToolExecutionContext } from '../../utils/tracing.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import { filterExpandedMapboxStyles } from '../../utils/styleUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
@@ -39,7 +40,8 @@ export class CreateStyleTool extends MapboxApiBasedTool<
 
   protected async execute(
     input: CreateStyleInput,
-    accessToken?: string
+    accessToken: string,
+    _context: ToolExecutionContext
   ): Promise<CallToolResult> {
     const username = getUserNameFromToken(accessToken);
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}?access_token=${accessToken}`;

@@ -26,6 +26,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
       - [Bounding Box tool](#bounding-box-tool)
   - [Resources](#resources)
+  - [Observability & Tracing](#observability--tracing)
   - [Development](#development)
     - [Testing](#testing)
       - [Tool Snapshot Tests](#tool-snapshot-tests)
@@ -433,6 +434,66 @@ This server exposes static reference documentation as MCP Resources. While these
 - **Future MCP Clients**: May support direct resource access via the MCP resources protocol
 
 **Note:** Resources provide static reference data that doesn't change frequently, while tools provide dynamic, user-specific data (like listing your styles or tokens) and perform actions (like creating styles or tokens).
+
+## Observability & Tracing
+
+This server includes comprehensive distributed tracing using OpenTelemetry (OTEL) for production-ready observability.
+
+### Features
+
+- **Opt-in Configuration**: Tracing is disabled by default, enabling it requires only setting an OTLP endpoint
+- **Tool Execution Tracing**: Automatic instrumentation of all tool executions with timing, success/failure status, and error details
+- **HTTP Request Instrumentation**: Complete request/response tracing for Mapbox API calls with CloudFront correlation IDs
+- **Configuration Tracing**: Startup configuration loading with error tracking
+- **Security**: Input/output sizes logged but content is protected
+- **Low Overhead**: <1% CPU impact, ~10MB memory for trace buffers
+
+### Quick Start with Jaeger
+
+```bash
+# 1. Start Jaeger (Docker required)
+npm run tracing:jaeger:start
+
+# 2. Configure environment
+cp .env.example .env
+# Edit .env to add MAPBOX_ACCESS_TOKEN
+# OTEL_EXPORTER_OTLP_ENDPOINT is already set to http://localhost:4318
+
+# 3. Run the server
+npm run inspect:build
+
+# 4. View traces at http://localhost:16686
+
+# 5. Stop Jaeger when done
+npm run tracing:jaeger:stop
+```
+
+### Supported Backends
+
+The server supports **any OTLP-compatible backend** including:
+
+- **Development**: Jaeger (local Docker)
+- **Cloud Providers**: AWS X-Ray, Azure Monitor, Google Cloud Trace
+- **SaaS Platforms**: Datadog, New Relic, Honeycomb
+
+See `.env.example` for configuration examples for each platform.
+
+### Documentation
+
+- **[Complete Tracing Guide](./docs/tracing.md)** - Detailed configuration, features, and integration examples
+- **[Verification Guide](./docs/tracing-verification.md)** - Step-by-step verification and troubleshooting
+
+### Environment Variables
+
+```bash
+# Enable tracing (required)
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+
+# Optional configuration
+OTEL_SERVICE_NAME=mapbox-mcp-devkit-server
+OTEL_TRACES_SAMPLER=traceidratio
+OTEL_TRACES_SAMPLER_ARG=0.1  # Sample 10% for high-volume
+```
 
 ## Development
 

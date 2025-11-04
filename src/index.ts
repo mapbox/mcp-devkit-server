@@ -1,14 +1,62 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
+// Load environment variables from .env file if present
+// Use Node.js built-in util.parseEnv() and manually apply to override existing vars
+import { parseEnv } from 'node:util';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { existsSync } from 'node:fs';
+import { SpanStatusCode } from '@opentelemetry/api';
+
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { parseToolConfigFromArgs, filterTools } from './config/toolConfig.js';
 import { getAllTools } from './tools/toolRegistry.js';
 import { getAllResources } from './resources/resourceRegistry.js';
 import { getVersionInfo } from './utils/versionUtils.js';
+import {
+  initializeTracing,
+  shutdownTracing,
+  isTracingInitialized,
+  getTracer
+} from './utils/tracing.js';
 
-// Get version info and patch fetch
+// Load .env from current working directory (where npm run is executed)
+// This happens before tracing is initialized, but we'll add a span when tracing is ready
+const envPath = join(process.cwd(), '.env');
+let envLoadError: Error | null = null;
+let envLoadedCount = 0;
+
+if (existsSync(envPath)) {
+  try {
+    // Read and parse .env file using Node.js built-in parseEnv
+    const envFile = readFileSync(envPath, 'utf-8');
+    const parsed = parseEnv(envFile);
+
+    // Apply parsed values to process.env (with override)
+    // Note: process.loadEnvFile() doesn't override, so we use parseEnv + manual assignment
+    for (const [key, value] of Object.entries(parsed)) {
+      process.env[key] = value;
+      envLoadedCount++;
+    }
+
+    // Log success if logging is enabled
+    if (!process.env.MCP_DISABLE_LOGGING) {
+      console.error(
+        `✓ Loaded ${envLoadedCount} environment variables from ${envPath}`
+      );
+    }
+  } catch (error) {
+    envLoadError = error instanceof Error ? error : new Error(String(error));
+    if (!process.env.MCP_DISABLE_LOGGING) {
+      console.error(
+        `⚠️  Warning loading .env: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+}
+
 const versionInfo = getVersionInfo();
 
 // Parse configuration from command-line arguments
@@ -43,13 +91,120 @@ resources.forEach((resource) => {
   resource.installTo(server);
 });
 
+// MCP-compatible logging functions
+// Completely suppress logging when MCP_DISABLE_LOGGING is set (for MCP inspector compatibility)
+function logIfEnabled(level: 'log' | 'warn' | 'error', ...args: unknown[]) {
+  if (!process.env.MCP_DISABLE_LOGGING) {
+    console[level](...args);
+  }
+}
+
 async function main() {
+  // Initialize OpenTelemetry tracing if not in test mode
+  if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+    try {
+      await initializeTracing();
+      logIfEnabled(
+        'log',
+        `OpenTelemetry tracing: ${isTracingInitialized() ? 'enabled' : 'disabled'}`
+      );
+
+      // Record .env loading as a span (retrospectively since it happened before tracing init)
+      if (isTracingInitialized()) {
+        const tracer = getTracer();
+        const span = tracer.startSpan('config.load_env', {
+          attributes: {
+            'config.file.path': envPath,
+            'config.file.exists': existsSync(envPath),
+            'config.vars.loaded': envLoadedCount,
+            'operation.type': 'config_load'
+          }
+        });
+
+        if (envLoadError) {
+          span.recordException(envLoadError);
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: envLoadError.message
+          });
+          span.setAttribute('error.type', envLoadError.name);
+          span.setAttribute('error.message', envLoadError.message);
+        } else if (envLoadedCount > 0) {
+          span.setStatus({ code: SpanStatusCode.OK });
+          span.setAttribute('config.load.success', true);
+        } else {
+          // No error, but no variables loaded either (file might be empty or not exist)
+          span.setStatus({ code: SpanStatusCode.OK });
+          span.setAttribute('config.load.success', true);
+          span.setAttribute('config.load.empty', true);
+        }
+
+        span.end();
+      }
+    } catch (error) {
+      logIfEnabled('warn', 'Failed to initialize tracing:', error);
+    }
+  }
+
+  // Send MCP logging message about environment variables
+  server.server.sendLoggingMessage({
+    level: 'info',
+    data: 'Environment variables loaded from .env file'
+  });
+
+  const relevantEnvVars = Object.freeze({
+    MAPBOX_ACCESS_TOKEN: process.env.MAPBOX_ACCESS_TOKEN ? '***' : undefined,
+    MAPBOX_API_ENDPOINT: process.env.MAPBOX_API_ENDPOINT,
+    OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
+    OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    OTEL_EXPORTER_CONSOLE_ENABLED: process.env.OTEL_EXPORTER_CONSOLE_ENABLED,
+    OTEL_TRACING_ENABLED: process.env.OTEL_TRACING_ENABLED,
+    MCP_DISABLE_LOGGING: process.env.MCP_DISABLE_LOGGING,
+    NODE_ENV: process.env.NODE_ENV
+  });
+
+  server.server.sendLoggingMessage({
+    level: 'debug',
+    data: JSON.stringify(relevantEnvVars, null, 2)
+  });
+
   // Start receiving messages on stdin and sending messages on stdout
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
-main().catch((error) => {
-  console.error('Fatal error starting MCP server:', error);
-  process.exit(1);
+// Ensure cleanup interval is cleared when the process exits
+async function shutdown() {
+  // Shutdown tracing
+  try {
+    await shutdownTracing();
+  } catch (e) {
+    logIfEnabled('error', 'Error shutting down tracing:', e);
+  }
+
+  process.exit(0);
+}
+
+function exitWithLog(message: string, error: unknown, code = 1) {
+  logIfEnabled('error', message, error);
+  process.exit(code);
+}
+
+['SIGINT', 'SIGTERM'].forEach((signal) => {
+  process.on(signal, async () => {
+    try {
+      await shutdown();
+    } finally {
+      process.exit(0);
+    }
+  });
 });
+
+process.on('uncaughtException', (err) =>
+  exitWithLog('Uncaught exception:', err)
+);
+process.on('unhandledRejection', (reason) =>
+  exitWithLog('Unhandled rejection:', reason)
+);
+
+main().catch((error) => exitWithLog('Fatal error starting MCP server:', error));
