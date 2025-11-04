@@ -33,6 +33,16 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "delete_style_tool",
   },
   {
+    "className": "FeedbackGetTool",
+    "description": "Get a single user feedback item from the Mapbox Feedback API by its unique ID. Use this tool to retrieve detailed information about a specific user-reported issue, suggestion, or feedback about map data, routing, or POI details. Requires user-feedback:read scope on the access token.",
+    "toolName": "feedback_get_tool",
+  },
+  {
+    "className": "FeedbackListTool",
+    "description": "List user feedback items from the Mapbox Feedback API with filtering, sorting, and pagination. Use this tool to access user-reported issues, suggestions, and feedback about map data, routing, and POI details. Supports comprehensive filtering by status, category, date ranges, trace IDs, and search text. Requires user-feedback:read scope on the access token.",
+    "toolName": "feedback_list_tool",
+  },
+  {
     "className": "GeojsonPreviewTool",
     "description": "Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.",
     "toolName": "geojson_preview_tool",
