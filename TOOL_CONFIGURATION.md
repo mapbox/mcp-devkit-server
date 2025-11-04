@@ -42,6 +42,11 @@ The following tools are available in the Mapbox MCP Devkit Server:
 - `create_token_tool` - Create a new Mapbox access token
 - `list_tokens_tool` - List all Mapbox access tokens
 
+### Feedback Tools
+
+- `feedback_list_tool` - List user feedback items with filtering and pagination
+- `feedback_get_tool` - Get a single user feedback item by ID
+
 ### Geographic Tools
 
 - `bounding_box_tool` - Calculate bounding box for given coordinates
