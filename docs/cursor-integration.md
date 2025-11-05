@@ -12,12 +12,6 @@ This guide explains how to configure Cursor IDE for use with the Mapbox MCP DevK
 # using node
 npm run build
 
-# note your absolute path to node, you will need it for MCP config
-# For Mac/Linux
-which node
-# For Windows
-where node
-
 # or alternatively, using docker
 docker build -t mapbox-mcp-devkit .
 ```
@@ -35,7 +29,7 @@ docker build -t mapbox-mcp-devkit .
        "mcpServers": {
          "MapboxDevKit": {
            "type": "stdio",
-           "command": "<PATH_TO_YOUR_NPX>",
+           "command": "npx",
            "args": ["-y", "@mapbox/mcp-devkit-server"],
            "env": {
              "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>",
@@ -75,8 +69,8 @@ docker build -t mapbox-mcp-devkit .
        "mcpServers": {
          "MapboxDevKit": {
            "type": "stdio",
-           "command": "<PATH_TO_YOUR_NODE>",
-           "args": ["/YOUR_PATH_TO_GIT_REPOSITORY/dist/esm/index.js"],
+           "command": "node",
+           "args": ["<ABSOLUTE_PATH_TO_REPO>/dist/esm/index.js"],
            "env": {
              "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>",
              "MCP_LOGGING_DISABLE": "true"
@@ -113,9 +107,37 @@ Additional environment variables you can set:
 If the Mapbox DevKit Server doesn't appear in Cursor's MCP tools:
 
 1. Check that your `MAPBOX_ACCESS_TOKEN` is valid
-2. Verify the path to `node` or `npx` is correct
+2. Verify `node` and `npx` are in your PATH (run `which node` or `which npx`)
 3. For Docker: ensure the image is built with `docker images | grep mapbox-mcp-devkit`
 4. Check Cursor's logs for any error messages
+
+### Command Not Found
+
+If you get "command not found" errors for `node` or `npx`:
+
+1. Find the absolute path:
+
+   ```bash
+   # Mac/Linux
+   which node
+   which npx
+
+   # Windows
+   where node
+   where npx
+   ```
+
+2. Use the absolute path in your config:
+   ```json
+   {
+     "mcpServers": {
+       "MapboxDevKit": {
+         "command": "/usr/local/bin/npx",  // Use your actual path
+         ...
+       }
+     }
+   }
+   ```
 
 ### Connection Errors
 

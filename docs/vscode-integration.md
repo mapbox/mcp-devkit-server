@@ -14,12 +14,6 @@ This guide explains how to configure Visual Studio Code for use with the Mapbox 
 npm install
 npm run build
 
-# note your absolute path to node, you will need it for MCP config
-# For Mac/Linux
-which node
-# For Windows
-where node
-
 # or alternatively, using docker
 docker build -t mapbox-mcp-devkit .
 ```
@@ -40,7 +34,7 @@ docker build -t mapbox-mcp-devkit .
        "servers": {
          "MapboxDevKit": {
            "type": "stdio",
-           "command": "<PATH_TO_YOUR_NPX>",
+           "command": "npx",
            "args": ["-y", "@mapbox/mcp-devkit-server"],
            "env": {
              "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>",
@@ -80,9 +74,9 @@ docker build -t mapbox-mcp-devkit .
        "servers": {
          "MapboxDevKit": {
            "type": "stdio",
-           "command": "<PATH_TO_YOUR_NODE>",
+           "command": "node",
            "args": [
-             "/YOUR_PATH_TO_GIT_REPOSITORY/dist/esm/index.js"
+             "<ABSOLUTE_PATH_TO_REPO>/dist/esm/index.js"
            ],
            "env": {
              "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>",
@@ -131,7 +125,7 @@ Here's a complete `settings.json` example with the NPM version:
     "servers": {
       "MapboxDevKit": {
         "type": "stdio",
-        "command": "/usr/local/bin/npx",
+        "command": "npx",
         "args": ["-y", "@mapbox/mcp-devkit-server"],
         "env": {
           "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example",
@@ -151,7 +145,7 @@ If the Mapbox DevKit Server doesn't appear in VS Code's MCP servers:
 
 1. **Check GitHub Copilot**: Ensure GitHub Copilot is installed and active
 2. **Verify token**: Check that your `MAPBOX_ACCESS_TOKEN` is valid
-3. **Verify paths**: Ensure the path to `node` or `npx` is correct (use absolute paths)
+3. **Verify PATH**: Ensure `node` and `npx` are in your PATH (run `which node` or `which npx`)
 4. **Docker image**: If using Docker, verify the image exists: `docker images | grep mapbox-mcp-devkit`
 5. **Check Output**: Open "Output" panel → Select "MCP" from dropdown to see logs
 
@@ -172,37 +166,33 @@ If tools fail to execute:
 3. **Verbose errors**: Add `"VERBOSE_ERRORS": "true"` to the env config for detailed error messages
 4. **Network**: Ensure you can reach `api.mapbox.com` from your network
 
-### Finding Your NPX Path
+### Command Not Found
 
-```sh
-# Mac/Linux
-which npx
-# Output example: /usr/local/bin/npx
+If you get "command not found" errors for `node` or `npx`:
 
-# Windows (Command Prompt)
-where npx
-# Output example: C:\Program Files\nodejs\npx.cmd
+1. Find the absolute path:
 
-# Windows (PowerShell)
-Get-Command npx
-# Look for "Source" field in output
-```
+   ```bash
+   # Mac/Linux
+   which node
+   which npx
 
-### Finding Your Node Path
+   # Windows
+   where node
+   where npx
+   ```
 
-```sh
-# Mac/Linux
-which node
-# Output example: /usr/local/bin/node
-
-# Windows (Command Prompt)
-where node
-# Output example: C:\Program Files\nodejs\node.exe
-
-# Windows (PowerShell)
-Get-Command node
-# Look for "Source" field in output
-```
+2. Use the absolute path in your config:
+   ```json
+   "mcp": {
+     "servers": {
+       "MapboxDevKit": {
+         "command": "/usr/local/bin/npx",  // Use your actual path
+         ...
+       }
+     }
+   }
+   ```
 
 ## Example Usage
 
