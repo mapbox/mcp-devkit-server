@@ -67,7 +67,7 @@ docker build -t mapbox-mcp-devkit .
          "MapboxDevKit": {
            "type": "stdio",
            "command": "node",
-           "args": ["<ABSOLUTE_PATH_TO_REPO>/dist/esm/index.js"],
+           "args": ["/absolute/path/to/repo/dist/esm/index.js"],
            "env": {
              "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>"
            }
@@ -99,37 +99,8 @@ Additional environment variables you can set:
 If the Mapbox DevKit Server doesn't appear in Cursor's MCP tools:
 
 1. Check that your `MAPBOX_ACCESS_TOKEN` is valid
-2. Verify `node` and `npx` are in your PATH (run `which node` or `which npx`)
-3. For Docker: ensure the image is built with `docker images | grep mapbox-mcp-devkit`
-4. Check Cursor's logs for any error messages
-
-### Command Not Found
-
-If you get "command not found" errors for `node` or `npx`:
-
-1. Find the absolute path:
-
-   ```bash
-   # Mac/Linux
-   which node
-   which npx
-
-   # Windows
-   where node
-   where npx
-   ```
-
-2. Use the absolute path in your config:
-   ```json
-   {
-     "mcpServers": {
-       "MapboxDevKit": {
-         "command": "/usr/local/bin/npx",  // Use your actual path
-         ...
-       }
-     }
-   }
-   ```
+2. For Docker: ensure the image is built with `docker images | grep mapbox-mcp-devkit`
+3. Check Cursor's logs for any error messages
 
 ### Connection Errors
 

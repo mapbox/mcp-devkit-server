@@ -73,7 +73,7 @@ docker build -t mapbox-mcp-devkit .
            "type": "stdio",
            "command": "node",
            "args": [
-             "<ABSOLUTE_PATH_TO_REPO>/dist/esm/index.js"
+             "/absolute/path/to/repo/dist/esm/index.js"
            ],
            "env": {
              "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>"
@@ -136,9 +136,8 @@ If the Mapbox DevKit Server doesn't appear in VS Code's MCP servers:
 
 1. **Check GitHub Copilot**: Ensure GitHub Copilot is installed and active
 2. **Verify token**: Check that your `MAPBOX_ACCESS_TOKEN` is valid
-3. **Verify PATH**: Ensure `node` and `npx` are in your PATH (run `which node` or `which npx`)
-4. **Docker image**: If using Docker, verify the image exists: `docker images | grep mapbox-mcp-devkit`
-5. **Check Output**: Open "Output" panel → Select "MCP" from dropdown to see logs
+3. **Docker image**: If using Docker, verify the image exists: `docker images | grep mapbox-mcp-devkit`
+4. **Check Output**: Open "Output" panel → Select "MCP" from dropdown to see logs
 
 ### Connection Errors / JSON-RPC Parsing Errors
 
@@ -156,34 +155,6 @@ If tools fail to execute:
 2. **Rate limits**: Check if you're hitting API rate limits (429 errors)
 3. **Verbose errors**: Add `"VERBOSE_ERRORS": "true"` to the env config for detailed error messages
 4. **Network**: Ensure you can reach `api.mapbox.com` from your network
-
-### Command Not Found
-
-If you get "command not found" errors for `node` or `npx`:
-
-1. Find the absolute path:
-
-   ```bash
-   # Mac/Linux
-   which node
-   which npx
-
-   # Windows
-   where node
-   where npx
-   ```
-
-2. Use the absolute path in your config:
-   ```json
-   "mcp": {
-     "servers": {
-       "MapboxDevKit": {
-         "command": "/usr/local/bin/npx",  // Use your actual path
-         ...
-       }
-     }
-   }
-   ```
 
 ## Example Usage
 
