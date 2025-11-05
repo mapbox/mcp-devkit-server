@@ -60,6 +60,7 @@ This server includes OpenTelemetry (OTEL) instrumentation for distributed tracin
 - `OTEL_TRACING_ENABLED` — Set to `false` to explicitly disable tracing even if endpoint is configured
 - `OTEL_SERVICE_NAME` — Override service name (default: `mapbox-mcp-devkit-server`)
 - `OTEL_EXPORTER_OTLP_HEADERS` — JSON string of additional headers for OTLP exporter
+- `OTEL_LOG_LEVEL` — OTEL diagnostic log level: `NONE` (default), `ERROR`, `WARN`, `INFO`, `DEBUG`, `VERBOSE`. Set to `NONE` to prevent OTEL logs from polluting stdio transport.
 
 ### What Gets Traced
 

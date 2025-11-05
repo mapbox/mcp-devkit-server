@@ -41,15 +41,15 @@ if (existsSync(envPath)) {
       envLoadedCount++;
     }
 
-    // Log success if logging is enabled
-    if (!process.env.MCP_DISABLE_LOGGING) {
+    // Log success if logging is enabled (check both env var names for compatibility)
+    if (!process.env.MCP_DISABLE_LOGGING && !process.env.MCP_LOGGING_DISABLE) {
       console.error(
         `✓ Loaded ${envLoadedCount} environment variables from ${envPath}`
       );
     }
   } catch (error) {
     envLoadError = error instanceof Error ? error : new Error(String(error));
-    if (!process.env.MCP_DISABLE_LOGGING) {
+    if (!process.env.MCP_DISABLE_LOGGING && !process.env.MCP_LOGGING_DISABLE) {
       console.error(
         `⚠️  Warning loading .env: ${error instanceof Error ? error.message : String(error)}`
       );
@@ -92,9 +92,10 @@ resources.forEach((resource) => {
 });
 
 // MCP-compatible logging functions
-// Completely suppress logging when MCP_DISABLE_LOGGING is set (for MCP inspector compatibility)
+// Completely suppress logging when MCP_DISABLE_LOGGING or MCP_LOGGING_DISABLE is set (for MCP inspector compatibility)
+// Supports both variable names for backwards compatibility
 function logIfEnabled(level: 'log' | 'warn' | 'error', ...args: unknown[]) {
-  if (!process.env.MCP_DISABLE_LOGGING) {
+  if (!process.env.MCP_DISABLE_LOGGING && !process.env.MCP_LOGGING_DISABLE) {
     console[level](...args);
   }
 }
@@ -160,6 +161,7 @@ async function main() {
     OTEL_EXPORTER_CONSOLE_ENABLED: process.env.OTEL_EXPORTER_CONSOLE_ENABLED,
     OTEL_TRACING_ENABLED: process.env.OTEL_TRACING_ENABLED,
     MCP_DISABLE_LOGGING: process.env.MCP_DISABLE_LOGGING,
+    MCP_LOGGING_DISABLE: process.env.MCP_LOGGING_DISABLE,
     NODE_ENV: process.env.NODE_ENV
   });
 

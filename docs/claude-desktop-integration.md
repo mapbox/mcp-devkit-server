@@ -71,7 +71,8 @@ For users who prefer manual configuration or need custom setups, you can configu
       "command": "npx",
       "args": ["-y", "@mapbox/mcp-devkit-server"],
       "env": {
-        "MAPBOX_ACCESS_TOKEN": "your_token_here"
+        "MAPBOX_ACCESS_TOKEN": "your_token_here",
+        "MCP_LOGGING_DISABLE": "true"
       }
     }
   }
@@ -91,6 +92,8 @@ For users who prefer manual configuration or need custom setups, you can configu
         "--rm",
         "-e",
         "MAPBOX_ACCESS_TOKEN=your_token_here",
+        "-e",
+        "MCP_LOGGING_DISABLE": "true",
         "mapbox-mcp-devkit"
       ]
     }
@@ -109,7 +112,8 @@ If you want to use a local version (need to clone and build from this repo):
       "command": "/path/to/your/node",
       "args": ["/path/to/mapbox-mcp-devkit/dist/esm/index.js"],
       "env": {
-        "MAPBOX_ACCESS_TOKEN": "your_token_here"
+        "MAPBOX_ACCESS_TOKEN": "your_token_here",
+        "MCP_LOGGING_DISABLE": "true"
       }
     }
   }
@@ -180,6 +184,7 @@ Enable verbose error reporting by adding the environment variable:
       "args": ["-y", "@mapbox/mcp-devkit-server"],
       "env": {
         "MAPBOX_ACCESS_TOKEN": "your_token_here",
+        "MCP_LOGGING_DISABLE": "true"
         "VERBOSE_ERRORS": "true"
       }
     }

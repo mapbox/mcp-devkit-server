@@ -33,7 +33,6 @@ export class GetMapboxDocSourceTool extends BaseTool<
   }
 
   protected async execute(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _input: GetMapboxDocSourceInput
   ): Promise<CallToolResult> {
     try {
