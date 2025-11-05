@@ -56,10 +56,10 @@ This server includes OpenTelemetry (OTEL) instrumentation for distributed tracin
 ### Environment Variables
 
 - `OTEL_EXPORTER_OTLP_ENDPOINT` — OTLP endpoint URL (e.g., `http://localhost:4318`). If not set, tracing is disabled.
-- `OTEL_EXPORTER_CONSOLE_ENABLED` — Set to `true` to log traces to console (avoid with stdio transport)
 - `OTEL_TRACING_ENABLED` — Set to `false` to explicitly disable tracing even if endpoint is configured
 - `OTEL_SERVICE_NAME` — Override service name (default: `mapbox-mcp-devkit-server`)
 - `OTEL_EXPORTER_OTLP_HEADERS` — JSON string of additional headers for OTLP exporter
+- `OTEL_LOG_LEVEL` — OTEL diagnostic log level: `NONE` (default), `ERROR`, `WARN`, `INFO`, `DEBUG`, `VERBOSE`. Defaults to `NONE` to prevent diagnostic logs from corrupting stdio transport.
 
 ### What Gets Traced
 

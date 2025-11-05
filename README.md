@@ -27,7 +27,12 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
       - [Bounding Box tool](#bounding-box-tool)
   - [Resources](#resources)
-  - [Observability & Tracing](#observability--tracing)
+  - [Observability \& Tracing](#observability--tracing)
+    - [Features](#features)
+    - [Quick Start with Jaeger](#quick-start-with-jaeger)
+    - [Supported Backends](#supported-backends)
+    - [Documentation](#documentation)
+    - [Environment Variables](#environment-variables)
   - [Development](#development)
     - [Testing](#testing)
       - [Tool Snapshot Tests](#tool-snapshot-tests)
@@ -35,7 +40,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [Using Node.js](#using-nodejs)
       - [Using Docker](#using-docker)
     - [Creating New Tools](#creating-new-tools)
-    - [Environment Variables](#environment-variables)
+    - [Environment Variables](#environment-variables-1)
       - [VERBOSE_ERRORS](#verbose_errors)
   - [Troubleshooting](#troubleshooting)
   - [Contributing](#contributing)
@@ -48,6 +53,8 @@ Get started by integrating with your preferred AI development environment:
 
 - [Claude Code Integration](./docs/claude-code-integration.md) - Command-line development with Claude
 - [Claude Desktop Integration](./docs/claude-desktop-integration.md) - Desktop application integration
+- [Cursor Integration](./docs/cursor-integration.md) - Cursor IDE integration
+- [VS Code Integration](./docs/vscode-integration.md) - Visual Studio Code with GitHub Copilot
 
 ### DXT Package Distribution
 
@@ -592,11 +599,8 @@ npm test -- --updateSnapshot
 #### Using Node.js
 
 ```sh
-# Build
-npm run build
-
-# Inspect
-npx @modelcontextprotocol/inspector node dist/esm/index.js
+# Run the built image
+npm run inspect:build
 ```
 
 #### Using Docker

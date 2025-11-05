@@ -73,9 +73,7 @@ npm run tracing:jaeger:stop
 
 ### Successful Tracing Setup
 
-✅ **Console output shows**: `OpenTelemetry tracing: enabled`
-
-✅ **Jaeger UI shows traces** for your service
+✅ **Jaeger UI shows traces** for your service after tool execution
 
 ✅ **Trace details include**:
 
@@ -193,34 +191,16 @@ OTEL_EXPORTER_OTLP_ENDPOINT=https://api.honeycomb.io/v1/traces
 OTEL_EXPORTER_OTLP_HEADERS='{"x-honeycomb-team":"YOUR_API_KEY"}'
 ```
 
-## Alternative Methods
+## Diagnostic Logging
 
-### Console Tracing (Development Only)
-
-**⚠️ Not recommended for stdio transport**
+By default, OpenTelemetry diagnostic logs are disabled to prevent interference with stdio transport. If you need to troubleshoot OTEL configuration issues, you can enable diagnostic logging:
 
 ```bash
-# Add to .env (only works well with SSE transport)
-OTEL_EXPORTER_CONSOLE_ENABLED=true
+# Add to .env - only for debugging OTEL issues
+OTEL_LOG_LEVEL=ERROR
 ```
 
-This prints traces to stderr. Only use this for debugging, as it can interfere with MCP's stdio communication.
-
-### Verifying Different Transports
-
-#### stdio Transport (Default) - Silent Operation
-
-```bash
-# Normal operation
-npm run inspect:build
-```
-
-#### SSE Transport - Full Logging
-
-```bash
-# If your inspector supports SSE transport
-SERVER_TRANSPORT=sse npm run inspect:build
-```
+**⚠️ Warning:** Any console output (including OTEL diagnostic logs) can corrupt stdio communication. Only enable diagnostic logging when actively troubleshooting, and disable it once resolved.
 
 ## Production Considerations
 

@@ -9,10 +9,42 @@ import {
   ATTR_SERVICE_VERSION
 } from '@opentelemetry/semantic-conventions';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { trace, SpanStatusCode, SpanKind, type Span } from '@opentelemetry/api';
+import {
+  trace,
+  SpanStatusCode,
+  SpanKind,
+  type Span,
+  diag,
+  DiagLogLevel
+} from '@opentelemetry/api';
 import { getVersionInfo } from './versionUtils.js';
 import { ATTR_SERVICE_INSTANCE_ID } from '@opentelemetry/semantic-conventions/incubating';
 import { type HttpRequest } from './types.js';
+
+// Suppress OpenTelemetry diagnostic logging IMMEDIATELY to avoid polluting stdio
+// This must happen at module load time, before any OTEL operations
+// Use OTEL_LOG_LEVEL env var to override if needed for debugging
+const configureOtelDiagnostics = () => {
+  const logLevel = process.env.OTEL_LOG_LEVEL
+    ? DiagLogLevel[
+        process.env.OTEL_LOG_LEVEL.toUpperCase() as keyof typeof DiagLogLevel
+      ]
+    : DiagLogLevel.NONE;
+
+  diag.setLogger(
+    {
+      verbose: () => {},
+      debug: () => {},
+      info: () => {},
+      warn: () => {},
+      error: () => {}
+    },
+    logLevel
+  );
+};
+
+// Configure diagnostics at module load time
+configureOtelDiagnostics();
 
 // Global SDK instance
 let sdk: NodeSDK | null = null;
@@ -117,8 +149,8 @@ export function createToolExecutionContext(
  * Initialize OpenTelemetry tracing
  * Should be called once at application startup
  *
- * For MCP servers using stdio transport, console output should be avoided.
- * This implementation automatically detects and handles MCP compatibility.
+ * This server uses stdio transport exclusively. Only OTLP exporters are supported.
+ * Console output is incompatible with stdio and will corrupt JSON-RPC communication.
  */
 export async function initializeTracing(): Promise<void> {
   // Skip initialization if already initialized or if running in test environment
@@ -145,39 +177,24 @@ export async function initializeTracing(): Promise<void> {
       'service.git.tag': versionInfo.tag
     });
 
-    // Configure exporters
-    const exporters = [];
-
-    // Console exporter for development (avoid in stdio transport)
-    if (process.env.OTEL_EXPORTER_CONSOLE_ENABLED === 'true') {
-      const { ConsoleSpanExporter } = await import(
-        '@opentelemetry/sdk-trace-base'
-      );
-      exporters.push(new ConsoleSpanExporter());
-    }
-
-    // OTLP HTTP exporter for production
+    // OTLP HTTP exporter - only supported exporter for stdio transport
     const otlpEndpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT;
-    if (otlpEndpoint) {
-      exporters.push(
-        new OTLPTraceExporter({
-          url: `${otlpEndpoint}/v1/traces`,
-          headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
-            ? JSON.parse(process.env.OTEL_EXPORTER_OTLP_HEADERS)
-            : {}
-        })
-      );
-    }
-
-    // Skip tracing if no exporters configured
-    if (exporters.length === 0) {
+    if (!otlpEndpoint) {
+      // Skip tracing if no OTLP endpoint configured
       return;
     }
+
+    const exporter = new OTLPTraceExporter({
+      url: `${otlpEndpoint}/v1/traces`,
+      headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
+        ? JSON.parse(process.env.OTEL_EXPORTER_OTLP_HEADERS)
+        : {}
+    });
 
     // Create SDK instance
     sdk = new NodeSDK({
       resource,
-      traceExporter: exporters[0],
+      traceExporter: exporter,
       instrumentations: [
         getNodeAutoInstrumentations({
           // Disable instrumentations that might be too noisy
