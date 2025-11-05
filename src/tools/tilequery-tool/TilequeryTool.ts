@@ -3,6 +3,7 @@
 
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
+import type { ToolExecutionContext } from '../../utils/tracing.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   TilequerySchema,
@@ -38,7 +39,8 @@ export class TilequeryTool extends MapboxApiBasedTool<
 
   protected async execute(
     input: TilequeryInput,
-    accessToken?: string
+    accessToken: string,
+    _context: ToolExecutionContext
   ): Promise<CallToolResult> {
     const { tilesetId, longitude, latitude, ...queryParams } = input;
     const url = new URL(

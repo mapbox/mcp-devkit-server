@@ -3,6 +3,7 @@
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
+import type { ToolExecutionContext } from '../../utils/tracing.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
@@ -29,7 +30,8 @@ export class DeleteStyleTool extends MapboxApiBasedTool<
 
   protected async execute(
     input: DeleteStyleInput,
-    accessToken?: string
+    accessToken: string,
+    _context: ToolExecutionContext
   ): Promise<CallToolResult> {
     const username = getUserNameFromToken(accessToken);
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;

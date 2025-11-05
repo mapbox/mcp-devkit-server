@@ -17,6 +17,72 @@ This file provides Claude and developers with essential context, commands, and s
 - `npm run sync-manifest` — Sync version from package.json to manifest.json
 - `docker build -t mapbox-mcp-devkit .` — Build Docker image
 - `docker run mapbox/mcp-devkit-server ...` — Run server in Docker
+- `npm run tracing:jaeger:start` — Start Jaeger tracing backend (requires Docker)
+- `npm run tracing:jaeger:stop` — Stop Jaeger tracing backend
+- `npm run tracing:verify` — Show instructions for verifying tracing setup
+
+## Observability & Tracing
+
+This server includes OpenTelemetry (OTEL) instrumentation for distributed tracing. Tracing is **opt-in** and disabled by default.
+
+### Quick Start with Jaeger
+
+1. Start Jaeger backend (requires Docker):
+
+   ```bash
+   npm run tracing:jaeger:start
+   ```
+
+2. Configure environment variables in `.env`:
+
+   ```bash
+   OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+   OTEL_SERVICE_NAME=mapbox-mcp-devkit-server
+   ```
+
+3. Run the server:
+
+   ```bash
+   npm run inspect:build
+   ```
+
+4. View traces at http://localhost:16686
+
+5. Stop Jaeger when done:
+   ```bash
+   npm run tracing:jaeger:stop
+   ```
+
+### Environment Variables
+
+- `OTEL_EXPORTER_OTLP_ENDPOINT` — OTLP endpoint URL (e.g., `http://localhost:4318`). If not set, tracing is disabled.
+- `OTEL_EXPORTER_CONSOLE_ENABLED` — Set to `true` to log traces to console (avoid with stdio transport)
+- `OTEL_TRACING_ENABLED` — Set to `false` to explicitly disable tracing even if endpoint is configured
+- `OTEL_SERVICE_NAME` — Override service name (default: `mapbox-mcp-devkit-server`)
+- `OTEL_EXPORTER_OTLP_HEADERS` — JSON string of additional headers for OTLP exporter
+
+### What Gets Traced
+
+- Tool execution spans with timing and status
+- HTTP requests to Mapbox APIs (automatic instrumentation)
+- Configuration loading and initialization
+- Error details and stack traces
+
+### Trace Attributes
+
+Each tool execution span includes:
+
+- `tool.name` — Tool identifier
+- `tool.input.size` — Input payload size
+- `operation.type` — Type of operation (e.g., `tool_execution`)
+- `session.id`, `user.id`, `account.id` — Context from MCP extra fields (if provided)
+
+### Production Considerations
+
+- Tracing has minimal overhead when enabled
+- Recommended for debugging complex tool chains and performance issues
+- Can be used with any OTLP-compatible backend (Jaeger, Honeycomb, DataDog, etc.)
+- For hosted endpoints, configure appropriate sampling rates
 
 ## Core Files & Structure
 
