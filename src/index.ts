@@ -40,20 +40,9 @@ if (existsSync(envPath)) {
       process.env[key] = value;
       envLoadedCount++;
     }
-
-    // Log success if logging is enabled
-    if (!process.env.MCP_LOGGING_DISABLE) {
-      console.error(
-        `✓ Loaded ${envLoadedCount} environment variables from ${envPath}`
-      );
-    }
   } catch (error) {
     envLoadError = error instanceof Error ? error : new Error(String(error));
-    if (!process.env.MCP_LOGGING_DISABLE) {
-      console.error(
-        `⚠️  Warning loading .env: ${error instanceof Error ? error.message : String(error)}`
-      );
-    }
+    // Error will be logged via MCP logging messages and traced if tracing is enabled
   }
 }
 
@@ -91,23 +80,42 @@ resources.forEach((resource) => {
   resource.installTo(server);
 });
 
-// MCP-compatible logging functions
-// Completely suppress logging when MCP_LOGGING_DISABLE is set (for MCP inspector compatibility)
-function logIfEnabled(level: 'log' | 'warn' | 'error', ...args: unknown[]) {
-  if (!process.env.MCP_LOGGING_DISABLE) {
-    console[level](...args);
-  }
-}
-
 async function main() {
+  // Send MCP logging messages about .env loading
+  if (envLoadError) {
+    server.server.sendLoggingMessage({
+      level: 'warning',
+      data: `Failed to load .env file: ${envLoadError.message}`
+    });
+  } else if (envLoadedCount > 0) {
+    server.server.sendLoggingMessage({
+      level: 'info',
+      data: `Loaded ${envLoadedCount} environment variables from ${envPath}`
+    });
+  } else {
+    server.server.sendLoggingMessage({
+      level: 'debug',
+      data: 'No .env file found or file was empty'
+    });
+  }
+
   // Initialize OpenTelemetry tracing if not in test mode
   if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
     try {
       await initializeTracing();
-      logIfEnabled(
-        'log',
-        `OpenTelemetry tracing: ${isTracingInitialized() ? 'enabled' : 'disabled'}`
-      );
+
+      // Send MCP logging message about tracing status
+      if (isTracingInitialized()) {
+        server.server.sendLoggingMessage({
+          level: 'info',
+          data: 'OpenTelemetry tracing enabled'
+        });
+      } else {
+        server.server.sendLoggingMessage({
+          level: 'debug',
+          data: 'OpenTelemetry tracing disabled (no OTLP endpoint configured)'
+        });
+      }
 
       // Record .env loading as a span (retrospectively since it happened before tracing init)
       if (isTracingInitialized()) {
@@ -142,24 +150,21 @@ async function main() {
         span.end();
       }
     } catch (error) {
-      logIfEnabled('warn', 'Failed to initialize tracing:', error);
+      // Log tracing initialization failure
+      server.server.sendLoggingMessage({
+        level: 'warning',
+        data: `Failed to initialize tracing: ${error instanceof Error ? error.message : String(error)}`
+      });
     }
   }
-
-  // Send MCP logging message about environment variables
-  server.server.sendLoggingMessage({
-    level: 'info',
-    data: 'Environment variables loaded from .env file'
-  });
 
   const relevantEnvVars = Object.freeze({
     MAPBOX_ACCESS_TOKEN: process.env.MAPBOX_ACCESS_TOKEN ? '***' : undefined,
     MAPBOX_API_ENDPOINT: process.env.MAPBOX_API_ENDPOINT,
     OTEL_SERVICE_NAME: process.env.OTEL_SERVICE_NAME,
     OTEL_EXPORTER_OTLP_ENDPOINT: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
-    OTEL_EXPORTER_CONSOLE_ENABLED: process.env.OTEL_EXPORTER_CONSOLE_ENABLED,
     OTEL_TRACING_ENABLED: process.env.OTEL_TRACING_ENABLED,
-    MCP_LOGGING_DISABLE: process.env.MCP_LOGGING_DISABLE,
+    OTEL_LOG_LEVEL: process.env.OTEL_LOG_LEVEL,
     NODE_ENV: process.env.NODE_ENV
   });
 
@@ -178,15 +183,31 @@ async function shutdown() {
   // Shutdown tracing
   try {
     await shutdownTracing();
-  } catch (e) {
-    logIfEnabled('error', 'Error shutting down tracing:', e);
+    server.server.sendLoggingMessage({
+      level: 'info',
+      data: 'Server shutting down gracefully'
+    });
+  } catch (error) {
+    server.server.sendLoggingMessage({
+      level: 'warning',
+      data: `Error during shutdown: ${error instanceof Error ? error.message : String(error)}`
+    });
   }
 
   process.exit(0);
 }
 
-function exitWithLog(message: string, error: unknown, code = 1) {
-  logIfEnabled('error', message, error);
+function exitWithError(error: unknown, code = 1) {
+  // Use MCP logging for fatal errors
+  try {
+    server.server.sendLoggingMessage({
+      level: 'error',
+      data: `Fatal error: ${error instanceof Error ? error.message : String(error)}`
+    });
+  } catch {
+    // If MCP logging fails, we have no choice but to use console
+    console.error('Fatal error:', error);
+  }
   process.exit(code);
 }
 
@@ -200,11 +221,7 @@ function exitWithLog(message: string, error: unknown, code = 1) {
   });
 });
 
-process.on('uncaughtException', (err) =>
-  exitWithLog('Uncaught exception:', err)
-);
-process.on('unhandledRejection', (reason) =>
-  exitWithLog('Unhandled rejection:', reason)
-);
+process.on('uncaughtException', (err) => exitWithError(err));
+process.on('unhandledRejection', (reason) => exitWithError(reason));
 
-main().catch((error) => exitWithLog('Fatal error starting MCP server:', error));
+main().catch((error) => exitWithError(error));

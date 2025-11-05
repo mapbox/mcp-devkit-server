@@ -2,16 +2,11 @@
 
 This MCP server includes comprehensive distributed tracing using OpenTelemetry (OTEL), providing production-ready observability for tool executions and HTTP requests.
 
-## ⚠️ Important MCP Transport Compatibility
+## ⚠️ Important: Stdio Transport Only
 
-**Console tracing should be avoided with stdio transport** as console output interferes with MCP's stdio JSON-RPC communication.
+**This server uses stdio transport exclusively.** Only OTLP exporters are supported for tracing.
 
-**Transport-specific recommendations:**
-
-- **stdio transport (default):** Use OTLP exporters only, avoid console tracing
-- **SSE transport:** Console tracing is safe to use for development
-
-The server automatically detects the transport type and adjusts logging behavior accordingly.
+Console output is incompatible with stdio and will corrupt JSON-RPC communication. All diagnostic logging is disabled by default to ensure reliable operation.
 
 ## Features
 
@@ -56,14 +51,15 @@ The tracing system supports several configuration options through environment va
 #### Basic Configuration
 
 ```bash
-# Enable console tracing (development)
-OTEL_EXPORTER_CONSOLE_ENABLED=true
-
-# OTLP HTTP endpoint (production)
+# OTLP HTTP endpoint (required to enable tracing)
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 
 # Optional OTLP headers for authentication
 OTEL_EXPORTER_OTLP_HEADERS='{"Authorization": "Bearer your-token"}'
+
+# Optional: OTEL diagnostic log level (default: NONE)
+# Only use for troubleshooting OTEL configuration issues
+OTEL_LOG_LEVEL=ERROR
 ```
 
 #### Service Configuration
@@ -82,28 +78,22 @@ OTEL_TRACES_SAMPLER=traceidratio
 OTEL_TRACES_SAMPLER_ARG=0.1  # Sample 10% of traces
 ```
 
-### Transport-Specific Configuration
+### Enabling Tracing
 
-**For stdio transport (default):**
-
-```bash
-# ✅ RECOMMENDED: Use OTLP exporter for stdio transport
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-
-# ❌ AVOID: Console output interferes with stdio JSON-RPC
-# OTEL_EXPORTER_CONSOLE_ENABLED=true
-```
-
-**For SSE transport:**
+Tracing is opt-in and disabled by default. To enable tracing, you must configure an OTLP endpoint:
 
 ```bash
-# ✅ SAFE: Console tracing works with SSE transport
-SERVER_TRANSPORT=sse
-OTEL_EXPORTER_CONSOLE_ENABLED=true
-
-# ✅ ALSO GOOD: OTLP exporter works with any transport
+# Enable tracing by setting the OTLP endpoint
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+
+# Optionally customize the service name
+OTEL_SERVICE_NAME=mapbox-mcp-devkit-server
+
+# For debugging OTEL configuration issues only
+# OTEL_LOG_LEVEL=ERROR
 ```
+
+**Note:** Console exporters are not supported due to stdio transport limitations.
 
 ### Verification
 

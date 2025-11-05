@@ -610,7 +610,7 @@ npm run inspect:build
 docker build -t mapbox-mcp-devkit .
 
 # Run and inspect the server
-npx @modelcontextprotocol/inspector docker run -i --rm --env MAPBOX_ACCESS_TOKEN="YOUR_TOKEN" --env  MCP_LOGGING_DISABLE="true" mapbox-mcp-devkit
+npx @modelcontextprotocol/inspector docker run -i --rm --env MAPBOX_ACCESS_TOKEN="YOUR_TOKEN" mapbox-mcp-devkit
 ```
 
 ### Creating New Tools

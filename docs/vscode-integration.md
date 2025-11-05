@@ -37,8 +37,7 @@ docker build -t mapbox-mcp-devkit .
            "command": "npx",
            "args": ["-y", "@mapbox/mcp-devkit-server"],
            "env": {
-             "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>",
-             "MCP_LOGGING_DISABLE": "true"
+             "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>"
            }
          }
        }
@@ -59,8 +58,6 @@ docker build -t mapbox-mcp-devkit .
              "--rm",
              "--env",
              "MAPBOX_ACCESS_TOKEN=<YOUR_TOKEN>",
-             "--env",
-             "MCP_LOGGING_DISABLE=true",
              "mapbox-mcp-devkit"
            ]
          }
@@ -79,8 +76,7 @@ docker build -t mapbox-mcp-devkit .
              "<ABSOLUTE_PATH_TO_REPO>/dist/esm/index.js"
            ],
            "env": {
-             "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>",
-             "MCP_LOGGING_DISABLE": "true"
+             "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>"
            }
          }
        }
@@ -96,10 +92,6 @@ docker build -t mapbox-mcp-devkit .
 After restarting VS Code, you should see "Mapbox DevKit" appear in the GitHub Copilot tools menu or MCP servers list.
 
 ## Important Notes
-
-### Stdio Transport Logging
-
-The MCP DevKit Server uses stdio (standard input/output) for communication with VS Code. To prevent console logs from corrupting the JSON-RPC protocol, **you must set `MCP_LOGGING_DISABLE=true`** in the environment variables.
 
 ### Token Scopes
 
@@ -128,8 +120,7 @@ Here's a complete `settings.json` example with the NPM version:
         "command": "npx",
         "args": ["-y", "@mapbox/mcp-devkit-server"],
         "env": {
-          "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example",
-          "MCP_LOGGING_DISABLE": "true"
+          "MAPBOX_ACCESS_TOKEN": "pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example"
         }
       }
     }
@@ -153,9 +144,9 @@ If the Mapbox DevKit Server doesn't appear in VS Code's MCP servers:
 
 If you see JSON-RPC or parsing errors in the Output panel:
 
-1. **Logging disabled**: Ensure `MCP_LOGGING_DISABLE` is set to `"true"` in your configuration
-2. **Build fresh**: Run `npm run build` to ensure you have the latest build
-3. **Path verification**: For Node version, verify the path to `dist/esm/index.js` is correct and absolute
+1. **Build fresh**: Run `npm run build` to ensure you have the latest build
+2. **Path verification**: For Node version, verify the path to `dist/esm/index.js` is correct and absolute
+3. **Check logs**: Open "Output" panel → Select "MCP" from dropdown to see detailed logs
 
 ### Tool Execution Failures
 

@@ -32,8 +32,7 @@ docker build -t mapbox-mcp-devkit .
            "command": "npx",
            "args": ["-y", "@mapbox/mcp-devkit-server"],
            "env": {
-             "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>",
-             "MCP_LOGGING_DISABLE": "true"
+             "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>"
            }
          }
        }
@@ -54,8 +53,6 @@ docker build -t mapbox-mcp-devkit .
              "--rm",
              "--env",
              "MAPBOX_ACCESS_TOKEN=<YOUR_TOKEN>",
-             "--env",
-             "MCP_LOGGING_DISABLE=true",
              "mapbox-mcp-devkit"
            ]
          }
@@ -72,8 +69,7 @@ docker build -t mapbox-mcp-devkit .
            "command": "node",
            "args": ["<ABSOLUTE_PATH_TO_REPO>/dist/esm/index.js"],
            "env": {
-             "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>",
-             "MCP_LOGGING_DISABLE": "true"
+             "MAPBOX_ACCESS_TOKEN": "<YOUR_TOKEN>"
            }
          }
        }
@@ -83,10 +79,6 @@ docker build -t mapbox-mcp-devkit .
 3. Click "Save" to apply the configuration.
 
 ## Important Notes
-
-### Stdio Transport Logging
-
-The MCP DevKit Server uses stdio (standard input/output) for communication with Cursor. To prevent console logs from corrupting the JSON-RPC protocol, **you must set `MCP_LOGGING_DISABLE=true`** in the environment variables.
 
 ### Token Scopes
 
@@ -143,9 +135,8 @@ If you get "command not found" errors for `node` or `npx`:
 
 If you see JSON-RPC or parsing errors:
 
-1. Ensure `MCP_LOGGING_DISABLE` is set to `"true"` in your configuration
-2. If using Node version, verify the path to `dist/esm/index.js` is correct
-3. Run `npm run build` to ensure the latest build is available
+1. If using Node version, verify the path to `dist/esm/index.js` is correct
+2. Run `npm run build` to ensure the latest build is available
 
 ### Tool Execution Failures
 
