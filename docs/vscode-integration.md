@@ -107,11 +107,6 @@ After restarting VS Code, you should see "Mapbox DevKit" appear in the GitHub Co
 
 The MCP DevKit Server uses stdio (standard input/output) for communication with VS Code. To prevent console logs from corrupting the JSON-RPC protocol, **you must set `MCP_LOGGING_DISABLE=true`** in the environment variables.
 
-Both variable names are supported for backwards compatibility:
-
-- `MCP_LOGGING_DISABLE` (recommended)
-- `MCP_DISABLE_LOGGING` (legacy)
-
 ### Token Scopes
 
 Your Mapbox access token must have the appropriate scopes for the tools you want to use. See the [main README](../README.md#tools) for required token scopes per tool.
