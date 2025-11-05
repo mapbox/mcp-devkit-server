@@ -5,20 +5,20 @@ import type { z } from 'zod';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
-import { FeedbackListInputSchema } from './FeedbackListTool.input.schema.js';
+import { ListFeedbackInputSchema } from './ListFeedbackTool.input.schema.js';
 import { FeedbackListResponseSchema } from '../feedback.schema.js';
 import type { FeedbackItem, FeedbackListResponse } from '../feedback.schema.js';
 
 // API Documentation: https://docs.mapbox.com/api/feedback/
 
-export class FeedbackListTool extends MapboxApiBasedTool<
-  typeof FeedbackListInputSchema
+export class ListFeedbackTool extends MapboxApiBasedTool<
+  typeof ListFeedbackInputSchema
 > {
-  name = 'feedback_list_tool';
+  name = 'list_feedback_tool';
   description =
     'List user feedback items from the Mapbox Feedback API with filtering, sorting, and pagination. Use this tool to access user-reported issues, suggestions, and feedback about map data, routing, and POI details. Supports comprehensive filtering by status, category, date ranges, trace IDs, and search text. Requires user-feedback:read scope on the access token.';
   annotations = {
-    title: 'Feedback List Tool',
+    title: 'List Feedback Tool',
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
@@ -27,7 +27,7 @@ export class FeedbackListTool extends MapboxApiBasedTool<
 
   constructor(params: { httpRequest: HttpRequest }) {
     super({
-      inputSchema: FeedbackListInputSchema,
+      inputSchema: ListFeedbackInputSchema,
       httpRequest: params.httpRequest
     });
   }
@@ -90,7 +90,7 @@ export class FeedbackListTool extends MapboxApiBasedTool<
    * Builds URL parameters for list operation
    */
   private buildListParams(
-    input: z.infer<typeof FeedbackListInputSchema>,
+    input: z.infer<typeof ListFeedbackInputSchema>,
     url: URL
   ): void {
     // Add optional parameters
@@ -164,7 +164,7 @@ export class FeedbackListTool extends MapboxApiBasedTool<
   }
 
   protected async execute(
-    input: z.infer<typeof FeedbackListInputSchema>,
+    input: z.infer<typeof ListFeedbackInputSchema>,
     accessToken: string
   ): Promise<CallToolResult> {
     const url = new URL(

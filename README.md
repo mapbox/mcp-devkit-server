@@ -278,7 +278,7 @@ List Mapbox access tokens for the authenticated user with optional filtering and
 
 Access user feedback items from the Mapbox Feedback API. These tools allow you to retrieve and view user-reported issues, suggestions, and feedback about map data, routing, and POI details.
 
-**feedback_list_tool** - List user feedback items with comprehensive filtering, sorting, and pagination options.
+**list_feedback_tool** - List user feedback items with comprehensive filtering, sorting, and pagination options.
 
 **Parameters:**
 
@@ -298,7 +298,7 @@ Access user feedback items from the Mapbox Feedback API. These tools allow you t
 
 **Returns:** Paginated list of feedback items with pagination cursors.
 
-**feedback_get_tool** - Get a single user feedback item by its unique ID.
+**get_feedback_tool** - Get a single user feedback item by its unique ID.
 
 **Parameters:**
 

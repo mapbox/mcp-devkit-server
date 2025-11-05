@@ -5,20 +5,20 @@ import type { z } from 'zod';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
-import { FeedbackGetInputSchema } from './FeedbackGetTool.input.schema.js';
+import { GetFeedbackInputSchema } from './GetFeedbackTool.input.schema.js';
 import { FeedbackGetResponseSchema } from '../feedback.schema.js';
 import type { FeedbackItem } from '../feedback.schema.js';
 
 // API Documentation: https://docs.mapbox.com/api/feedback/
 
-export class FeedbackGetTool extends MapboxApiBasedTool<
-  typeof FeedbackGetInputSchema
+export class GetFeedbackTool extends MapboxApiBasedTool<
+  typeof GetFeedbackInputSchema
 > {
-  name = 'feedback_get_tool';
+  name = 'get_feedback_tool';
   description =
     'Get a single user feedback item from the Mapbox Feedback API by its unique ID. Use this tool to retrieve detailed information about a specific user-reported issue, suggestion, or feedback about map data, routing, or POI details. Requires user-feedback:read scope on the access token.';
   annotations = {
-    title: 'Feedback Get Tool',
+    title: 'Get Feedback Tool',
     readOnlyHint: true,
     destructiveHint: false,
     idempotentHint: true,
@@ -27,7 +27,7 @@ export class FeedbackGetTool extends MapboxApiBasedTool<
 
   constructor(params: { httpRequest: HttpRequest }) {
     super({
-      inputSchema: FeedbackGetInputSchema,
+      inputSchema: GetFeedbackInputSchema,
       httpRequest: params.httpRequest
     });
   }
@@ -55,7 +55,7 @@ export class FeedbackGetTool extends MapboxApiBasedTool<
   }
 
   protected async execute(
-    input: z.infer<typeof FeedbackGetInputSchema>,
+    input: z.infer<typeof GetFeedbackInputSchema>,
     accessToken: string
   ): Promise<CallToolResult> {
     const url = new URL(

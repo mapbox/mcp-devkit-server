@@ -4,9 +4,9 @@
 import { z } from 'zod';
 
 /**
- * Input schema for Feedback Get Tool
+ * Input schema for Get Feedback Tool
  */
-export const FeedbackGetInputSchema = z.object({
+export const GetFeedbackInputSchema = z.object({
   feedback_id: z
     .string()
     .uuid()
@@ -20,4 +20,4 @@ export const FeedbackGetInputSchema = z.object({
     )
 });
 
-export type FeedbackGetInput = z.infer<typeof FeedbackGetInputSchema>;
+export type GetFeedbackInput = z.infer<typeof GetFeedbackInputSchema>;

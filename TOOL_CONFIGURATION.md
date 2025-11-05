@@ -44,8 +44,8 @@ The following tools are available in the Mapbox MCP Devkit Server:
 
 ### Feedback Tools
 
-- `feedback_list_tool` - List user feedback items with filtering and pagination
-- `feedback_get_tool` - Get a single user feedback item by ID
+- `list_feedback_tool` - List user feedback items with filtering and pagination
+- `get_feedback_tool` - Get a single user feedback item by ID
 
 ### Geographic Tools
 

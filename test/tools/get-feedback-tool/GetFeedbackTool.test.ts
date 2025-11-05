@@ -6,7 +6,7 @@ import {
   setupHttpRequest,
   assertHeadersSent
 } from '../../utils/httpPipelineUtils.js';
-import { FeedbackGetTool } from '../../../src/tools/feedback-get-tool/FeedbackGetTool.js';
+import { GetFeedbackTool } from '../../../src/tools/get-feedback-tool/GetFeedbackTool.js';
 
 const mockToken = 'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
@@ -14,7 +14,7 @@ beforeAll(() => {
   process.env.MAPBOX_ACCESS_TOKEN = mockToken;
 });
 
-describe('FeedbackGetTool', () => {
+describe('GetFeedbackTool', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -37,8 +37,8 @@ describe('FeedbackGetTool', () => {
           updated_at: '2025-07-28T14:10:30.123Z'
         })
       });
-      const tool = new FeedbackGetTool({ httpRequest });
-      expect(tool.name).toBe('feedback_get_tool');
+      const tool = new GetFeedbackTool({ httpRequest });
+      expect(tool.name).toBe('get_feedback_tool');
       expect(tool.description).toContain('Get a single user feedback item');
     });
   });
@@ -62,7 +62,7 @@ describe('FeedbackGetTool', () => {
       })
     });
 
-    await new FeedbackGetTool({ httpRequest }).run({
+    await new GetFeedbackTool({ httpRequest }).run({
       feedback_id: feedbackId
     });
 
@@ -88,7 +88,7 @@ describe('FeedbackGetTool', () => {
       })
     });
 
-    await new FeedbackGetTool({ httpRequest }).run({
+    await new GetFeedbackTool({ httpRequest }).run({
       feedback_id: feedbackId
     });
 
@@ -119,7 +119,7 @@ describe('FeedbackGetTool', () => {
       json: async () => mockItem
     });
 
-    const result = await new FeedbackGetTool({ httpRequest }).run({
+    const result = await new GetFeedbackTool({ httpRequest }).run({
       feedback_id: mockItem.id
     });
 
@@ -152,7 +152,7 @@ describe('FeedbackGetTool', () => {
       json: async () => mockItem
     });
 
-    const result = await new FeedbackGetTool({ httpRequest }).run({
+    const result = await new GetFeedbackTool({ httpRequest }).run({
       feedback_id: mockItem.id,
       format: 'json_string'
     });
@@ -170,7 +170,7 @@ describe('FeedbackGetTool', () => {
       statusText: 'Not Found'
     });
 
-    const result = await new FeedbackGetTool({ httpRequest }).run({
+    const result = await new GetFeedbackTool({ httpRequest }).run({
       feedback_id: '40eae4c7-b157-4b49-a091-7e1099bba77e'
     });
 
@@ -195,7 +195,7 @@ describe('FeedbackGetTool', () => {
       })
     });
 
-    const result = await new FeedbackGetTool({ httpRequest }).run({
+    const result = await new GetFeedbackTool({ httpRequest }).run({
       feedback_id: '40eae4c7-b157-4b49-a091-7e1099bba77e'
     });
 
@@ -216,7 +216,7 @@ describe('FeedbackGetTool', () => {
       })
     });
 
-    const result = await new FeedbackGetTool({ httpRequest }).run({
+    const result = await new GetFeedbackTool({ httpRequest }).run({
       feedback_id: '40eae4c7-b157-4b49-a091-7e1099bba77e'
     });
 
@@ -235,7 +235,7 @@ describe('FeedbackGetTool', () => {
   it('validates feedback_id format', async () => {
     const { httpRequest } = setupHttpRequest();
 
-    const tool = new FeedbackGetTool({ httpRequest });
+    const tool = new GetFeedbackTool({ httpRequest });
 
     // Invalid UUID format
     const result = await tool.run({
@@ -249,7 +249,7 @@ describe('FeedbackGetTool', () => {
   it('requires feedback_id', async () => {
     const { httpRequest } = setupHttpRequest();
 
-    const tool = new FeedbackGetTool({ httpRequest });
+    const tool = new GetFeedbackTool({ httpRequest });
 
     // Missing feedback_id
     const result = await tool.run({});

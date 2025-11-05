@@ -25,9 +25,9 @@ export const feedbackStatusSchema = z.enum([
 ]);
 
 /**
- * Input schema for Feedback List Tool
+ * Input schema for List Feedback Tool
  */
-export const FeedbackListInputSchema = z.object({
+export const ListFeedbackInputSchema = z.object({
   feedback_ids: z
     .array(z.string().uuid())
     .optional()
@@ -121,4 +121,4 @@ export const FeedbackListInputSchema = z.object({
     )
 });
 
-export type FeedbackListInput = z.infer<typeof FeedbackListInputSchema>;
+export type ListFeedbackInput = z.infer<typeof ListFeedbackInputSchema>;

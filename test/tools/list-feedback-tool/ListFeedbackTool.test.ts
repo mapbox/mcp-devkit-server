@@ -6,7 +6,7 @@ import {
   setupHttpRequest,
   assertHeadersSent
 } from '../../utils/httpPipelineUtils.js';
-import { FeedbackListTool } from '../../../src/tools/feedback-list-tool/FeedbackListTool.js';
+import { ListFeedbackTool } from '../../../src/tools/list-feedback-tool/ListFeedbackTool.js';
 
 const mockToken = 'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
@@ -14,7 +14,7 @@ beforeAll(() => {
   process.env.MAPBOX_ACCESS_TOKEN = mockToken;
 });
 
-describe('FeedbackListTool', () => {
+describe('ListFeedbackTool', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -28,8 +28,8 @@ describe('FeedbackListTool', () => {
           has_after: false
         })
       });
-      const tool = new FeedbackListTool({ httpRequest });
-      expect(tool.name).toBe('feedback_list_tool');
+      const tool = new ListFeedbackTool({ httpRequest });
+      expect(tool.name).toBe('list_feedback_tool');
       expect(tool.description).toContain('List user feedback items');
     });
   });
@@ -43,7 +43,7 @@ describe('FeedbackListTool', () => {
       })
     });
 
-    await new FeedbackListTool({ httpRequest }).run({});
+    await new ListFeedbackTool({ httpRequest }).run({});
     assertHeadersSent(mockHttpRequest);
   });
 
@@ -56,7 +56,7 @@ describe('FeedbackListTool', () => {
       })
     });
 
-    await new FeedbackListTool({ httpRequest }).run({});
+    await new ListFeedbackTool({ httpRequest }).run({});
 
     const calledUrl = mockHttpRequest.mock.calls[0][0];
     expect(calledUrl).toContain('user-feedback/v1/feedback');
@@ -74,7 +74,7 @@ describe('FeedbackListTool', () => {
       })
     });
 
-    await new FeedbackListTool({ httpRequest }).run({
+    await new ListFeedbackTool({ httpRequest }).run({
       feedback_ids: [
         '40eae4c7-b157-4b49-a091-7e1099bba77e',
         '8b1eec47-a3f2-4a6d-a2d9-5e8c1f4a9b0c'
@@ -160,7 +160,7 @@ describe('FeedbackListTool', () => {
       json: async () => mockResponse
     });
 
-    const result = await new FeedbackListTool({ httpRequest }).run({});
+    const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     expect(result.isError).toBe(false);
     expect(result.content[0].type).toBe('text');
@@ -183,7 +183,7 @@ describe('FeedbackListTool', () => {
       })
     });
 
-    const result = await new FeedbackListTool({ httpRequest }).run({});
+    const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('No feedback items found');
@@ -215,7 +215,7 @@ describe('FeedbackListTool', () => {
       })
     });
 
-    const result = await new FeedbackListTool({ httpRequest }).run({});
+    const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('Has previous page');
@@ -250,7 +250,7 @@ describe('FeedbackListTool', () => {
       json: async () => mockResponse
     });
 
-    const result = await new FeedbackListTool({ httpRequest }).run({
+    const result = await new ListFeedbackTool({ httpRequest }).run({
       format: 'json_string'
     });
 
@@ -267,7 +267,7 @@ describe('FeedbackListTool', () => {
       statusText: 'Not Found'
     });
 
-    const result = await new FeedbackListTool({ httpRequest }).run({});
+    const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Failed to list feedback');
@@ -290,7 +290,7 @@ describe('FeedbackListTool', () => {
       })
     });
 
-    const result = await new FeedbackListTool({ httpRequest }).run({});
+    const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     expect(result.isError).toBe(true);
     expect(result.content[0].type).toBe('text');
@@ -309,7 +309,7 @@ describe('FeedbackListTool', () => {
       })
     });
 
-    const result = await new FeedbackListTool({ httpRequest }).run({});
+    const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     // Should still return a result (graceful fallback)
     expect(result.isError).toBe(false);
