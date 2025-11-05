@@ -21,6 +21,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Token Management Tools](#token-management-tools)
       - [create-token](#create-token)
       - [list-tokens](#list-tokens)
+    - [Feedback Tools](#feedback-tools)
     - [Local Processing Tools](#local-processing-tools)
       - [GeoJSON Preview tool (Beta)](#geojson-preview-tool-beta)
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
@@ -100,6 +101,7 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 - Reading styles requires `styles:read` scope
 - Creating styles requires `styles:write` scope
 - Managing tokens requires `tokens:read` and `tokens:write` scopes
+- Accessing feedback requires `user-feedback:read` scope
 
 ## Tools
 
@@ -271,6 +273,51 @@ List Mapbox access tokens for the authenticated user with optional filtering and
 - "Find my default public token"
 - "List the 5 most recently modified tokens"
 - "Show all public tokens in my account"
+
+### Feedback Tools
+
+Access user feedback items from the Mapbox Feedback API. These tools allow you to retrieve and view user-reported issues, suggestions, and feedback about map data, routing, and POI details.
+
+**list_feedback_tool** - List user feedback items with comprehensive filtering, sorting, and pagination options.
+
+**Parameters:**
+
+- `feedback_ids` (array of UUIDs, optional): Filter by one or more feedback item IDs
+- `after` (string, optional): Cursor from a previous response for pagination
+- `limit` (number, optional): Maximum number of items to return (1-1000, default varies)
+- `sort_by` (string, optional): Sort field - `received_at` (default), `created_at`, or `updated_at`
+- `order` (string, optional): Sort direction - `asc` (default) or `desc`
+- `status` (array, optional): Filter by status - `received`, `fixed`, `reviewed`, `out_of_scope`
+- `category` (array, optional): Filter by feedback categories
+- `search` (string, optional): Search phrase to match against feedback text
+- `trace_id` (array, optional): Filter by trace IDs
+- `created_before`, `created_after` (ISO 8601 string, optional): Filter by creation date range
+- `received_before`, `received_after` (ISO 8601 string, optional): Filter by received date range
+- `updated_before`, `updated_after` (ISO 8601 string, optional): Filter by update date range
+- `format` (string, optional): Output format - `formatted_text` (default) or `json_string`
+
+**Returns:** Paginated list of feedback items with pagination cursors.
+
+**get_feedback_tool** - Get a single user feedback item by its unique ID.
+
+**Parameters:**
+
+- `feedback_id` (UUID, required): The unique identifier of the feedback item
+- `format` (string, optional): Output format - `formatted_text` (default) or `json_string`
+
+**Returns:** Single feedback item with details including status, category, feedback text, location, and timestamps.
+
+**⚠️ Required Token Scope:**
+
+- **Both feedback tools**: Require `user-feedback:read` scope on the access token
+
+**Example prompts:**
+
+- "List all feedback items with status 'fixed'"
+- "Show me feedback items in the 'poi_details' category created after July 1st"
+- "Get feedback item with ID 40eae4c7-b157-4b49-a091-7e1099bba77e"
+- "Find feedback items containing 'apartment building' in the feedback text"
+- "List all routing issue feedback from the last month"
 
 ### Local Processing Tools
 

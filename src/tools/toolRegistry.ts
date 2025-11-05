@@ -7,6 +7,8 @@ import { CoordinateConversionTool } from './coordinate-conversion-tool/Coordinat
 import { CreateStyleTool } from './create-style-tool/CreateStyleTool.js';
 import { CreateTokenTool } from './create-token-tool/CreateTokenTool.js';
 import { DeleteStyleTool } from './delete-style-tool/DeleteStyleTool.js';
+import { GetFeedbackTool } from './get-feedback-tool/GetFeedbackTool.js';
+import { ListFeedbackTool } from './list-feedback-tool/ListFeedbackTool.js';
 import { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js';
 import { GetMapboxDocSourceTool } from './get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
 import { GetReferenceTool } from './get-reference-tool/GetReferenceTool.js';
@@ -35,6 +37,8 @@ export const ALL_TOOLS = [
   new BoundingBoxTool(),
   new CountryBoundingBoxTool(),
   new CoordinateConversionTool(),
+  new GetFeedbackTool({ httpRequest }),
+  new ListFeedbackTool({ httpRequest }),
   new GetMapboxDocSourceTool({ httpRequest }),
   new GetReferenceTool(),
   new StyleComparisonTool(),

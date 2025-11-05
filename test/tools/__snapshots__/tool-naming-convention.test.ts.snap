@@ -38,6 +38,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "geojson_preview_tool",
   },
   {
+    "className": "GetFeedbackTool",
+    "description": "Get a single user feedback item from the Mapbox Feedback API by its unique ID. Use this tool to retrieve detailed information about a specific user-reported issue, suggestion, or feedback about map data, routing, or POI details. Requires user-feedback:read scope on the access token.",
+    "toolName": "get_feedback_tool",
+  },
+  {
     "className": "GetMapboxDocSourceTool",
     "description": "Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search.",
     "toolName": "get_latest_mapbox_docs_tool",
@@ -46,6 +51,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "className": "GetReferenceTool",
     "description": "Get Mapbox reference documentation including Streets v8 field definitions, token scopes, layer type mappings, and style specifications. Use this tool to understand what fields, scopes, or layer types are available before creating styles or tokens.",
     "toolName": "get_reference_tool",
+  },
+  {
+    "className": "ListFeedbackTool",
+    "description": "List user feedback items from the Mapbox Feedback API with filtering, sorting, and pagination. Use this tool to access user-reported issues, suggestions, and feedback about map data, routing, and POI details. Supports comprehensive filtering by status, category, date ranges, trace IDs, and search text. Requires user-feedback:read scope on the access token.",
+    "toolName": "list_feedback_tool",
   },
   {
     "className": "ListStylesTool",
