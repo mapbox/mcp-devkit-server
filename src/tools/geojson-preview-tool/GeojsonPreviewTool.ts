@@ -3,6 +3,7 @@
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createUIResource } from '@mcp-ui/server';
+import { createHash } from 'node:crypto';
 import { GeoJSON } from 'geojson';
 import { BaseTool } from '../BaseTool.js';
 import {
@@ -84,8 +85,15 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
 
       // Conditionally add MCP-UI resource if enabled
       if (isMcpUiEnabled()) {
+        // Create content-addressable URI using hash of GeoJSON
+        // This enables client-side caching - same GeoJSON = same URI
+        const contentHash = createHash('md5')
+          .update(geojsonString)
+          .digest('hex')
+          .substring(0, 16); // Use first 16 chars for brevity
+
         const uiResource = createUIResource({
-          uri: `ui://mapbox/geojson-preview/${Date.now()}`,
+          uri: `ui://mapbox/geojson-preview/${contentHash}`,
           content: {
             type: 'externalUrl',
             iframeUrl: geojsonIOUrl
