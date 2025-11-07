@@ -26,7 +26,45 @@ describe('GeojsonPreviewTool', () => {
     });
   });
 
-  it('should generate geojson.io URL for Point geometry', async () => {
+  it('should generate geojson.io URL and MCP-UI resource for Point geometry (default)', async () => {
+    const tool = new GeojsonPreviewTool();
+    const pointGeoJSON = {
+      type: 'Point',
+      coordinates: [-122.4194, 37.7749]
+    };
+
+    const result = await tool.run({ geojson: JSON.stringify(pointGeoJSON) });
+
+    expect(result.isError).toBe(false);
+    expect(result.content).toHaveLength(2);
+    expect(result.content[0].type).toBe('text');
+    const content = result.content[0];
+    if (content.type === 'text') {
+      expect(content.text).toMatch(
+        /^https:\/\/geojson\.io\/#data=data:application\/json,/
+      );
+      expect(content.text).toContain(
+        encodeURIComponent(JSON.stringify(pointGeoJSON))
+      );
+    }
+
+    // Verify MCP-UI resource is included by default
+    expect(result.content[1]).toMatchObject({
+      type: 'resource',
+      resource: {
+        uri: expect.stringMatching(/^ui:\/\/mapbox\/geojson-preview\//),
+        mimeType: 'text/uri-list',
+        text: expect.stringContaining(
+          'https://geojson.io/#data=data:application/json,'
+        )
+      }
+    });
+  });
+
+  it('returns only URL when MCP-UI is disabled', async () => {
+    // Disable MCP-UI for this test
+    process.env.ENABLE_MCP_UI = 'false';
+
     const tool = new GeojsonPreviewTool();
     const pointGeoJSON = {
       type: 'Point',
@@ -38,15 +76,9 @@ describe('GeojsonPreviewTool', () => {
     expect(result.isError).toBe(false);
     expect(result.content).toHaveLength(1);
     expect(result.content[0].type).toBe('text');
-    const content = result.content[0];
-    if (content.type === 'text') {
-      expect(content.text).toMatch(
-        /^https:\/\/geojson\.io\/#data=data:application\/json,/
-      );
-      expect(content.text).toContain(
-        encodeURIComponent(JSON.stringify(pointGeoJSON))
-      );
-    }
+
+    // Clean up
+    delete process.env.ENABLE_MCP_UI;
   });
 
   it('should handle GeoJSON as string', async () => {

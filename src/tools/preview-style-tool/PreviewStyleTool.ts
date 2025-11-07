@@ -1,4 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { createUIResource } from '@mcp-ui/server';
 import { BaseTool } from '../BaseTool.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
@@ -6,6 +7,7 @@ import {
   PreviewStyleInput
 } from './PreviewStyleTool.input.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
+import { isMcpUiEnabled } from '../../config/toolConfig.js';
 
 export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   readonly name = 'preview_style_tool';
@@ -63,13 +65,29 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
 
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${userName}/${input.styleId}.html?${params.toString()}${hashFragment}`;
 
+    // Build content array with URL
+    const content: CallToolResult['content'] = [
+      {
+        type: 'text',
+        text: url
+      }
+    ];
+
+    // Conditionally add MCP-UI resource if enabled
+    if (isMcpUiEnabled()) {
+      const uiResource = createUIResource({
+        uri: `ui://mapbox/preview-style/${userName}/${input.styleId}`,
+        content: {
+          type: 'externalUrl',
+          iframeUrl: url
+        },
+        encoding: 'text'
+      });
+      content.push(uiResource);
+    }
+
     return {
-      content: [
-        {
-          type: 'text',
-          text: url
-        }
-      ],
+      content,
       isError: false
     };
   }

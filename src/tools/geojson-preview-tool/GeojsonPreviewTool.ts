@@ -2,12 +2,14 @@
 // Licensed under the MIT License.
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { createUIResource } from '@mcp-ui/server';
 import { GeoJSON } from 'geojson';
 import { BaseTool } from '../BaseTool.js';
 import {
   GeojsonPreviewSchema,
   GeojsonPreviewInput
 } from './GeojsonPreviewTool.input.schema.js';
+import { isMcpUiEnabled } from '../../config/toolConfig.js';
 
 export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
   name = 'geojson_preview_tool';
@@ -72,14 +74,30 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
       const encodedGeoJSON = encodeURIComponent(geojsonString);
       const geojsonIOUrl = `https://geojson.io/#data=data:application/json,${encodedGeoJSON}`;
 
+      // Build content array with URL
+      const content: CallToolResult['content'] = [
+        {
+          type: 'text',
+          text: geojsonIOUrl
+        }
+      ];
+
+      // Conditionally add MCP-UI resource if enabled
+      if (isMcpUiEnabled()) {
+        const uiResource = createUIResource({
+          uri: `ui://mapbox/geojson-preview/${Date.now()}`,
+          content: {
+            type: 'externalUrl',
+            iframeUrl: geojsonIOUrl
+          },
+          encoding: 'text'
+        });
+        content.push(uiResource);
+      }
+
       return {
         isError: false,
-        content: [
-          {
-            type: 'text',
-            text: geojsonIOUrl
-          }
-        ]
+        content
       };
     } catch (error) {
       const errorMessage =

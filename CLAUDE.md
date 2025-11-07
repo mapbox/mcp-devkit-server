@@ -130,6 +130,29 @@ Each tool execution span includes:
 - Tools can be enabled/disabled at startup (see `TOOL_CONFIGURATION.md`)
 - Example: `node dist/esm/index.js --enable-tools list_styles_tool,create_style_tool`
 
+### MCP-UI Support (Enabled by Default)
+
+MCP-UI allows tools that return URLs to also provide interactive iframe resources. **Enabled by default** and fully backwards compatible.
+
+**Supported tools:**
+
+- `preview_style_tool` - Embeds style previews
+- `geojson_preview_tool` - Embeds GeoJSON visualizations
+- `style_comparison_tool` - Embeds style comparisons
+
+**How it works:**
+
+- Tools return both text URL and UIResource
+- Clients without MCP-UI support (e.g., Claude Desktop) ignore UIResource
+- Clients with MCP-UI support (e.g., Goose) render iframes
+
+**Disable if needed:**
+
+- Environment variable: `ENABLE_MCP_UI=false`
+- Command-line flag: `--disable-mcp-ui`
+
+**Note:** You rarely need to disable this. See [mcpui.dev](https://mcpui.dev) for compatible clients.
+
 ## Mapbox Token Scopes
 
 - Each tool requires specific Mapbox token scopes (see `README.md` for details)
