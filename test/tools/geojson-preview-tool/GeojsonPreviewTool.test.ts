@@ -49,16 +49,22 @@ describe('GeojsonPreviewTool', () => {
     }
 
     // Verify MCP-UI resource is included by default
+    // Could be either Mapbox Static Images API or geojson.io (fallback)
     expect(result.content[1]).toMatchObject({
       type: 'resource',
       resource: {
         uri: expect.stringMatching(/^ui:\/\/mapbox\/geojson-preview\//),
         mimeType: 'text/uri-list',
-        text: expect.stringContaining(
-          'https://geojson.io/#data=data:application/json,'
-        )
+        text: expect.stringMatching(/^https:\/\//)
       }
     });
+
+    // Verify the iframe URL is either Mapbox Static Images API or geojson.io
+    const iframeUrl = (result.content[1] as any).resource.text;
+    expect(
+      iframeUrl.includes('api.mapbox.com/styles') ||
+        iframeUrl.includes('geojson.io')
+    ).toBe(true);
   });
 
   it('returns only URL when MCP-UI is disabled', async () => {

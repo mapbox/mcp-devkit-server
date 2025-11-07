@@ -81,7 +81,10 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
           type: 'externalUrl',
           iframeUrl: url
         },
-        encoding: 'text'
+        encoding: 'text',
+        uiMetadata: {
+          'preferred-frame-size': ['1000px', '700px']
+        }
       });
       content.push(uiResource);
     }

@@ -52,6 +52,36 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
     );
   }
 
+  /**
+   * Generate a Mapbox Static Images API URL for the GeoJSON data
+   * @see https://docs.mapbox.com/api/maps/static-images/
+   */
+  private generateStaticImageUrl(geojsonData: GeoJSON): string | null {
+    const accessToken = process.env.MAPBOX_ACCESS_TOKEN;
+    if (!accessToken) {
+      return null; // Fallback to geojson.io if no token available
+    }
+
+    // Create a simplified GeoJSON for the overlay
+    // The Static API requires specific format for GeoJSON overlays
+    const geojsonString = JSON.stringify(geojsonData);
+    const encodedGeoJSON = encodeURIComponent(geojsonString);
+
+    // Use Mapbox Streets style with auto-bounds fitting
+    // Format: /styles/v1/{username}/{style_id}/static/geojson({geojson})/auto/{width}x{height}@2x
+    const staticImageUrl =
+      `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/` +
+      `geojson(${encodedGeoJSON})/auto/1000x700@2x` +
+      `?access_token=${accessToken}`;
+
+    // Check if URL is too long (browsers typically limit to ~8192 chars)
+    if (staticImageUrl.length > 8000) {
+      return null; // Fallback to geojson.io for large GeoJSON
+    }
+
+    return staticImageUrl;
+  }
+
   protected async execute(input: GeojsonPreviewInput): Promise<CallToolResult> {
     try {
       // Parse and validate JSON format
@@ -92,15 +122,39 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
           .digest('hex')
           .substring(0, 16); // Use first 16 chars for brevity
 
-        const uiResource = createUIResource({
-          uri: `ui://mapbox/geojson-preview/${contentHash}`,
-          content: {
-            type: 'externalUrl',
-            iframeUrl: geojsonIOUrl
-          },
-          encoding: 'text'
-        });
-        content.push(uiResource);
+        // Try to generate a Mapbox Static Image URL
+        const staticImageUrl = this.generateStaticImageUrl(geojsonData);
+
+        if (staticImageUrl) {
+          // Use Mapbox Static Images API - embeds as an image
+          const uiResource = createUIResource({
+            uri: `ui://mapbox/geojson-preview/${contentHash}`,
+            content: {
+              type: 'externalUrl',
+              iframeUrl: staticImageUrl
+            },
+            encoding: 'text',
+            uiMetadata: {
+              'preferred-frame-size': ['1000px', '700px']
+            }
+          });
+          content.push(uiResource);
+        } else {
+          // Fallback to geojson.io URL (for large GeoJSON or when no token)
+          // Note: geojson.io may not work in iframes due to X-Frame-Options
+          const uiResource = createUIResource({
+            uri: `ui://mapbox/geojson-preview/${contentHash}`,
+            content: {
+              type: 'externalUrl',
+              iframeUrl: geojsonIOUrl
+            },
+            encoding: 'text',
+            uiMetadata: {
+              'preferred-frame-size': ['1000px', '700px']
+            }
+          });
+          content.push(uiResource);
+        }
       }
 
       return {

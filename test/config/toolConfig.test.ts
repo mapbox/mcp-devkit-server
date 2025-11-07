@@ -19,15 +19,23 @@ vi.mock('../../src/utils/versionUtils.js', () => ({
 describe('Tool Configuration', () => {
   // Save original argv
   const originalArgv = process.argv;
+  const originalEnableMcpUi = process.env.ENABLE_MCP_UI;
 
   beforeEach(() => {
     // Reset argv before each test
     process.argv = [...originalArgv];
+    // Reset environment variable before each test
+    delete process.env.ENABLE_MCP_UI;
   });
 
   afterAll(() => {
-    // Restore original argv
+    // Restore original argv and env
     process.argv = originalArgv;
+    if (originalEnableMcpUi !== undefined) {
+      process.env.ENABLE_MCP_UI = originalEnableMcpUi;
+    } else {
+      delete process.env.ENABLE_MCP_UI;
+    }
   });
 
   describe('parseToolConfigFromArgs', () => {
