@@ -19,29 +19,38 @@ vi.mock('../../src/utils/versionUtils.js', () => ({
 describe('Tool Configuration', () => {
   // Save original argv
   const originalArgv = process.argv;
+  const originalEnableMcpUi = process.env.ENABLE_MCP_UI;
 
   beforeEach(() => {
     // Reset argv before each test
     process.argv = [...originalArgv];
+    // Reset environment variable before each test
+    delete process.env.ENABLE_MCP_UI;
   });
 
   afterAll(() => {
-    // Restore original argv
+    // Restore original argv and env
     process.argv = originalArgv;
+    if (originalEnableMcpUi !== undefined) {
+      process.env.ENABLE_MCP_UI = originalEnableMcpUi;
+    } else {
+      delete process.env.ENABLE_MCP_UI;
+    }
   });
 
   describe('parseToolConfigFromArgs', () => {
-    it('should return empty config when no arguments provided', () => {
+    it('should return config with enableMcpUi true when no arguments provided', () => {
       process.argv = ['node', 'index.js'];
       const config = parseToolConfigFromArgs();
-      expect(config).toEqual({});
+      expect(config).toEqual({ enableMcpUi: true });
     });
 
     it('should parse --enable-tools with single tool', () => {
       process.argv = ['node', 'index.js', '--enable-tools', 'list_styles_tool'];
       const config = parseToolConfigFromArgs();
       expect(config).toEqual({
-        enabledTools: ['list_styles_tool']
+        enabledTools: ['list_styles_tool'],
+        enableMcpUi: true
       });
     });
 
@@ -58,7 +67,8 @@ describe('Tool Configuration', () => {
           'list_styles_tool',
           'create_style_tool',
           'preview_style_tool'
-        ]
+        ],
+        enableMcpUi: true
       });
     });
 
@@ -75,7 +85,8 @@ describe('Tool Configuration', () => {
           'list_styles_tool',
           'create_style_tool',
           'preview_style_tool'
-        ]
+        ],
+        enableMcpUi: true
       });
     });
 
@@ -88,7 +99,8 @@ describe('Tool Configuration', () => {
       ];
       const config = parseToolConfigFromArgs();
       expect(config).toEqual({
-        disabledTools: ['delete_style_tool']
+        disabledTools: ['delete_style_tool'],
+        enableMcpUi: true
       });
     });
 
@@ -101,7 +113,8 @@ describe('Tool Configuration', () => {
       ];
       const config = parseToolConfigFromArgs();
       expect(config).toEqual({
-        disabledTools: ['delete_style_tool', 'update_style_tool']
+        disabledTools: ['delete_style_tool', 'update_style_tool'],
+        enableMcpUi: true
       });
     });
 
@@ -117,20 +130,21 @@ describe('Tool Configuration', () => {
       const config = parseToolConfigFromArgs();
       expect(config).toEqual({
         enabledTools: ['list_styles_tool'],
-        disabledTools: ['delete_style_tool']
+        disabledTools: ['delete_style_tool'],
+        enableMcpUi: true
       });
     });
 
     it('should handle missing value for --enable-tools', () => {
       process.argv = ['node', 'index.js', '--enable-tools'];
       const config = parseToolConfigFromArgs();
-      expect(config).toEqual({});
+      expect(config).toEqual({ enableMcpUi: true });
     });
 
     it('should handle missing value for --disable-tools', () => {
       process.argv = ['node', 'index.js', '--disable-tools'];
       const config = parseToolConfigFromArgs();
-      expect(config).toEqual({});
+      expect(config).toEqual({ enableMcpUi: true });
     });
 
     it('should ignore unknown arguments', () => {
@@ -144,7 +158,45 @@ describe('Tool Configuration', () => {
       ];
       const config = parseToolConfigFromArgs();
       expect(config).toEqual({
-        enabledTools: ['list_styles_tool']
+        enabledTools: ['list_styles_tool'],
+        enableMcpUi: true
+      });
+    });
+
+    it('should disable MCP-UI with --disable-mcp-ui flag', () => {
+      process.argv = ['node', 'index.js', '--disable-mcp-ui'];
+      const config = parseToolConfigFromArgs();
+      expect(config).toEqual({ enableMcpUi: false });
+    });
+
+    it('should enable MCP-UI with ENABLE_MCP_UI=true env var', () => {
+      process.env.ENABLE_MCP_UI = 'true';
+      process.argv = ['node', 'index.js'];
+      const config = parseToolConfigFromArgs();
+      expect(config).toEqual({ enableMcpUi: true });
+      delete process.env.ENABLE_MCP_UI;
+    });
+
+    it('should prioritize env var over command-line flag for MCP-UI', () => {
+      process.env.ENABLE_MCP_UI = 'false';
+      process.argv = ['node', 'index.js'];
+      const config = parseToolConfigFromArgs();
+      expect(config).toEqual({ enableMcpUi: false });
+      delete process.env.ENABLE_MCP_UI;
+    });
+
+    it('should combine MCP-UI flag with tool config', () => {
+      process.argv = [
+        'node',
+        'index.js',
+        '--disable-mcp-ui',
+        '--enable-tools',
+        'preview_style_tool'
+      ];
+      const config = parseToolConfigFromArgs();
+      expect(config).toEqual({
+        enabledTools: ['preview_style_tool'],
+        enableMcpUi: false
       });
     });
   });

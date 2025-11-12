@@ -136,7 +136,46 @@ describe('PreviewStyleTool', () => {
     });
   });
 
-  it('returns URL on success', async () => {
+  it('returns URL and MCP-UI resource on success (default)', async () => {
+    const result = await new PreviewStyleTool().run({
+      styleId: 'test-style',
+      accessToken: TEST_ACCESS_TOKEN,
+      title: false,
+      zoomwheel: false
+    });
+
+    expect(result.isError).toBe(false);
+    expect(result.content).toHaveLength(2);
+    expect(result.content[0]).toMatchObject({
+      type: 'text',
+      text: expect.stringContaining(
+        'https://api.mapbox.com/styles/v1/test-user/test-style.html?access_token=pk.'
+      )
+    });
+
+    // Verify fresh parameter is included
+    expect(result.content[0]).toMatchObject({
+      type: 'text',
+      text: expect.stringContaining('fresh=true')
+    });
+
+    // Verify MCP-UI resource is included by default
+    expect(result.content[1]).toMatchObject({
+      type: 'resource',
+      resource: {
+        uri: expect.stringMatching(/^ui:\/\/mapbox\/preview-style\//),
+        mimeType: 'text/uri-list',
+        text: expect.stringContaining(
+          'https://api.mapbox.com/styles/v1/test-user/test-style.html?access_token=pk.'
+        )
+      }
+    });
+  });
+
+  it('returns only URL when MCP-UI is disabled', async () => {
+    // Disable MCP-UI for this test
+    process.env.ENABLE_MCP_UI = 'false';
+
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
       accessToken: TEST_ACCESS_TOKEN,
@@ -153,10 +192,7 @@ describe('PreviewStyleTool', () => {
       )
     });
 
-    // Verify fresh parameter is included
-    expect(result.content[0]).toMatchObject({
-      type: 'text',
-      text: expect.stringContaining('fresh=true')
-    });
+    // Clean up
+    delete process.env.ENABLE_MCP_UI;
   });
 });

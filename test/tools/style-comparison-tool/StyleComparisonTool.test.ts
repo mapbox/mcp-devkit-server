@@ -17,7 +17,7 @@ describe('StyleComparisonTool', () => {
   });
 
   describe('run', () => {
-    it('should generate comparison URL with provided access token', async () => {
+    it('should generate comparison URL and MCP-UI resource with provided access token (default)', async () => {
       const input = {
         before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
@@ -27,12 +27,27 @@ describe('StyleComparisonTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
+      expect(result.content).toHaveLength(2);
       expect(result.content[0].type).toBe('text');
       const url = (result.content[0] as { type: 'text'; text: string }).text;
       expect(url).toContain('https://agent.mapbox.com/tools/style-compare');
       expect(url).toContain('access_token=pk.test.token');
       expect(url).toContain('before=mapbox%2Fstreets-v12');
       expect(url).toContain('after=mapbox%2Foutdoors-v12');
+
+      // Verify MCP-UI resource is included by default
+      expect(result.content[1]).toMatchObject({
+        type: 'resource',
+        resource: {
+          uri: expect.stringMatching(
+            /^ui:\/\/mapbox\/style-comparison\/mapbox\/streets-v12\/mapbox\/outdoors-v12$/
+          ),
+          mimeType: 'text/uri-list',
+          text: expect.stringContaining(
+            'https://agent.mapbox.com/tools/style-compare'
+          )
+        }
+      });
     });
 
     it('should require access token', async () => {
@@ -197,6 +212,26 @@ describe('StyleComparisonTool', () => {
       expect(result2.isError).toBe(false);
       const url2 = (result2.content[0] as { type: 'text'; text: string }).text;
       expect(url2).not.toContain('#');
+    });
+
+    it('should return only URL when MCP-UI is disabled', async () => {
+      // Disable MCP-UI for this test
+      process.env.ENABLE_MCP_UI = 'false';
+
+      const input = {
+        before: 'mapbox/streets-v12',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token'
+      };
+
+      const result = await tool.run(input);
+
+      expect(result.isError).toBe(false);
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0].type).toBe('text');
+
+      // Clean up
+      delete process.env.ENABLE_MCP_UI;
     });
   });
 

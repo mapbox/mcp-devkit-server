@@ -671,6 +671,42 @@ Set `VERBOSE_ERRORS=true` to get detailed error messages from the MCP server. Th
 
 By default, the server returns generic error messages. With verbose errors enabled, you'll receive the actual error details, which can help diagnose API connection issues, invalid parameters, or other problems.
 
+#### ENABLE_MCP_UI
+
+**MCP-UI Support (Enabled by Default)**
+
+MCP-UI allows tools that return URLs to also return interactive iframe resources that can be embedded directly in supporting MCP clients. **This is enabled by default** and is fully backwards compatible with all MCP clients.
+
+**Supported Tools:**
+
+- `preview_style_tool` - Embeds Mapbox style previews
+- `geojson_preview_tool` - Embeds geojson.io visualizations
+- `style_comparison_tool` - Embeds side-by-side style comparisons
+
+**How it Works:**
+
+- Tools return **both** a text URL (always works) and a UIResource for iframe embedding
+- Clients that don't support MCP-UI (like Claude Desktop) simply ignore the UIResource and use the text URL
+- Clients that support MCP-UI (like Goose) can render the iframe for a richer experience
+
+**Disabling MCP-UI (Optional):**
+
+If you want to disable MCP-UI support:
+
+Via environment variable:
+
+```bash
+export ENABLE_MCP_UI=false
+```
+
+Or via command-line flag:
+
+```bash
+node dist/esm/index.js --disable-mcp-ui
+```
+
+**Note:** You typically don't need to disable this. The implementation is fully backwards compatible and doesn't affect clients that don't support MCP-UI. See [mcpui.dev](https://mcpui.dev) for compatible clients.
+
 ## Troubleshooting
 
 **Issue:** Tools fail with authentication errors
