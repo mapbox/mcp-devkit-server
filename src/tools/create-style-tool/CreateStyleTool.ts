@@ -11,14 +11,10 @@ import {
   CreateStyleInputSchema,
   CreateStyleInput
 } from './CreateStyleTool.input.schema.js';
-import {
-  MapboxStyleOutput,
-  MapboxStyleOutputSchema
-} from './CreateStyleTool.output.schema.js';
+import { MapboxStyleOutput } from './CreateStyleTool.output.schema.js';
 
 export class CreateStyleTool extends MapboxApiBasedTool<
-  typeof CreateStyleInputSchema,
-  typeof MapboxStyleOutputSchema
+  typeof CreateStyleInputSchema
 > {
   name = 'create_style_tool';
   description = 'Create a new Mapbox style';
@@ -33,7 +29,8 @@ export class CreateStyleTool extends MapboxApiBasedTool<
   constructor(params: { httpRequest: HttpRequest }) {
     super({
       inputSchema: CreateStyleInputSchema,
-      outputSchema: MapboxStyleOutputSchema,
+      // Don't provide outputSchema - MCP SDK can't preserve .passthrough() when extracting .shape
+      // The tool still returns structured data, it just won't be schema-validated
       httpRequest: params.httpRequest
     });
   }
@@ -65,18 +62,7 @@ export class CreateStyleTool extends MapboxApiBasedTool<
     }
 
     const rawData = await response.json();
-    // Validate response against schema with graceful fallback
-    let data: MapboxStyleOutput;
-    try {
-      data = MapboxStyleOutputSchema.parse(rawData);
-    } catch (validationError) {
-      this.log(
-        'warning',
-        `Schema validation failed for search response: ${validationError instanceof Error ? validationError.message : 'Unknown validation error'}`
-      );
-      // Graceful fallback to raw data
-      data = rawData as MapboxStyleOutput;
-    }
+    const data = rawData as MapboxStyleOutput;
 
     this.log('info', `CreateStyleTool: Successfully created style ${data.id}`);
 

@@ -5,14 +5,18 @@ import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createUIResource } from '@mcp-ui/server';
 import { createHash } from 'node:crypto';
 import { GeoJSON } from 'geojson';
-import { BaseTool } from '../BaseTool.js';
+import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   GeojsonPreviewSchema,
   GeojsonPreviewInput
 } from './GeojsonPreviewTool.input.schema.js';
 import { isMcpUiEnabled } from '../../config/toolConfig.js';
+import type { HttpRequest } from '../../utils/types.js';
+import type { ToolExecutionContext } from '../../utils/tracing.js';
 
-export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
+export class GeojsonPreviewTool extends MapboxApiBasedTool<
+  typeof GeojsonPreviewSchema
+> {
   name = 'geojson_preview_tool';
   description =
     'Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.';
@@ -24,8 +28,8 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
     title: 'Preview GeoJSON Data Tool'
   };
 
-  constructor() {
-    super({ inputSchema: GeojsonPreviewSchema });
+  constructor(httpRequest: HttpRequest) {
+    super({ inputSchema: GeojsonPreviewSchema, httpRequest });
   }
 
   private isValidGeoJSON(data: unknown): data is GeoJSON {
@@ -56,22 +60,21 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
    * Generate a Mapbox Static Images API URL for the GeoJSON data
    * @see https://docs.mapbox.com/api/maps/static-images/
    */
-  private generateStaticImageUrl(geojsonData: GeoJSON): string | null {
-    const accessToken = process.env.MAPBOX_ACCESS_TOKEN;
-    if (!accessToken) {
-      return null; // Fallback to geojson.io if no token available
-    }
-
+  private generateStaticImageUrl(
+    geojsonData: GeoJSON,
+    accessToken: string
+  ): string | null {
     // Create a simplified GeoJSON for the overlay
     // The Static API requires specific format for GeoJSON overlays
     const geojsonString = JSON.stringify(geojsonData);
     const encodedGeoJSON = encodeURIComponent(geojsonString);
 
     // Use Mapbox Streets style with auto-bounds fitting
-    // Format: /styles/v1/{username}/{style_id}/static/geojson({geojson})/auto/{width}x{height}@2x
+    // Format: /styles/v1/{username}/{style_id}/static/geojson({geojson})/auto/{width}x{height}
+    // Using 800x600 without @2x to reduce image size for better iframe display
     const staticImageUrl =
       `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/` +
-      `geojson(${encodedGeoJSON})/auto/1000x700@2x` +
+      `geojson(${encodedGeoJSON})/auto/800x600` +
       `?access_token=${accessToken}`;
 
     // Check if URL is too long (browsers typically limit to ~8192 chars)
@@ -82,7 +85,11 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
     return staticImageUrl;
   }
 
-  protected async execute(input: GeojsonPreviewInput): Promise<CallToolResult> {
+  protected async execute(
+    input: GeojsonPreviewInput,
+    accessToken: string,
+    _context: ToolExecutionContext
+  ): Promise<CallToolResult> {
     try {
       // Parse and validate JSON format
       const geojsonData = JSON.parse(input.geojson);
@@ -123,7 +130,10 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
           .substring(0, 16); // Use first 16 chars for brevity
 
         // Try to generate a Mapbox Static Image URL
-        const staticImageUrl = this.generateStaticImageUrl(geojsonData);
+        const staticImageUrl = this.generateStaticImageUrl(
+          geojsonData,
+          accessToken
+        );
 
         if (staticImageUrl) {
           // Use Mapbox Static Images API - embeds as an image
@@ -135,26 +145,13 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
             },
             encoding: 'text',
             uiMetadata: {
-              'preferred-frame-size': ['1000px', '700px']
-            }
-          });
-          content.push(uiResource);
-        } else {
-          // Fallback to geojson.io URL (for large GeoJSON or when no token)
-          // Note: geojson.io may not work in iframes due to X-Frame-Options
-          const uiResource = createUIResource({
-            uri: `ui://mapbox/geojson-preview/${contentHash}`,
-            content: {
-              type: 'externalUrl',
-              iframeUrl: geojsonIOUrl
-            },
-            encoding: 'text',
-            uiMetadata: {
-              'preferred-frame-size': ['1000px', '700px']
+              'preferred-frame-size': ['800px', '600px']
             }
           });
           content.push(uiResource);
         }
+        // Note: For large GeoJSON that exceeds URL limits, we skip the MCP-UI resource
+        // and the user can still use the geojson.io URL from the text response
       }
 
       return {

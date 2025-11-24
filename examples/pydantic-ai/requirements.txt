@@ -1,0 +1,23 @@
+# Pydantic AI Examples - Requirements
+# Python 3.10-3.13
+
+# Pydantic AI framework
+pydantic-ai>=0.0.14
+pydantic>=2.0.0
+
+# MCP client
+mcp>=1.1.0
+
+# Environment variable management
+python-dotenv>=1.0.0
+
+# LLM provider (OpenAI by default)
+openai>=1.0.0
+
+# Optional: Other LLM providers
+# anthropic>=0.18.0
+# google-generativeai>=0.3.0
+
+# Development/Testing (optional)
+# pytest>=7.0.0
+# pytest-asyncio>=0.21.0

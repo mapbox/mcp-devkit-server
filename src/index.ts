@@ -8,12 +8,14 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { SpanStatusCode } from '@opentelemetry/api';
+import { z } from 'zod';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { parseToolConfigFromArgs, filterTools } from './config/toolConfig.js';
 import { getAllTools } from './tools/toolRegistry.js';
 import { getAllResources } from './resources/resourceRegistry.js';
+import { getAllPrompts } from './prompts/promptRegistry.js';
 import { getVersionInfo } from './utils/versionUtils.js';
 import {
   initializeTracing,
@@ -64,7 +66,8 @@ const server = new McpServer(
   {
     capabilities: {
       tools: {},
-      resources: {}
+      resources: {},
+      prompts: {}
     }
   }
 );
@@ -78,6 +81,46 @@ enabledTools.forEach((tool) => {
 const resources = getAllResources();
 resources.forEach((resource) => {
   resource.installTo(server);
+});
+
+// Register prompts
+const prompts = getAllPrompts();
+prompts.forEach((promptObj) => {
+  if (promptObj.arguments && promptObj.arguments.length > 0) {
+    // Create a Zod schema object from the prompt arguments
+    const argsSchema: Record<string, z.ZodString | z.ZodOptional<z.ZodString>> =
+      {};
+    for (const arg of promptObj.arguments) {
+      // Convert PromptArgument to Zod schema
+      argsSchema[arg.name] = arg.required
+        ? z.string().describe(arg.description || '')
+        : z
+            .string()
+            .optional()
+            .describe(arg.description || '');
+    }
+
+    server.prompt(
+      promptObj.name,
+      promptObj.description || '',
+      argsSchema,
+      async (args: Record<string, string | undefined>) => {
+        // Filter out undefined values
+        const filteredArgs: Record<string, string> = {};
+        for (const [key, value] of Object.entries(args)) {
+          if (value !== undefined) {
+            filteredArgs[key] = value;
+          }
+        }
+        return promptObj.handleGetPrompt(filteredArgs);
+      }
+    );
+  } else {
+    // No arguments
+    server.prompt(promptObj.name, promptObj.description || '', async () =>
+      promptObj.handleGetPrompt()
+    );
+  }
 });
 
 async function main() {

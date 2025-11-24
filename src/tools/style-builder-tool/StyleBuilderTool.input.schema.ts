@@ -46,13 +46,16 @@ const LayerConfigSchema = z.object({
     .number()
     .optional()
     .describe('Width for line layers or outline thickness'),
+  // Note: This complex union with arrays causes OpenAI function calling to reject the schema
+  // with "array schema missing items" errors. z.any() doesn't fully resolve this.
+  // Other AI providers (like Anthropic) may handle this schema correctly.
   filter: z
     .union([
       z.string(),
       z.number(),
       z.boolean(),
-      z.array(z.unknown()),
-      z.record(z.unknown())
+      z.array(z.any()),
+      z.record(z.any())
     ])
     .optional()
     .describe('Custom filter expression'),
@@ -108,8 +111,8 @@ const LayerConfigSchema = z.object({
       z.string(),
       z.number(),
       z.boolean(),
-      z.array(z.unknown()),
-      z.record(z.unknown())
+      z.array(z.any()),
+      z.record(z.any())
     ])
     .optional()
     .describe('Custom Mapbox expression for advanced styling'),

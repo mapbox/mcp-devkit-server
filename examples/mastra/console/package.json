@@ -1,0 +1,19 @@
+{
+  "name": "@mapbox/mcp-devkit-mastra-console-examples",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mastra console examples for Mapbox MCP DevKit Server",
+  "scripts": {
+    "start": "node --env-file=.env index.ts",
+    "compare": "node --env-file=.env style-compare.ts"
+  },
+  "dependencies": {
+    "@mastra/core": "^1.0.0-beta.2",
+    "@mastra/mcp": "^1.0.0-beta.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}

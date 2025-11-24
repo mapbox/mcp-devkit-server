@@ -31,7 +31,7 @@ export const ALL_TOOLS = [
   new DeleteStyleTool({ httpRequest }),
   new PreviewStyleTool(),
   new StyleBuilderTool(),
-  new GeojsonPreviewTool(),
+  new GeojsonPreviewTool(httpRequest),
   new CreateTokenTool({ httpRequest }),
   new ListTokensTool({ httpRequest }),
   new BoundingBoxTool(),

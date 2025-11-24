@@ -1,0 +1,11 @@
+# Gradio UI framework
+gradio>=5.0.0
+
+# Anthropic SDK for Claude
+anthropic>=0.40.0
+
+# MCP SDK for tool integration
+mcp>=1.1.4
+
+# Environment variable management
+python-dotenv>=1.0.0
