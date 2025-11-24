@@ -90,33 +90,25 @@ export class CreateTokenTool extends MapboxApiBasedTool<
       return this.handleApiError(response, 'create token');
     }
 
-    const data = await response.json();
-    const parseResult = CreateTokenOutputSchema.safeParse(data);
-    if (!parseResult.success) {
-      this.log(
-        'error',
-        `CreateTokenTool: Output schema validation failed\n${parseResult.error}`
-      );
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `CreateTokenTool: Response does not conform to output schema:\n${parseResult.error}`
-          }
-        ],
-        isError: true
-      };
-    }
+    const rawData = await response.json();
+
+    // Validate response against schema with graceful fallback
+    const data = this.validateOutput<Record<string, unknown>>(
+      CreateTokenOutputSchema,
+      rawData,
+      'CreateTokenTool'
+    );
+
     this.log('info', `CreateTokenTool: Successfully created token`);
 
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(parseResult.data, null, 2)
+          text: JSON.stringify(data, null, 2)
         }
       ],
-      structuredContent: parseResult.data,
+      structuredContent: data,
       isError: false
     };
   }

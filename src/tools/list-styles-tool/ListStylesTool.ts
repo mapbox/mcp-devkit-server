@@ -68,27 +68,18 @@ export class ListStylesTool extends MapboxApiBasedTool<
       return this.handleApiError(response, 'list styles');
     }
 
-    const data = await response.json();
-    // Validate the API response (which is an array)
-    const parseResult = StylesArraySchema.safeParse(data);
-    if (!parseResult.success) {
-      this.log(
-        'error',
-        `ListStylesTool: Output schema validation failed\n${parseResult.error}`
-      );
-      return {
-        content: [
-          {
-            type: 'text' as const,
-            text: `ListStylesTool: Response does not conform to output schema:\n${parseResult.error}`
-          }
-        ],
-        isError: true
-      };
-    }
+    const rawData = await response.json();
+
+    // Validate the API response (which is an array) with graceful fallback
+    const validatedData = this.validateOutput(
+      StylesArraySchema,
+      rawData,
+      'ListStylesTool'
+    );
+
     this.log('info', `ListStylesTool: Successfully listed styles`);
 
-    const wrappedData = { styles: parseResult.data };
+    const wrappedData = { styles: validatedData };
     return {
       content: [
         {

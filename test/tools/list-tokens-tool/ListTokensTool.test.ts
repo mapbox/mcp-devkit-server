@@ -564,5 +564,46 @@ describe('ListTokensTool', () => {
       expect(responseData.tokens).toHaveLength(1);
       expect(responseData.count).toBe(1);
     });
+
+    it('handles schema validation failures gracefully and logs warning', async () => {
+      // API response with tokens that don't match schema (missing required fields)
+      const invalidMockTokens = [
+        {
+          id: 'cktest123',
+          note: 'Test token',
+          // Missing required fields like 'usage', 'client', 'scopes', etc.
+          unexpectedField: 'some value'
+        }
+      ];
+
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      mockHttpRequest.mockResolvedValueOnce({
+        ok: true,
+        headers: new Headers(),
+        json: async () => invalidMockTokens
+      } as Response);
+
+      const tool = createListTokensTool(httpRequest);
+      const logSpy = vi.spyOn(tool as any, 'log');
+
+      const result = await tool.run({});
+
+      // Should not error - graceful fallback to raw data
+      expect(result.isError).toBe(false);
+      expect(result.content[0]).toHaveProperty('type', 'text');
+
+      // Should log a warning about validation failure
+      expect(logSpy).toHaveBeenCalledWith(
+        'warning',
+        expect.stringContaining(
+          'ListTokensTool: Output schema validation failed'
+        )
+      );
+
+      // Should return the raw data despite validation failure
+      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      expect(responseData.tokens).toEqual(invalidMockTokens);
+      expect(responseData.tokens[0]).toHaveProperty('unexpectedField');
+    });
   });
 });

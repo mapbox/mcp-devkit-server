@@ -267,4 +267,48 @@ describe('ListStylesTool', () => {
 
     assertHeadersSent(mockHttpRequest);
   });
+
+  it('handles schema validation failures gracefully and logs warning', async () => {
+    // API response that doesn't match schema (missing required fields)
+    const invalidMockStyles = [
+      {
+        id: 'style1',
+        name: 'Test Style',
+        // Missing required fields like 'owner', 'created', 'modified', etc.
+        customField: 'unexpected data'
+      }
+    ];
+
+    const { httpRequest, mockHttpRequest } = setupHttpRequest({
+      ok: true,
+      json: async () => invalidMockStyles
+    });
+
+    const tool = new ListStylesTool({ httpRequest });
+    const logSpy = vi.spyOn(tool as any, 'log');
+
+    const result = await tool.run({});
+
+    // Should not error - graceful fallback to raw data
+    expect(result.isError).toBe(false);
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].type).toBe('text');
+
+    // Should log a warning about validation failure
+    expect(logSpy).toHaveBeenCalledWith(
+      'warning',
+      expect.stringContaining('ListStylesTool: Output schema validation failed')
+    );
+
+    // Should return the raw data despite validation failure
+    const content = result.content[0];
+    if (content.type === 'text') {
+      const parsedResponse = JSON.parse(content.text);
+      expect(parsedResponse).toHaveProperty('styles');
+      expect(parsedResponse.styles).toEqual(invalidMockStyles);
+      expect(parsedResponse.styles[0]).toHaveProperty('customField');
+    }
+
+    assertHeadersSent(mockHttpRequest);
+  });
 });

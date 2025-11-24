@@ -107,4 +107,26 @@ export abstract class BaseTool<
       this.server.server.sendLoggingMessage({ level, data });
     }
   }
+
+  /**
+   * Validates output data against the output schema.
+   * If validation fails, logs a warning and returns the raw data instead of throwing an error.
+   * This allows tools to continue functioning when API responses deviate from expected schemas.
+   */
+  protected validateOutput<T>(
+    schema: ZodTypeAny,
+    rawData: unknown,
+    toolName: string
+  ): T {
+    try {
+      return schema.parse(rawData) as T;
+    } catch (validationError) {
+      this.log(
+        'warning',
+        `${toolName}: Output schema validation failed - ${validationError instanceof Error ? validationError.message : 'Unknown validation error'}`
+      );
+      // Graceful fallback to raw data
+      return rawData as T;
+    }
+  }
 }
