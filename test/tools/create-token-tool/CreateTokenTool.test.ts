@@ -362,5 +362,45 @@ describe('CreateTokenTool', () => {
         }
       }
     });
+
+    it('handles schema validation failures gracefully and logs warning', async () => {
+      // API response that doesn't match schema (missing required fields)
+      const invalidMockResponse = {
+        token: 'pk.test',
+        note: 'Test token',
+        // Missing required fields like 'id', 'created', 'modified', etc.
+        unexpectedField: 'some value'
+      };
+
+      const { httpRequest } = setupHttpRequest({
+        ok: true,
+        json: async () => invalidMockResponse
+      } as Response);
+
+      const tool = createTokenTool(httpRequest);
+      const logSpy = vi.spyOn(tool as any, 'log');
+
+      const result = await tool.run({
+        note: 'Test token',
+        scopes: ['styles:read']
+      });
+
+      // Should not error - graceful fallback to raw data
+      expect(result.isError).toBe(false);
+      expect(result.content[0]).toHaveProperty('type', 'text');
+
+      // Should log a warning about validation failure
+      expect(logSpy).toHaveBeenCalledWith(
+        'warning',
+        expect.stringContaining(
+          'CreateTokenTool: Output schema validation failed'
+        )
+      );
+
+      // Should return the raw data despite validation failure
+      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      expect(responseData).toEqual(invalidMockResponse);
+      expect(responseData).toHaveProperty('unexpectedField');
+    });
   });
 });

@@ -130,24 +130,14 @@ export class ListTokensTool extends MapboxApiBasedTool<
           ? data
           : (data as { tokens?: unknown[] }).tokens || [];
 
-        // Validate tokens array against TokenObjectSchema
-        const parseResult = TokenObjectSchema.array().safeParse(tokens);
-        if (!parseResult.success) {
-          this.log(
-            'error',
-            `ListTokensTool: Token array schema validation failed\n${parseResult.error}`
-          );
-          return {
-            isError: true,
-            content: [
-              {
-                type: 'text',
-                text: `ListTokensTool: Response does not conform to token array schema:\n${parseResult.error}`
-              }
-            ]
-          };
-        }
-        allTokens.push(...parseResult.data);
+        // Validate tokens array against TokenObjectSchema with graceful fallback
+        const validatedTokens = this.validateOutput<unknown[]>(
+          TokenObjectSchema.array(),
+          tokens,
+          'ListTokensTool'
+        );
+
+        allTokens.push(...validatedTokens);
         this.log(
           'info',
           `ListTokensTool: Retrieved ${tokens.length} tokens on page ${pageCount}`
