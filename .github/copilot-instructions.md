@@ -1,69 +1,61 @@
 # GitHub Copilot Repository Instructions
 
-These instructions help GitHub Copilot and Copilot Chat provide better code suggestions and answers for the Mapbox MCP DevKit Server. For more details, see the [Copilot repository instructions guide](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions).
+Instructions for GitHub Copilot working on the Mapbox MCP DevKit Server. See [Copilot repository instructions guide](https://docs.github.com/en/copilot/how-tos/configure-custom-instructions/add-repository-instructions).
 
 ---
 
-## Project Overview
+## 1. Review Code Before Suggesting Changes
 
-- Model Context Protocol (MCP) server for Mapbox developer APIs
-- Written in TypeScript (strict mode)
-- Provides tools for Mapbox style management, token management, GeoJSON processing, and more
+- **Read existing patterns** before proposing solutions
+- Check `src/tools/` for tool implementation patterns
+- Reference `CLAUDE.md` for architecture decisions
+- Verify token scope requirements in `README.md`
 
-## Code Style
+## 2. Security & Token Management
 
-- Use TypeScript strict mode
-- Prefer ES module syntax (`import`/`export`)
-- Destructure imports when possible
-- Tool names must be `snake_case_tool`
-- Tool schemas live in `*.schema.ts` files
-- Use Zod for schema validation
-- Run Prettier and ESLint before committing
+- **Never hardcode tokens or credentials**
+- All Mapbox API calls require `MAPBOX_ACCESS_TOKEN` with specific scopes
+- Token scope mismatches are the primary failure mode
+- Use `VERBOSE_ERRORS=true` for debugging auth issues
+- Reference token scope requirements in `README.md` before implementing
 
-## Development & Build
+## 3. Code Quality & Style
 
-- Requires Node.js 22+
-- Install dependencies: `npm install`
-- Build: `npm run build`
-- Run tests: `npm test`
-- Lint: `npm run lint`
-- Format: `npm run format`
-- Create new tool: `npx plop create-tool`
-- Create DXT package: `npx @anthropic-ai/dxt pack`
-- Build Docker image: `docker build -t mapbox-mcp-devkit .`
+- **TypeScript strict mode** - No implicit any, proper typing required
+- **Tool naming convention** - Always `snake_case_tool` (e.g., `list_styles_tool`)
+- **Tool class naming** - Always `PascalCaseTool` (e.g., `ListStylesTool`)
+- **Schema separation** - Schema in `*.schema.ts`, implementation in `*.tool.ts`
+- **Use plop generator** - `npx plop create-tool` for new tools
+- **Zod validation** - All tool inputs validated with Zod schemas
+- ESLint and Prettier handle formatting - run `npm run lint:fix && npm run format:fix`
 
-## Testing
+## 4. Testing Requirements
 
-- Run all tests: `npm test`
-- Update tool snapshot tests after adding/removing tools:
-  - `npm test -- src/tools/tool-naming-convention.test.ts --updateSnapshot`
-- Run a single test file: `npm test -- path/to/testfile.ts`
-- Only update snapshots when changes are intentional
+- **Run tests before committing** - `npm test`
+- **Update snapshots deliberately** - After adding/removing/modifying tools: `npm test -- src/tools/tool-naming-convention.test.ts --updateSnapshot`
+- Never update snapshots without understanding what changed
+- Snapshot tests capture tool metadata (class names, tool names, descriptions)
 
-## PR & Branching
+## 5. Collaboration Standards
 
-- Always run `npm run lint` and `npm test` before committing
-- Keep PRs focused and well-described
+- **Focused commits** - One logical change per commit
+- **Build before testing** - Always `npm run build` before running
+- **Check CI** - Tests must pass before merge
+- Reference issues/PRs in commit messages
 
-## Tool Configuration
+## 6. When to Avoid Copilot Suggestions
 
-- Tools can be enabled/disabled at startup (see `TOOL_CONFIGURATION.md`)
-- Example: `node dist/esm/index.js --enable-tools list_styles_tool,create_style_tool`
-
-## Security & Tokens
-
-- Each tool requires specific Mapbox token scopes (see `README.md`)
-- Using insufficient scopes will result in errors
-- Use `VERBOSE_ERRORS=true` for detailed error output
-
-## Additional Resources
-
-- [README.md](../README.md)
-- [AGENTS.md](../AGENTS.md)
-- [CLAUDE.md](../CLAUDE.md)
-- [TOOL_CONFIGURATION.md](../TOOL_CONFIGURATION.md)
-- [docs/claude-code-integration.md](../docs/claude-code-integration.md)
+- **Don't auto-accept** tool name changes without verifying snake_case_tool convention
+- **Don't merge** schema definitions into tool implementation files
+- **Don't skip** snapshot updates after adding/removing tools
+- **Don't commit** without running linter and tests
 
 ---
 
-_Edit this file to keep Copilot up to date on project standards, commands, and best practices._
+**Key files:**
+
+- `docs/engineering_standards.md` — Comprehensive contributor guidelines
+- `CLAUDE.md` — Architecture and technical patterns
+- `AGENTS.md` — AI agent development guide
+- `README.md` — Complete tool reference
+- `TOOL_CONFIGURATION.md` — Tool configuration

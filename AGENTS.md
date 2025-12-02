@@ -1,79 +1,73 @@
 # AGENTS.md — Mapbox MCP DevKit Server
 
-This file provides coding agents with the context, commands, and conventions needed to work effectively with the Mapbox MCP DevKit Server. For human-focused docs, see `README.md`.
+Instructions for AI agents working with the Mapbox MCP DevKit Server. For project overview and user documentation, see `README.md` and `CLAUDE.md`.
 
 ---
 
-## Project Overview
+## Critical Patterns
 
-- Model Context Protocol (MCP) server for Mapbox developer APIs
-- Exposes tools for style management, token management, GeoJSON processing, and more
-- Written in TypeScript, strict mode enabled
+**Tool Architecture:**
 
-## Setup Commands
+- Tool class names: `PascalCaseTool` (e.g., `ListStylesTool`)
+- Tool names: `snake_case_tool` (e.g., `list_styles_tool`)
+- Schema files: Always separate `*.schema.ts` from `*.tool.ts`
+- Schema validation: Use Zod, export both schema and inferred type
+- Tool location: `src/tools/tool-name-tool/` with all three files (schema, implementation, tests)
 
-- Install dependencies: `npm install`
-- Build the project: `npm run build`
-- Run tests: `npm test`
-- Lint code: `npm run lint`
-- Format code: `npm run format`
-- Create a new tool: `npx plop create-tool`
-- Create DXT package: `npx @anthropic-ai/dxt pack`
-- Build Docker image: `docker build -t mapbox-mcp-devkit .`
+**Testing:**
 
-## Environment
+- After adding/removing tools: `npm test -- src/tools/tool-naming-convention.test.ts --updateSnapshot`
+- Never update snapshots without verifying changes
+- Tool snapshots capture class names, tool names, descriptions
 
-- Requires Node.js 22+
-- Set `MAPBOX_ACCESS_TOKEN` in your environment (see `manifest.json`)
-- For Claude Code integration, see `docs/claude-code-integration.md`
+**Token Management:**
 
-## Code Style
+- All Mapbox API tools require `MAPBOX_ACCESS_TOKEN` with specific scopes
+- Token scope errors are the #1 issue - check `README.md` for required scopes
+- Use `VERBOSE_ERRORS=true` for debugging authentication failures
 
-- TypeScript strict mode
-- Use ES module syntax (`import`/`export`)
-- Destructure imports when possible
-- Tool names must be `snake_case_tool`
-- Tool schemas live in `*.schema.ts` files
-- Use Zod for schema validation
-- Run Prettier and ESLint before committing
+## Factual Errors to Watch For
 
-## Testing Instructions
+**Incorrect Tool Naming:**
 
-- Run all tests: `npm test`
-- Update tool snapshot tests after adding/removing tools:
-  - `npm test -- src/tools/tool-naming-convention.test.ts --updateSnapshot`
-- Run a single test file: `npm test -- path/to/testfile.ts`
-- Only update snapshots when changes are intentional
+- ❌ `list_styles` → ✅ `list_styles_tool`
+- ❌ `ListStyles` → ✅ `ListStylesTool`
 
-## Tool Configuration
+**Incorrect File Structure:**
 
-- Enable/disable tools at startup (see `TOOL_CONFIGURATION.md`)
-- Example: `node dist/esm/index.js --enable-tools list_styles_tool,create_style_tool`
+- ❌ Schema defined in `*.tool.ts` → ✅ Schema in separate `*.schema.ts`
+- ❌ Tool in `src/tools/ListStylesTool.ts` → ✅ Tool in `src/tools/list-styles-tool/ListStylesTool.ts`
 
-## PR Instructions
+**Incorrect Class References:**
 
-- Branch naming: use `feature/`, `fix/`, or `chore/` prefixes
-- PR title format: `[mcp-devkit-server] <Title>`
-- Always run `npm run lint` and `npm test` before committing
-- Keep PRs focused and well-described
+- ❌ `ToolRegistry.registerTool()` → ✅ Tools auto-registered via `src/tools/index.ts` exports
+- ❌ Manual tool instantiation → ✅ Use plop generator: `npx plop create-tool`
 
-## Security & Tokens
+**Incorrect Token Scope Usage:**
 
-- Each tool requires specific Mapbox token scopes (see `README.md`)
-- Using insufficient scopes will result in errors
-- Use `VERBOSE_ERRORS=true` for detailed error output
+- ❌ Using default token for all operations → ✅ Check required scopes per tool in `README.md`
+- ❌ `styles:read` for creating styles → ✅ `styles:write` required
 
-## Agent Tips
+## Essential Commands
 
-- Mention files/folders explicitly for agents to read or edit
-- Use `/clear` to reset context between tasks (Claude Code)
-- Use checklists in Markdown for large refactors or multi-step tasks
-- Prefer running single tests for performance
+```bash
+npm run build                    # Always build before running
+npm test                         # Run all tests
+npx plop create-tool             # Generate new tool scaffold
+npm run lint:fix && npm run format:fix  # Fix code style
+```
 
-## Large Monorepo?
+## Development Workflow
 
-- Place additional AGENTS.md files in subprojects if needed; the closest file to the code being edited takes precedence
+1. **Adding a tool:** `npx plop create-tool` → Implement schema/logic → Update snapshots
+2. **Modifying a tool:** Edit → Build → Test → Update snapshots if metadata changed
+3. **Testing:** Use MCP Inspector: `npx @modelcontextprotocol/inspector node dist/esm/index.js`
 
 ---
 
-_Edit this file to keep coding agents up to date on project standards, commands, and best practices._
+**See also:**
+
+- `docs/engineering_standards.md` — Comprehensive contributor guidelines
+- `CLAUDE.md` — Architecture and technical patterns
+- `README.md` — Complete tool reference and token scopes
+- `TOOL_CONFIGURATION.md` — Tool enable/disable configuration
