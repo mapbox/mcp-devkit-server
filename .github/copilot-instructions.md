@@ -22,8 +22,7 @@ Instructions for GitHub Copilot working on the Mapbox MCP DevKit Server. See [Co
 ## 3. Code Quality & Style
 
 - **TypeScript strict mode** - No implicit any, proper typing required
-- **Tool naming convention** - Always `snake_case_tool` (e.g., `list_styles_tool`)
-- **Tool class naming** - Always `PascalCaseTool` (e.g., `ListStylesTool`)
+- **Tool naming** - Tool names (MCP identifiers) must be `snake_case_tool` (e.g., `list_styles_tool`). TypeScript class names follow `PascalCaseTool` convention (e.g., `ListStylesTool`)
 - **Schema separation** - Schema in `*.schema.ts`, implementation in `*.tool.ts`
 - **Use plop generator** - `npx plop create-tool` for new tools
 - **Zod validation** - All tool inputs validated with Zod schemas
@@ -34,7 +33,7 @@ Instructions for GitHub Copilot working on the Mapbox MCP DevKit Server. See [Co
 - **Run tests before committing** - `npm test`
 - **Update snapshots deliberately** - After adding/removing/modifying tools: `npm test -- src/tools/tool-naming-convention.test.ts --updateSnapshot`
 - Never update snapshots without understanding what changed
-- Snapshot tests capture tool metadata (class names, tool names, descriptions)
+- Snapshot tests capture tool metadata (TypeScript class names in `PascalCaseTool` format, MCP tool names in `snake_case_tool` format, descriptions)
 
 ## 5. Collaboration Standards
 

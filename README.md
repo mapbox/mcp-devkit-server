@@ -559,8 +559,8 @@ The project includes snapshot tests to ensure tool integrity and prevent acciden
 
 **What the snapshot test covers:**
 
-- Tool class names
-- Tool names (must follow `snake_case_tool` naming convention)
+- Tool class names (TypeScript classes follow `PascalCaseTool` convention, e.g., `ListStylesTool`)
+- Tool names (MCP identifiers must follow `snake_case_tool` convention, e.g., `list_styles_tool`)
 - Tool descriptions
 
 **When to update snapshots:**

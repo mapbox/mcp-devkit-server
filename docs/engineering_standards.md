@@ -18,7 +18,7 @@ Key requirements:
 - Maintain strict typing conventions (`strict: true` in tsconfig.json)
 - Avoid `any` types; add explanatory comments if unavoidable
 - Never patch global objects (e.g., `global.fetch`)
-- Follow tool naming conventions: `snake_case_tool` for names, `PascalCaseTool` for classes
+- Follow tool naming conventions: Tool names (MCP identifiers) must be `snake_case_tool` (e.g., `list_styles_tool`). TypeScript class names follow `PascalCaseTool` convention (e.g., `ListStylesTool`)
 - Separate schema definitions (`*.schema.ts`) from implementation (`*.tool.ts`)
 
 **Testing Expectations:**
@@ -163,7 +163,7 @@ npx @anthropic-ai/dxt pack
 2. ❌ Patching `global.fetch` instead of using `HttpPipeline`
 3. ❌ Making real network calls in tests
 4. ❌ Forgetting to update snapshots after tool changes
-5. ❌ Tool names not following `snake_case_tool` convention
+5. ❌ Tool names not following `snake_case_tool` convention (e.g., using `listStyles` instead of `list_styles_tool`)
 6. ❌ Schema and implementation in same file
 7. ❌ Hardcoding tokens or credentials
 8. ❌ Missing required token scopes in documentation

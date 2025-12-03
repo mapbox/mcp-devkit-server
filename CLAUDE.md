@@ -51,12 +51,11 @@ npx plop create-tool   # Generate tool scaffold
 
 - After adding/removing tools: `npm test -- src/tools/tool-naming-convention.test.ts --updateSnapshot`
 - Never update snapshots without verifying changes
-- Tool snapshots capture class names (`PascalCaseTool`), tool names (`snake_case_tool`), and descriptions
+- Tool snapshots capture class names, tool names, and descriptions
 
 ## Important Constraints
 
-- Tool names must be `snake_case_tool` (e.g., `list_styles_tool`)
-- Tool class names must be `PascalCaseTool` (e.g., `ListStylesTool`)
+- **Tool naming:** Tool names (MCP identifiers) must be `snake_case_tool` (e.g., `list_styles_tool`). TypeScript class names follow `PascalCaseTool` convention (e.g., `ListStylesTool`)
 - Schema files must be separate from implementation files (`*.schema.ts` vs `*.tool.ts`)
 - Avoid `any` types; add comments explaining unavoidable usage
 - Never execute real network calls in tests—mock `HttpPipeline` instead

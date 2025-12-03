@@ -8,8 +8,7 @@ Instructions for AI agents working with the Mapbox MCP DevKit Server. For projec
 
 **Tool Architecture:**
 
-- Tool class names: `PascalCaseTool` (e.g., `ListStylesTool`)
-- Tool names: `snake_case_tool` (e.g., `list_styles_tool`)
+- **Tool naming:** Tool names (MCP identifiers) must be `snake_case_tool` (e.g., `list_styles_tool`). TypeScript class names follow `PascalCaseTool` convention (e.g., `ListStylesTool`)
 - Schema files: Always separate `*.schema.ts` from `*.tool.ts`
 - Schema validation: Use Zod, export both schema and inferred type
 - Tool location: `src/tools/tool-name-tool/` with all three files (schema, implementation, tests)
@@ -18,7 +17,7 @@ Instructions for AI agents working with the Mapbox MCP DevKit Server. For projec
 
 - After adding/removing tools: `npm test -- src/tools/tool-naming-convention.test.ts --updateSnapshot`
 - Never update snapshots without verifying changes
-- Tool snapshots capture class names, tool names, descriptions
+- Tool snapshots capture class names (TypeScript `PascalCaseTool`), tool names (MCP `snake_case_tool`), and descriptions
 
 **Token Management:**
 
