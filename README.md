@@ -559,8 +559,8 @@ The project includes snapshot tests to ensure tool integrity and prevent acciden
 
 **What the snapshot test covers:**
 
-- Tool class names
-- Tool names (must follow `snake_case_tool` naming convention)
+- Tool class names (TypeScript classes follow `PascalCaseTool` convention, e.g., `ListStylesTool`)
+- Tool names (MCP identifiers must follow `snake_case_tool` convention, e.g., `list_styles_tool`)
 - Tool descriptions
 
 **When to update snapshots:**
@@ -719,8 +719,9 @@ node dist/esm/index.js --disable-mcp-ui
 
 ## Contributing
 
-We welcome contributions to the Mapbox Development MCP Server! Please review our standards and guidelines before contributing:
+We welcome contributions to the Mapbox Development MCP Server! Please review our documentation:
 
-- **[Engineering Standards (CLAUDE.md)](./CLAUDE.md)** - Code quality, testing, documentation, and collaboration standards for all contributors
-- **[AI Agent Instructions (AGENTS.md)](./AGENTS.md)** - Comprehensive guide for AI agents working with this codebase
-- **[GitHub Copilot Guidelines](./.github/copilot-instructions.md)** - Best practices for using GitHub Copilot responsibly in this project
+- **[Engineering Standards (docs/engineering_standards.md)](./docs/engineering_standards.md)** - Comprehensive guidelines for all contributors
+- **[CLAUDE.md](./CLAUDE.md)** - Architecture and technical patterns
+- **[AGENTS.md](./AGENTS.md)** - Critical patterns and common errors for AI agents
+- **[GitHub Copilot Guidelines](./.github/copilot-instructions.md)** - Copilot-specific development practices
