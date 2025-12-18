@@ -15,6 +15,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Hosted MCP Endpoint](#hosted-mcp-endpoint)
     - [Getting Your Mapbox Access Token](#getting-your-mapbox-access-token)
   - [Tools](#tools)
+  - [Prompts](#prompts)
     - [Documentation Tools](#documentation-tools)
     - [Reference Tools](#reference-tools)
     - [Style Management Tools](#style-management-tools)
@@ -452,6 +453,98 @@ An array of four numbers representing the bounding box: `[minX, minY, maxX, maxY
 
 - "Calculate the bounding box of this GeoJSON file" (then upload a .geojson file)
 - "What's the bounding box for the coordinates in the uploaded parks.geojson file?"
+
+## Prompts
+
+MCP Prompts are pre-built workflow templates that guide AI assistants through multi-step tasks. They orchestrate multiple tools in the correct sequence, providing best practices and error handling built-in.
+
+**Available Prompts:**
+
+### create-and-preview-style
+
+Create a new Mapbox map style and generate a shareable preview link with automatic token management.
+
+**Arguments:**
+
+- `style_name` (required): Name for the new map style
+- `style_description` (optional): Description of the style theme or purpose
+- `base_style` (optional): Base style to start from (e.g., "streets-v12", "dark-v11")
+- `preview_location` (optional): Location to center the preview map
+- `preview_zoom` (optional): Zoom level for the preview (0-22, default: 12)
+
+**What it does:**
+
+1. Checks for an existing public token with `styles:read` scope
+2. Creates a new public token if needed
+3. Creates the map style
+4. Generates a preview link
+
+**Example usage:**
+
+```
+Use prompt: create-and-preview-style
+Arguments:
+  style_name: "My Custom Map"
+  style_description: "A dark-themed map for nighttime navigation"
+  base_style: "dark-v11"
+  preview_location: "San Francisco"
+  preview_zoom: "13"
+```
+
+### build-custom-map
+
+Use conversational AI to build a custom styled map based on a theme description.
+
+**Arguments:**
+
+- `theme` (required): Theme description (e.g., "dark cyberpunk", "nature-focused", "minimal monochrome")
+- `emphasis` (optional): Features to emphasize (e.g., "parks and green spaces", "transit lines")
+- `preview_location` (optional): Location to center the preview map
+- `preview_zoom` (optional): Zoom level for the preview (0-22, default: 12)
+
+**What it does:**
+
+1. Uses the Style Builder tool to create a themed style based on your description
+2. Creates the style in your Mapbox account
+3. Generates a preview link
+
+**Example usage:**
+
+```
+Use prompt: build-custom-map
+Arguments:
+  theme: "retro 80s neon"
+  emphasis: "nightlife and entertainment venues"
+  preview_location: "Tokyo"
+  preview_zoom: "14"
+```
+
+### analyze-geojson
+
+Analyze and visualize GeoJSON data with automatic validation and bounding box calculation.
+
+**Arguments:**
+
+- `geojson_data` (required): GeoJSON object or string to analyze
+- `show_bounds` (optional): Calculate and display bounding box (true/false, default: true)
+- `convert_coordinates` (optional): Provide Web Mercator conversion examples (true/false, default: false)
+
+**What it does:**
+
+1. Validates GeoJSON format
+2. Calculates bounding box (if requested)
+3. Provides coordinate conversion examples (if requested)
+4. Generates an interactive visualization link
+
+**Example usage:**
+
+```
+Use prompt: analyze-geojson
+Arguments:
+  geojson_data: {"type":"FeatureCollection","features":[...]}
+  show_bounds: "true"
+  convert_coordinates: "false"
+```
 
 ## Resources
 
