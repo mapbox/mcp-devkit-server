@@ -7,6 +7,94 @@ description: Official integration patterns for Mapbox GL JS across popular web f
 
 This skill provides official patterns for integrating Mapbox GL JS into web applications across different frameworks. These patterns are based on Mapbox's `create-web-app` scaffolding tool and represent production-ready best practices.
 
+## Version Requirements
+
+### Mapbox GL JS
+
+**Recommended:** v3.x (latest)
+
+- **Minimum:** v3.0.0
+- **Why v3.x:** Modern API, improved performance, active development
+- **v2.x:** Still supported but deprecated patterns (see migration notes below)
+
+**Installing via npm (recommended for production):**
+
+```bash
+npm install mapbox-gl@^3.0.0    # Installs latest v3.x
+```
+
+**CDN (for prototyping only):**
+
+```html
+<!-- Replace VERSION with latest v3.x from https://docs.mapbox.com/mapbox-gl-js/ -->
+<script src="https://api.mapbox.com/mapbox-gl-js/vVERSION/mapbox-gl.js"></script>
+<link
+  href="https://api.mapbox.com/mapbox-gl-js/vVERSION/mapbox-gl.css"
+  rel="stylesheet"
+/>
+```
+
+⚠️ **Production apps should use npm, not CDN** - ensures consistent versions and offline builds.
+
+### Framework Requirements
+
+**React:**
+
+- Minimum: 16.8+ (requires hooks)
+- Recommended: 18.x
+
+**Vue:**
+
+- Minimum: 3.x (Composition API recommended)
+- Vue 2.x: Use Options API pattern (mounted/unmounted hooks)
+
+**Svelte:**
+
+- Minimum: 3.x
+- Recommended: Latest 4.x or 5.x
+
+**Angular:**
+
+- Minimum: 15+ (standalone components)
+- For Angular 14 and below: Use module-based components
+
+**Next.js:**
+
+- Minimum: 13.x (App Router)
+- Pages Router: 12.x+
+
+### Mapbox Search JS
+
+**Required for search integration:**
+
+```bash
+npm install @mapbox/search-js-react@^1.0.0      # React
+npm install @mapbox/search-js-web@^1.0.0        # Other frameworks
+```
+
+### Version Migration Notes
+
+**Migrating from v2.x to v3.x:**
+
+- `accessToken` can now be passed to Map constructor (preferred)
+- Improved TypeScript types
+- Better tree-shaking support
+- No breaking changes to core initialization patterns
+
+**Example:**
+
+```javascript
+// v2.x pattern (still works in v3.x)
+mapboxgl.accessToken = 'pk...';
+const map = new mapboxgl.Map({ container: '...' });
+
+// v3.x pattern (preferred)
+const map = new mapboxgl.Map({
+  accessToken: 'pk...',
+  container: '...'
+});
+```
+
 ## Core Principles
 
 **Every Mapbox GL JS integration must:**
@@ -355,6 +443,8 @@ initMap();
 
 **Pattern: Script tag with inline initialization**
 
+⚠️ **Note:** This pattern is for prototyping only. Production apps should use npm/bundler for version control and offline builds.
+
 ```html
 <!DOCTYPE html>
 <html lang="en">
@@ -364,8 +454,9 @@ initMap();
     <title>Mapbox GL JS - No Bundler</title>
 
     <!-- Mapbox GL JS CSS -->
+    <!-- Replace 3.x.x with latest version from https://docs.mapbox.com/mapbox-gl-js/ -->
     <link
-      href="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.css"
+      href="https://api.mapbox.com/mapbox-gl-js/v3.x.x/mapbox-gl.css"
       rel="stylesheet"
     />
 
@@ -389,7 +480,8 @@ initMap();
     <div id="map-container"></div>
 
     <!-- Mapbox GL JS -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.15.0/mapbox-gl.js"></script>
+    <!-- Replace 3.x.x with latest version from https://docs.mapbox.com/mapbox-gl-js/ -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.x.x/mapbox-gl.js"></script>
 
     <script>
       // Set access token
@@ -418,10 +510,19 @@ initMap();
 
 **Key points:**
 
-- Load CSS and JS from CDN
-- Use specific version (not `latest`)
+- ⚠️ **Prototyping only** - not recommended for production
+- Replace `3.x.x` with specific version (e.g., `3.7.0`) from [Mapbox docs](https://docs.mapbox.com/mapbox-gl-js/)
+- **Don't use `/latest/`** - always pin to specific version for consistency
 - Initialize after script loads (bottom of body)
-- Hardcode token or load from server endpoint
+- For production: Use npm + bundler instead
+
+**Why not CDN for production?**
+
+- ❌ Network dependency (breaks offline)
+- ❌ No version locking (CDN could change)
+- ❌ Slower (no bundler optimization)
+- ❌ No tree-shaking
+- ✅ Use npm for production: `npm install mapbox-gl@^3.0.0`
 
 ---
 
