@@ -20,6 +20,7 @@ The codebase organizes into:
 - `src/tools/` - MCP tool implementations with `BaseTool` abstract class and registry
 - `src/resources/` - Static reference data (style specs, token scopes, Streets v8 fields)
 - `src/utils/` - HTTP pipeline, JWT parsing, tracing, and version utilities
+- `skills/` - Agent Skills providing domain expertise (cartography, security, style patterns)
 
 ## Key Architectural Patterns
 
@@ -32,6 +33,8 @@ The codebase organizes into:
 **Token Management:** Tools receive `MAPBOX_ACCESS_TOKEN` via `extra.authInfo.token` or environment variable. Token scope validation is critical—most tool failures stem from insufficient scopes (see `README.md` for per-tool requirements).
 
 **Tool Registry:** Tools are auto-discovered via `src/tools/index.ts` exports. No manual registration required—just export from index.
+
+**Agent Skills:** Domain expertise provided through `skills/` directory. Each skill is a folder with `SKILL.md` containing YAML frontmatter and markdown instructions. Skills teach AI assistants about map design (cartography), security (token management), and implementation (style patterns). Skills are discovered by Claude Code, uploadable to Claude API, or usable in Claude.ai. See `skills/README.md` for details.
 
 ## Essential Workflows
 
