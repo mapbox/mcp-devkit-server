@@ -546,6 +546,100 @@ Arguments:
   convert_coordinates: "false"
 ```
 
+### setup-mapbox-project
+
+Complete setup workflow for a new Mapbox project with proper token security and style initialization.
+
+**Arguments:**
+
+- `project_name` (required): Name of the project or application
+- `project_type` (optional): Type of project: "web", "mobile", "backend", or "fullstack" (default: "web")
+- `production_domain` (optional): Production domain for URL restrictions (e.g., "myapp.com")
+- `style_theme` (optional): Initial style theme: "light", "dark", "streets", "outdoors", "satellite" (default: "light")
+
+**What it does:**
+
+1. Creates development token with localhost URL restrictions
+2. Creates production token with domain URL restrictions (if provided)
+3. Creates backend secret token for server-side operations (if needed)
+4. Creates an initial map style using the specified theme
+5. Generates preview link and provides integration guidance
+
+**Example usage:**
+
+```
+Use prompt: setup-mapbox-project
+Arguments:
+  project_name: "Restaurant Finder"
+  project_type: "fullstack"
+  production_domain: "restaurantfinder.com"
+  style_theme: "light"
+```
+
+### debug-mapbox-integration
+
+Systematic troubleshooting workflow for diagnosing and fixing Mapbox integration issues.
+
+**Arguments:**
+
+- `issue_description` (required): Description of the problem (e.g., "map not loading", "401 error")
+- `error_message` (optional): Exact error message from console or logs
+- `style_id` (optional): Mapbox style ID being used, if applicable
+- `environment` (optional): Where the issue occurs: "development", "production", "staging"
+
+**What it does:**
+
+1. Verifies token validity and required scopes
+2. Checks style configuration and existence
+3. Analyzes error messages and provides specific solutions
+4. Tests API endpoints to isolate the problem
+5. Provides step-by-step fix instructions
+6. Offers prevention strategies
+
+**Example usage:**
+
+```
+Use prompt: debug-mapbox-integration
+Arguments:
+  issue_description: "Getting 401 errors when map loads"
+  error_message: "401 Unauthorized"
+  style_id: "my-style-id"
+  environment: "production"
+```
+
+### design-data-driven-style
+
+Create a map style with data-driven properties that respond dynamically to feature data using expressions.
+
+**Arguments:**
+
+- `style_name` (required): Name for the data-driven style
+- `data_description` (required): Description of the data (e.g., "population by city", "earthquake magnitudes")
+- `property_name` (required): Name of the data property to visualize (e.g., "population", "magnitude")
+- `visualization_type` (optional): How to visualize: "color", "size", "both", "heatmap" (default: "color")
+- `color_scheme` (optional): Color scheme: "sequential", "diverging", "categorical" (default: "sequential")
+
+**What it does:**
+
+1. Explains data-driven styling concepts and expressions
+2. Provides appropriate expression templates for your use case
+3. Offers color scales and size ranges based on visualization type
+4. Creates the style with data-driven layers
+5. Includes advanced expression examples (zoom-based, conditional)
+6. Provides best practices for accessibility and performance
+
+**Example usage:**
+
+```
+Use prompt: design-data-driven-style
+Arguments:
+  style_name: "Population Density Map"
+  data_description: "City population data"
+  property_name: "population"
+  visualization_type: "both"
+  color_scheme: "sequential"
+```
+
 ## Resources
 
 This server exposes static reference documentation as MCP Resources. While these are primarily accessed through the `get_reference_tool`, MCP clients that fully support the resources protocol can access them directly.

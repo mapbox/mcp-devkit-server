@@ -11,7 +11,7 @@ describe('promptRegistry', () => {
   describe('getAllPrompts', () => {
     it('should return all registered prompts', () => {
       const prompts = getAllPrompts();
-      expect(prompts).toHaveLength(3);
+      expect(prompts).toHaveLength(6);
     });
 
     it('should include create-and-preview-style prompt', () => {
@@ -33,6 +33,27 @@ describe('promptRegistry', () => {
       const prompt = prompts.find((p) => p.name === 'analyze-geojson');
       expect(prompt).toBeDefined();
       expect(prompt?.description).toContain('Analyze and visualize GeoJSON');
+    });
+
+    it('should include setup-mapbox-project prompt', () => {
+      const prompts = getAllPrompts();
+      const prompt = prompts.find((p) => p.name === 'setup-mapbox-project');
+      expect(prompt).toBeDefined();
+      expect(prompt?.description).toContain('Complete setup workflow');
+    });
+
+    it('should include debug-mapbox-integration prompt', () => {
+      const prompts = getAllPrompts();
+      const prompt = prompts.find((p) => p.name === 'debug-mapbox-integration');
+      expect(prompt).toBeDefined();
+      expect(prompt?.description).toContain('troubleshooting workflow');
+    });
+
+    it('should include design-data-driven-style prompt', () => {
+      const prompts = getAllPrompts();
+      const prompt = prompts.find((p) => p.name === 'design-data-driven-style');
+      expect(prompt).toBeDefined();
+      expect(prompt?.description).toContain('data-driven properties');
     });
 
     it('should return readonly array', () => {
@@ -58,7 +79,10 @@ describe('promptRegistry', () => {
       const promptNames = [
         'create-and-preview-style',
         'build-custom-map',
-        'analyze-geojson'
+        'analyze-geojson',
+        'setup-mapbox-project',
+        'debug-mapbox-integration',
+        'design-data-driven-style'
       ];
 
       promptNames.forEach((name) => {

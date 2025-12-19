@@ -4,12 +4,18 @@
 import { CreateAndPreviewStylePrompt } from './CreateAndPreviewStylePrompt.js';
 import { BuildCustomMapPrompt } from './BuildCustomMapPrompt.js';
 import { AnalyzeGeojsonPrompt } from './AnalyzeGeojsonPrompt.js';
+import { SetupMapboxProjectPrompt } from './SetupMapboxProjectPrompt.js';
+import { DebugMapboxIntegrationPrompt } from './DebugMapboxIntegrationPrompt.js';
+import { DesignDataDrivenStylePrompt } from './DesignDataDrivenStylePrompt.js';
 
 // Central registry of all prompts
 export const ALL_PROMPTS = [
   new CreateAndPreviewStylePrompt(),
   new BuildCustomMapPrompt(),
-  new AnalyzeGeojsonPrompt()
+  new AnalyzeGeojsonPrompt(),
+  new SetupMapboxProjectPrompt(),
+  new DebugMapboxIntegrationPrompt(),
+  new DesignDataDrivenStylePrompt()
 ] as const;
 
 export type PromptInstance = (typeof ALL_PROMPTS)[number];
