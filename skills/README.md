@@ -83,6 +83,34 @@ Use this skill when:
 
 [View skill →](./mapbox-style-patterns/SKILL.md)
 
+### 🔧 mapbox-integration-patterns
+
+**Official integration patterns for Mapbox GL JS across popular web frameworks including React, Vue, Svelte, Angular, and vanilla JavaScript.**
+
+Use this skill when:
+
+- Setting up Mapbox GL JS in a new project
+- Integrating Mapbox into a specific framework
+- Adding Mapbox Search functionality
+- Implementing proper cleanup and lifecycle management
+- Debugging map initialization issues
+- Converting between frameworks
+- Reviewing code for integration best practices
+
+**Key topics:**
+
+- Framework-specific patterns (React, Vue, Svelte, Angular, Next.js)
+- Token management (environment variables across frameworks)
+- Lifecycle management and cleanup (preventing memory leaks)
+- Mapbox Search JS integration
+- Common mistakes and how to avoid them
+- SSR handling (Angular Universal, Next.js)
+- Testing patterns for maps
+
+**Based on:** Mapbox's official `create-web-app` scaffolding tool
+
+[View skill →](./mapbox-integration-patterns/SKILL.md)
+
 ## How Skills Work with the MCP Server
 
 The Mapbox MCP DevKit Server and Agent Skills work together:

@@ -462,6 +462,7 @@ This repository includes [Agent Skills](https://agentskills.io) that provide dom
 - **🎨 mapbox-cartography**: Map design principles, color theory, visual hierarchy, typography
 - **🔐 mapbox-token-security**: Token management, scope control, URL restrictions, rotation strategies
 - **📐 mapbox-style-patterns**: Common style patterns and layer configurations for typical scenarios
+- **🔧 mapbox-integration-patterns**: Framework-specific integration patterns for React, Vue, Svelte, Angular, and vanilla JS
 
 Skills complement the MCP server by providing expertise (how to think about design) while tools provide capabilities (how to execute actions).
 
