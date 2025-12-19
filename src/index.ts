@@ -11,9 +11,11 @@ import { SpanStatusCode } from '@opentelemetry/api';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
 import { parseToolConfigFromArgs, filterTools } from './config/toolConfig.js';
 import { getAllTools } from './tools/toolRegistry.js';
 import { getAllResources } from './resources/resourceRegistry.js';
+import { getAllPrompts } from './prompts/promptRegistry.js';
 import { getVersionInfo } from './utils/versionUtils.js';
 import {
   initializeTracing,
@@ -64,7 +66,8 @@ const server = new McpServer(
   {
     capabilities: {
       tools: {},
-      resources: {}
+      resources: {},
+      prompts: {}
     }
   }
 );
@@ -78,6 +81,37 @@ enabledTools.forEach((tool) => {
 const resources = getAllResources();
 resources.forEach((resource) => {
   resource.installTo(server);
+});
+
+// Register prompts to the server
+const prompts = getAllPrompts();
+prompts.forEach((prompt) => {
+  const argsSchema: Record<string, z.ZodString | z.ZodOptional<z.ZodString>> =
+    {};
+
+  // Convert prompt arguments to Zod schema format
+  prompt.arguments.forEach((arg) => {
+    const zodString = z.string().describe(arg.description);
+    argsSchema[arg.name] = arg.required ? zodString : zodString.optional();
+  });
+
+  server.registerPrompt(
+    prompt.name,
+    {
+      description: prompt.description,
+      argsSchema: argsSchema
+    },
+    async (args) => {
+      // Filter out undefined values from optional arguments
+      const filteredArgs: Record<string, string> = {};
+      for (const [key, value] of Object.entries(args || {})) {
+        if (value !== undefined) {
+          filteredArgs[key] = value;
+        }
+      }
+      return prompt.execute(filteredArgs);
+    }
+  );
 });
 
 async function main() {

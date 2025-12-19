@@ -18,6 +18,7 @@ The codebase organizes into:
 - `src/index.ts` - Main entry point with .env loading and server initialization
 - `src/config/toolConfig.ts` - Configuration parser for tool filtering and MCP-UI toggles
 - `src/tools/` - MCP tool implementations with `BaseTool` abstract class and registry
+- `src/prompts/` - MCP prompt implementations with `BasePrompt` abstract class and registry
 - `src/resources/` - Static reference data (style specs, token scopes, Streets v8 fields)
 - `src/utils/` - HTTP pipeline, JWT parsing, tracing, and version utilities
 - `skills/` - Agent Skills providing domain expertise (cartography, security, style patterns)
@@ -26,13 +27,17 @@ The codebase organizes into:
 
 **Tool Architecture:** All tools extend `BaseTool<InputSchema, OutputSchema>`. Tools auto-validate inputs using Zod schemas. Each tool lives in `src/tools/tool-name-tool/` with separate `*.schema.ts` and `*.tool.ts` files.
 
+**Prompt Architecture:** All prompts extend `BasePrompt` abstract class. Prompts orchestrate multi-step workflows, guiding AI assistants through complex tasks with best practices built-in. Each prompt lives in `src/prompts/` with separate files per prompt (e.g., `CreateAndPreviewStylePrompt.ts`). Prompts use kebab-case naming (e.g., `create-and-preview-style`).
+
 **HTTP Pipeline System:** "Never patch global.fetch—use HttpPipeline with dependency injection instead." The `HttpPipeline` class applies policies (User-Agent, retry logic) via a chain-of-responsibility pattern. See `src/utils/httpPipeline.ts:20`.
 
 **Resource System:** Static reference data exposed as MCP resources using URI pattern `resource://mapbox-*`, including style layer specs, Streets v8 field definitions, and token scope documentation.
 
 **Token Management:** Tools receive `MAPBOX_ACCESS_TOKEN` via `extra.authInfo.token` or environment variable. Token scope validation is critical—most tool failures stem from insufficient scopes (see `README.md` for per-tool requirements).
 
-**Tool Registry:** Tools are auto-discovered via `src/tools/index.ts` exports. No manual registration required—just export from index.
+**Tool Registry:** Tools are auto-discovered via `src/tools/toolRegistry.ts` exports. No manual registration required—just export from registry.
+
+**Prompt Registry:** Prompts are registered in `src/prompts/promptRegistry.ts`. To add a new prompt, create the prompt class and add it to the `ALL_PROMPTS` array. The main server automatically registers all prompts with proper Zod schema conversion.
 
 **Agent Skills:** Domain expertise provided through `skills/` directory. Each skill is a folder with `SKILL.md` containing YAML frontmatter and markdown instructions. Skills teach AI assistants about map design (cartography), security (token management), and implementation (style patterns). Skills are discovered by Claude Code, uploadable to Claude API, or usable in Claude.ai. See `skills/README.md` for details.
 
