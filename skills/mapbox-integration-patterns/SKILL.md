@@ -50,8 +50,8 @@ npm install mapbox-gl@^3.0.0    # Installs latest v3.x
 
 **Svelte:**
 
-- Minimum: 3.x
-- Recommended: Latest 4.x or 5.x
+- Minimum: 5+ (current implementation in create-web-app)
+- Recommended: Latest 5.x
 
 **Angular:**
 
