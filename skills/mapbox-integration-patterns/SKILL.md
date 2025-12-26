@@ -40,8 +40,8 @@ npm install mapbox-gl@^3.0.0    # Installs latest v3.x
 
 **React:**
 
-- Minimum: 16.8+ (requires hooks)
-- Recommended: 18.x
+- Minimum: 19+ (current implementation in create-web-app)
+- Recommended: Latest 19.x
 
 **Vue:**
 
