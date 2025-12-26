@@ -55,8 +55,8 @@ npm install mapbox-gl@^3.0.0    # Installs latest v3.x
 
 **Angular:**
 
-- Minimum: 15+ (standalone components)
-- For Angular 14 and below: Use module-based components
+- Minimum: 19+ (current implementation in create-web-app)
+- Recommended: Latest 19.x
 
 **Next.js:**
 
@@ -584,8 +584,9 @@ VITE_MAPBOX_ACCESS_TOKEN=your_token_here
 ```bash
 npm install @mapbox/search-js-react      # React
 npm install @mapbox/search-js-web        # Vanilla/Vue/Svelte
-npm install @mapbox/search-js-core       # Core library
 ```
+
+**Note:** Both packages include `@mapbox/search-js-core` as a dependency. You only need to install `-core` directly if building a custom search UI.
 
 **React Search Pattern:**
 
