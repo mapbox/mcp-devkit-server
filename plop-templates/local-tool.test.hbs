@@ -1,4 +1,8 @@
-import { {{pascalCase name}}Tool } from '../{{kebabCase name}}-tool/{{pascalCase name}}Tool.js';
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+import { describe, it, expect, afterEach, beforeEach } from 'vitest';
+import { {{pascalCase name}}Tool } from '../../../src/tools/{{kebabCase name}}-tool/{{pascalCase name}}Tool.js';
 
 describe('{{pascalCase name}}Tool', () => {
   let tool: {{pascalCase name}}Tool;
@@ -8,76 +12,72 @@ describe('{{pascalCase name}}Tool', () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    // Clean up if needed
   });
 
-  describe('tool metadata', () => {
-    it('should have correct name and description', () => {
-      expect(tool.name).toBe('{{snakeCase name}}_tool');
-      expect(tool.description).toBe('Tool description.');
-    });
-
-    it('should have correct input schema', () => {
-      const { {{pascalCase name}}Schema } = require('./{{pascalCase name}}Tool.schema.js');
-      expect({{pascalCase name}}Schema).toBeDefined();
-    });
+  it('should have correct tool metadata', () => {
+    expect(tool.name).toBe('{{snakeCase name}}_tool');
+    expect(tool.description).toBeTruthy();
+    expect(tool.annotations).toBeDefined();
   });
 
-  describe('execution', () => {
-    it('should execute successfully with valid input', async () => {
-      // TODO: Replace with actual valid input for your tool
-      const testInput = {};
-      const result = await tool.run(testInput);
-      
-      expect(result.isError).toBe(false);
-      expect(result.content).toHaveLength(1);
-      expect(result.content[0].type).toBe('text');
-      
-      // Verify the response structure
-      const parsedResponse = JSON.parse(result.content[0].text);
-      expect(parsedResponse).toHaveProperty('message');
-      expect(parsedResponse).toHaveProperty('timestamp');
-    });
+  it('should execute successfully with valid input', async () => {
+    // TODO: Replace with actual valid input for your tool
+    const testInput = {};
 
-    it('should include timestamp in response', async () => {
-      const testInput = {};
-      const result = await tool.run(testInput);
-      
-      expect(result.isError).toBe(false);
-      const parsedResponse = JSON.parse(result.content[0].text);
-      expect(parsedResponse.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
-    });
+    const result = await tool.run(testInput);
 
-    it('should echo input in response', async () => {
-      // TODO: Replace with actual test input for your tool
-      const testInput = {};
-      const result = await tool.run(testInput);
-      
-      expect(result.isError).toBe(false);
-      const parsedResponse = JSON.parse(result.content[0].text);
-      expect(parsedResponse.input).toEqual(testInput);
-    });
+    expect(result.isError).toBe(false);
+    expect(result.content).toHaveLength(1);
+    expect(result.content[0].type).toBe('text');
 
-    // TODO: Add more specific test cases based on your tool's functionality
-    // it('should handle specific use case', async () => {
-    //   const testInput = { /* specific input */ };
-    //   const result = await tool.run(testInput);
-    //   
-    //   expect(result.isError).toBe(false);
-    //   // Add specific assertions for your tool's logic
-    // });
-
-    // TODO: Add invalid input tests only if your tool has input validation
-    // Remove this comment and uncomment the test below if you add input validation
-    // it('should handle invalid input gracefully', async () => {
-    //   const invalidInput = { /* invalid input that should fail validation */ };
-    //   const result = await tool.run(invalidInput);
-    //   
-    //   expect(result.isError).toBe(true);
-    //   expect(result.content[0]).toMatchObject({
-    //     type: 'text',
-    //     text: expect.stringContaining('error')
-    //   });
-    // });
+    // Verify the response structure
+    const parsedResponse = JSON.parse(result.content[0].text);
+    expect(parsedResponse).toHaveProperty('message');
+    expect(parsedResponse).toHaveProperty('timestamp');
   });
+
+  it('should include timestamp in response', async () => {
+    // TODO: Replace with actual input
+    const testInput = {};
+
+    const result = await tool.run(testInput);
+
+    expect(result.isError).toBe(false);
+    const parsedResponse = JSON.parse(result.content[0].text);
+    expect(parsedResponse.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  it('should echo input in response', async () => {
+    // TODO: Replace with actual test input for your tool
+    const testInput = {};
+
+    const result = await tool.run(testInput);
+
+    expect(result.isError).toBe(false);
+    const parsedResponse = JSON.parse(result.content[0].text);
+    expect(parsedResponse.input).toEqual(testInput);
+  });
+
+  // TODO: Add more specific test cases based on your tool's functionality
+  // it('should handle specific use case', async () => {
+  //   const testInput = { /* specific input */ };
+  //   const result = await tool.run(testInput);
+  //
+  //   expect(result.isError).toBe(false);
+  //   // Add specific assertions for your tool's logic
+  // });
+
+  // TODO: Add input validation tests only if your tool has validation
+  // Remove this comment and uncomment the test below if you add input validation
+  // it('should handle invalid input gracefully', async () => {
+  //   const invalidInput = { /* invalid input that should fail validation */ };
+  //   const result = await tool.run(invalidInput);
+  //
+  //   expect(result.isError).toBe(true);
+  //   expect(result.content[0]).toMatchObject({
+  //     type: 'text',
+  //     text: expect.stringContaining('error')
+  //   });
+  // });
 });

@@ -24,7 +24,7 @@ The codebase organizes into:
 
 ## Key Architectural Patterns
 
-**Tool Architecture:** All tools extend `BaseTool<InputSchema, OutputSchema>`. Tools auto-validate inputs using Zod schemas. Each tool lives in `src/tools/tool-name-tool/` with separate `*.schema.ts` and `*.tool.ts` files.
+**Tool Architecture:** All tools extend `BaseTool<InputSchema, OutputSchema>` or `MapboxApiBasedTool<InputSchema, OutputSchema>`. Tools auto-validate inputs and outputs using Zod schemas. Each tool lives in `src/tools/tool-name-tool/` with separate `*.input.schema.ts`, `*.output.schema.ts`, and `*.ts` files.
 
 **Prompt Architecture:** All prompts extend `BasePrompt` abstract class. Prompts orchestrate multi-step workflows, guiding AI assistants through complex tasks with best practices built-in. Each prompt lives in `src/prompts/` with separate files per prompt (e.g., `CreateAndPreviewStylePrompt.ts`). Prompts use kebab-case naming (e.g., `create-and-preview-style`).
 
@@ -47,10 +47,26 @@ npm install
 npm test
 npm run build
 npm run inspect:build  # Interactive MCP inspector
-npx plop create-tool   # Generate tool scaffold
 ```
 
-**New tool creation:** Run `npx plop create-tool` for interactive scaffolding (provide name without "Tool" suffix). Generates three files: `*.schema.ts`, `*.tool.ts`, and `*.test.ts`.
+**New tool creation:**
+
+```bash
+# Interactive mode (requires TTY - use in terminal):
+npx plop create-tool
+
+# Non-interactive mode (for AI agents, CI, or scripts):
+npx plop create-tool "api-based" "ToolName"
+npx plop create-tool "local" "ToolName"
+
+# Examples:
+npx plop create-tool "api-based" "Search"
+npx plop create-tool "local" "Validator"
+```
+
+**Note**: When running from AI agents or non-TTY environments (like Claude Code), always use non-interactive mode with command-line arguments to avoid readline errors.
+
+Generates three files: `*.input.schema.ts`, `*.output.schema.ts`, and `*.test.ts` in appropriate directories (src/tools/ for implementation, test/tools/ for tests).
 
 **Testing workflow:**
 
@@ -61,7 +77,7 @@ npx plop create-tool   # Generate tool scaffold
 ## Important Constraints
 
 - **Tool naming:** Tool names (MCP identifiers) must be `snake_case_tool` (e.g., `list_styles_tool`). TypeScript class names follow `PascalCaseTool` convention (e.g., `ListStylesTool`)
-- Schema files must be separate from implementation files (`*.schema.ts` vs `*.tool.ts`)
+- Schema files must be separate from implementation files: `*.input.schema.ts`, `*.output.schema.ts`, and `*.ts`
 - Avoid `any` types; add comments explaining unavoidable usage
 - Never execute real network calls in tests—mock `HttpPipeline` instead
 - All Mapbox API tools require valid token with specific scopes (most common failure mode)

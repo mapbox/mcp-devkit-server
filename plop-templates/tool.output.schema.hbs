@@ -1,0 +1,36 @@
+import { z } from 'zod';
+
+/**
+ * Output schema for {{pascalCase name}}Tool
+ *
+ * TODO: Define the appropriate output schema for your tool
+ * This is a placeholder schema that should be replaced with your actual output structure
+ *
+ * Common output patterns:
+ * - API responses: Define the exact structure returned by the API
+ * - Processing results: Define computed values, transformed data, etc.
+ * - Status responses: Include success flags, messages, metadata
+ *
+ * Example patterns:
+ * ```typescript
+ * export const {{pascalCase name}}OutputSchema = z.object({
+ *   success: z.boolean().describe('Whether the operation succeeded'),
+ *   data: z.object({
+ *     // Your actual data fields
+ *   }).describe('The result data'),
+ *   metadata: z.object({
+ *     timestamp: z.string().describe('ISO 8601 timestamp'),
+ *     // Other metadata fields
+ *   }).optional().describe('Optional metadata')
+ * });
+ * ```
+ */
+export const {{pascalCase name}}OutputSchema = z.object({
+  // TODO: Replace this placeholder with your actual output schema
+  result: z.unknown().describe('Tool execution result')
+});
+
+/**
+ * Type inference for {{pascalCase name}}Output
+ */
+export type {{pascalCase name}}Output = z.infer<typeof {{pascalCase name}}OutputSchema>;
