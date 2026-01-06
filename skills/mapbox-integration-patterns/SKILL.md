@@ -84,13 +84,15 @@ npm install @mapbox/search-js-web@^1.0.0        # Other frameworks
 **Example:**
 
 ```javascript
+const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN; // Use env vars in production
+
 // v2.x pattern (still works in v3.x)
-mapboxgl.accessToken = 'pk...';
+mapboxgl.accessToken = token;
 const map = new mapboxgl.Map({ container: '...' });
 
 // v3.x pattern (preferred)
 const map = new mapboxgl.Map({
-  accessToken: 'pk...',
+  accessToken: token,
   container: '...'
 });
 ```
@@ -110,6 +112,8 @@ const map = new mapboxgl.Map({
 ### React Integration
 
 **Pattern: useRef + useEffect with cleanup**
+
+> **Note:** These examples use **Vite** (the bundler used in `create-web-app`). If using Create React App, replace `import.meta.env.VITE_MAPBOX_ACCESS_TOKEN` with `process.env.REACT_APP_MAPBOX_TOKEN`. See the [Token Management Patterns](#token-management-patterns) section for other bundlers.
 
 ```jsx
 import { useRef, useEffect } from 'react';

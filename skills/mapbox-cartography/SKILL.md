@@ -310,12 +310,6 @@ Attribution: 8-9px
 7. **Neglecting performance**: Complex styles slow rendering
 8. **Forgetting mobile**: Test on actual devices
 
-## Resources in This Skill
-
-- See [COLOR_PALETTES.md](COLOR_PALETTES.md) for extended palette library
-- See [TYPOGRAPHY_GUIDE.md](TYPOGRAPHY_GUIDE.md) for advanced typography
-- See [ACCESSIBILITY_CHECKLIST.md](ACCESSIBILITY_CHECKLIST.md) for WCAG compliance
-
 ## When to Use This Skill
 
 Invoke this skill when:

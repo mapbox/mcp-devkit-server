@@ -486,14 +486,6 @@ MAPBOX_SECRET_TOKEN=sk.eyJ1IjoiZXhhbXBsZSI...
 - [ ] Post-incident review template
 - [ ] Team training on security procedures
 
-## Resources in This Skill
-
-For additional security information:
-
-- See [SCOPE_REFERENCE.md](SCOPE_REFERENCE.md) for complete scope catalog
-- See [COMPLIANCE_GUIDE.md](COMPLIANCE_GUIDE.md) for regulatory requirements
-- See [INCIDENT_TEMPLATE.md](INCIDENT_TEMPLATE.md) for response procedures
-
 ## When to Use This Skill
 
 Invoke this skill when:
