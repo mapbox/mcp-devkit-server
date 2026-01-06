@@ -1,72 +1,95 @@
+import { z } from 'zod';
 import { BaseTool } from '../BaseTool.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { {{pascalCase name}}InputSchema } from './{{pascalCase name}}Tool.input.schema.js';
 import {
-  {{pascalCase name}}Schema,
-  {{pascalCase name}}Input
-} from './{{pascalCase name}}Tool.schema.js';
+  {{pascalCase name}}OutputSchema,
+  type {{pascalCase name}}Output
+} from './{{pascalCase name}}Tool.output.schema.js';
 
 /**
  * {{pascalCase name}}Tool - Local processing tool
- * 
+ *
  * TODO: Provide a detailed description of what this tool does
- * 
+ *
  * This tool performs local data processing without making external API calls.
  * It's designed for operations like data transformation, file processing,
  * calculations, or other computational tasks.
- * 
+ *
  * @example
  * ```typescript
  * const tool = new {{pascalCase name}}Tool();
- * const result = await tool.run({ 
+ * const result = await tool.run({
  *   // TODO: Add example input parameters
  * });
  * ```
  */
 export class {{pascalCase name}}Tool extends BaseTool<
-  typeof {{pascalCase name}}Schema
+  typeof {{pascalCase name}}InputSchema,
+  typeof {{pascalCase name}}OutputSchema
 > {
   readonly name = '{{snakeCase name}}_tool';
-  readonly description = 'Tool description.'; // TODO: Update with actual description
+  readonly description = 'TODO: Update with actual description';
+  readonly annotations = {
+    title: '{{pascalCase name}} Tool',
+    readOnlyHint: true,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: true
+  };
 
   constructor() {
-    super({ inputSchema: {{pascalCase name}}Schema });
+    super({
+      inputSchema: {{pascalCase name}}InputSchema,
+      outputSchema: {{pascalCase name}}OutputSchema
+    });
   }
 
+  /**
+   * Execute the tool logic
+   * @param input - Validated input from {{pascalCase name}}InputSchema
+   * @returns CallToolResult with structured output
+   */
   protected async execute(
-    input: {{pascalCase name}}Input
-  ): Promise<{ type: 'text'; text: string }> {
+    input: z.infer<typeof {{pascalCase name}}InputSchema>
+  ): Promise<CallToolResult> {
     try {
       // TODO: Implement your tool logic here
       // This tool doesn't make API calls
       // You can process data locally, manipulate files, etc.
-      
+
       // Example implementation:
-      // const result = await processData(input);
-      // 
-      // // Validate result if needed
-      // if (!result) {
-      //   throw new Error('Processing failed: No result generated');
-      // }
-      // 
+      // const result = processData(input);
+      //
+      // // Validate result against output schema
+      // const validatedResult = {{pascalCase name}}OutputSchema.parse(result);
+      //
       // return {
-      //   type: 'text',
-      //   text: JSON.stringify(result, null, 2)
+      //   content: [{ type: 'text', text: JSON.stringify(validatedResult, null, 2) }],
+      //   structuredContent: validatedResult,
+      //   isError: false
       // };
 
       // Placeholder implementation - replace with actual logic
       return {
-        type: 'text',
-        text: JSON.stringify({
-          message: 'Tool executed successfully',
-          input,
-          timestamp: new Date().toISOString()
-        }, null, 2)
+        content: [{
+          type: 'text',
+          text: JSON.stringify({
+            message: 'Tool executed successfully',
+            input,
+            timestamp: new Date().toISOString()
+          }, null, 2)
+        }],
+        isError: false
       };
     } catch (error) {
-      // Handle specific error types
-      if (error instanceof Error) {
-        throw new Error(`{{pascalCase name}}Tool execution failed: ${error.message}`);
-      }
-      throw new Error('{{pascalCase name}}Tool execution failed: Unknown error occurred');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.log('error', `${this.name}: ${errorMessage}`);
+
+      return {
+        content: [{ type: 'text', text: `Error: ${errorMessage}` }],
+        isError: true
+      };
     }
   }
 }

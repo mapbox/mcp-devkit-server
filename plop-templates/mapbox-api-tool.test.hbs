@@ -1,114 +1,113 @@
-import { {{pascalCase name}}Tool } from '../{{kebabCase name}}-tool/{{pascalCase name}}Tool.js';
-import { setupFetch, assertHeadersSent } from '../../utils/requestUtils.test-helpers.js';
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+process.env.MAPBOX_ACCESS_TOKEN = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ0ZXN0In0.signature';
+
+import { describe, it, expect, afterEach, vi, beforeEach } from 'vitest';
+import { {{pascalCase name}}Tool } from '../../../src/tools/{{kebabCase name}}-tool/{{pascalCase name}}Tool.js';
+import type { HttpRequest } from '../../../src/utils/types.js';
+
+// TODO: Add sample response data matching your OutputSchema
+const sampleResponse = {
+  // Add expected API response structure here
+  result: 'test data'
+};
 
 describe('{{pascalCase name}}Tool', () => {
+  let mockHttpRequest: ReturnType<typeof vi.fn>;
   let tool: {{pascalCase name}}Tool;
 
   beforeEach(() => {
-    tool = new {{pascalCase name}}Tool();
+    // Mock httpRequest function
+    mockHttpRequest = vi.fn();
+    tool = new {{pascalCase name}}Tool({ httpRequest: mockHttpRequest as HttpRequest });
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
-  describe('tool metadata', () => {
-    it('should have correct name and description', () => {
-      expect(tool.name).toBe('{{snakeCase name}}_tool');
-      expect(tool.description).toBe('Tool description.');
+  it('should have correct tool metadata', () => {
+    expect(tool.name).toBe('{{snakeCase name}}_tool');
+    expect(tool.description).toBeTruthy();
+    expect(tool.annotations).toBeDefined();
+  });
+
+  it('should make API request with correct headers and return structured content', async () => {
+    // Mock successful API response
+    mockHttpRequest.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => sampleResponse,
+      headers: new Headers()
     });
 
-    it('should have correct input schema', () => {
-      const { {{pascalCase name}}Schema } = require('./{{pascalCase name}}Tool.schema.js');
-      expect({{pascalCase name}}Schema).toBeDefined();
+    // TODO: Replace with actual valid input for your tool
+    const testInput = {};
+
+    const result = await tool.run(testInput);
+
+    expect(result.isError).toBe(false);
+    expect(result.content).toBeDefined();
+    expect(result.content[0].type).toBe('text');
+
+    // Verify HTTP request was made
+    expect(mockHttpRequest).toHaveBeenCalled();
+
+    // TODO: Add assertions for your specific API endpoint and parameters
+    // const callUrl = mockHttpRequest.mock.calls[0][0];
+    // expect(callUrl).toContain('your-api-endpoint');
+  });
+
+  it('should handle API errors gracefully', async () => {
+    // Mock failed API response
+    mockHttpRequest.mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      text: async () => JSON.stringify({ message: 'Invalid parameters' }),
+      json: async () => ({ message: 'Invalid parameters' }),
+      headers: new Headers({ 'content-type': 'application/json' })
+    });
+
+    // TODO: Replace with actual input
+    const testInput = {};
+
+    const result = await tool.run(testInput);
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0]).toMatchObject({
+      type: 'text',
+      text: expect.stringContaining('Invalid parameters')
     });
   });
 
-  describe('API requests', () => {
-    it('should send custom headers', async () => {
-      const mockFetch = setupFetch();
-      
-      // TODO: Replace with actual valid input for your tool
-      const testInput = {};
-      await tool.run(testInput);
-      
-      assertHeadersSent(mockFetch);
-    });
+  it('should handle network errors gracefully', async () => {
+    // Mock network error
+    mockHttpRequest.mockRejectedValue(new TypeError('Failed to fetch'));
 
-    it('should handle successful API response', async () => {
-      const mockResponseData = { success: true, data: 'test' };
-      const mockFetch = setupFetch({
-        ok: true,
-        status: 200,
-        json: () => Promise.resolve(mockResponseData)
-      });
+    // TODO: Replace with actual input
+    const testInput = {};
 
-      // TODO: Replace with actual valid input for your tool
-      const testInput = {};
-      const result = await tool.run(testInput);
+    const result = await tool.run(testInput);
 
-      expect(result.isError).toBe(false);
-      expect(result.content).toHaveLength(1);
-      expect(result.content[0].type).toBe('text');
-      
-      // Verify response structure for placeholder implementation
-      const parsedResponse = JSON.parse(result.content[0].text);
-      expect(parsedResponse).toHaveProperty('message');
-      expect(parsedResponse).toHaveProperty('timestamp');
-      expect(parsedResponse).toHaveProperty('note');
-      
-      // TODO: Remove this assertion when implementing actual API calls
-      // assertHeadersSent(mockFetch);
-    });
-
-    it('should handle API errors gracefully', async () => {
-      const mockFetch = setupFetch({
-        ok: false,
-        status: 404,
-        statusText: 'Not Found'
-      });
-
-      // TODO: Replace with actual valid input for your tool
-      const testInput = {};
-      const result = await tool.run(testInput);
-
-      expect(result.isError).toBe(true);
-      expect(result.content[0]).toMatchObject({
-        type: 'text',
-        text: 'Internal error has occurred.'
-      });
-      assertHeadersSent(mockFetch);
-    });
-
-    // TODO: Add more specific test cases based on your tool's API functionality
-    // it('should handle specific API use case', async () => {
-    //   const mockResponseData = { /* expected response */ };
-    //   const mockFetch = setupFetch({
-    //     ok: true,
-    //     status: 200,
-    //     json: () => Promise.resolve(mockResponseData)
-    //   });
-    //
-    //   const testInput = { /* specific input */ };
-    //   const result = await tool.run(testInput);
-    //   
-    //   expect(result.isError).toBe(false);
-    //   // Add specific assertions for your tool's logic
-    //   assertHeadersSent(mockFetch);
-    // });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].type).toBe('text');
   });
 
-  describe('input validation', () => {
-    // TODO: Add input validation tests if your tool has required parameters
-    // it('should handle invalid input gracefully', async () => {
-    //   const invalidInput = { /* invalid input that should fail validation */ };
-    //   const result = await tool.run(invalidInput);
-    //   
-    //   expect(result.isError).toBe(true);
-    //   expect(result.content[0]).toMatchObject({
-    //     type: 'text',
-    //     text: expect.stringContaining('error')
-    //   });
-    // });
-  });
+  // TODO: Add more specific test cases based on your tool's functionality
+  // it('should handle specific input parameter', async () => {
+  //   mockHttpRequest.mockResolvedValue({
+  //     ok: true,
+  //     status: 200,
+  //     json: async () => sampleResponse,
+  //     headers: new Headers()
+  //   });
+  //
+  //   const testInput = { /* specific input */ };
+  //   const result = await tool.run(testInput);
+  //
+  //   expect(result.isError).toBe(false);
+  //   // Add specific assertions for your tool's logic
+  // });
 });
