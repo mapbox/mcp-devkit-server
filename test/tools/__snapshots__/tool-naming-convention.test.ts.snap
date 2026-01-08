@@ -157,5 +157,10 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
     "description": "Update an existing Mapbox style",
     "toolName": "update_style_tool",
   },
+  {
+    "className": "ValidateExpressionTool",
+    "description": "Validates Mapbox style expressions for syntax, operators, and argument correctness",
+    "toolName": "validate_expression_tool",
+  },
 ]
 `;

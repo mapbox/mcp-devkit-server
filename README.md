@@ -357,6 +357,87 @@ Generate a geojson.io URL to visualize GeoJSON data. This tool:
 - "Generate a preview URL for this GeoJSON data"
 - "Create a geojson.io link for my uploaded route.geojson file"
 
+#### Validate Expression tool
+
+Validates Mapbox style expressions for syntax, operators, and argument correctness. This offline validation tool performs comprehensive checks on Mapbox expressions without requiring API access.
+
+**Parameters:**
+
+- `expression` (string or array, required): Mapbox expression to validate (JSON string or expression array)
+- `context` (string, optional): Context where the expression will be used ("style", "filter", "layout", "paint")
+
+**What it validates:**
+
+- Expression syntax (array format with operator as first element)
+- Valid operators (get, case, match, interpolate, math operators, etc.)
+- Correct argument counts for each operator
+- Nested expression validation
+- Expression depth (warns about deeply nested expressions)
+
+**Returns:**
+
+Validation results including:
+
+- `valid` (boolean): Overall validity
+- `errors` (array): Critical errors that make the expression invalid
+- `warnings` (array): Non-critical issues (e.g., deeply nested expressions)
+- `info` (array): Informational messages
+- `metadata`: Object with expressionType, returnType, and depth
+
+Each issue includes:
+
+- `severity`: "error", "warning", or "info"
+- `message`: Description of the issue
+- `path`: Path to the problem in the expression (optional)
+- `suggestion`: How to fix the issue (optional)
+
+**Supported operators:**
+
+- **Decision**: case, match, coalesce
+- **Lookup**: get, has, in, index-of, length, slice
+- **Math**: +, -, \*, /, %, ^, min, max, round, floor, ceil, abs, sqrt, log10, log2, ln, e, pi
+- **Comparison**: ==, !=, >, <, >=, <=
+- **Logical**: !, all, any
+- **String**: concat, downcase, upcase
+- **Color**: rgb, rgba, to-rgba
+- **Type conversion**: array, boolean, number, string, to-boolean, to-color, to-number, to-string, typeof
+- **Interpolation**: interpolate, step
+- **Feature data**: get, has, feature-state, geometry-type, id, properties
+- **Camera**: zoom, pitch, distance-from-center
+- **Variable binding**: let, var
+
+**Example:**
+
+```json
+{
+  "expression": ["get", "population"]
+}
+```
+
+**Returns:**
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "info": [],
+  "metadata": {
+    "expressionType": "get",
+    "returnType": "any",
+    "depth": 0
+  }
+}
+```
+
+**Example prompts:**
+
+- "Validate this Mapbox expression: ['get', 'name']"
+- "Check if my case expression is correctly formatted"
+- "Is this interpolate expression valid?"
+
+**Note:** This is an offline validation tool that doesn't require API access or token scopes.
+
 #### Coordinate Conversion tool
 
 Convert coordinates between different coordinate reference systems (CRS), specifically between WGS84 (EPSG:4326) and Web Mercator (EPSG:3857).
