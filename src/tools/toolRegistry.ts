@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import { BoundingBoxTool } from './bounding-box-tool/BoundingBoxTool.js';
+import { CompareStylesTool } from './compare-styles-tool/CompareStylesTool.js';
 import { CountryBoundingBoxTool } from './bounding-box-tool/CountryBoundingBoxTool.js';
 import { CoordinateConversionTool } from './coordinate-conversion-tool/CoordinateConversionTool.js';
 import { CreateStyleTool } from './create-style-tool/CreateStyleTool.js';
@@ -32,6 +33,7 @@ export const ALL_TOOLS = [
   new PreviewStyleTool(),
   new StyleBuilderTool(),
   new GeojsonPreviewTool(),
+  new CompareStylesTool(),
   new CreateTokenTool({ httpRequest }),
   new ListTokensTool({ httpRequest }),
   new BoundingBoxTool(),

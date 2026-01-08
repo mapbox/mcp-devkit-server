@@ -26,6 +26,10 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [GeoJSON Preview tool (Beta)](#geojson-preview-tool-beta)
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
       - [Bounding Box tool](#bounding-box-tool)
+      - [Validation Tools](#validation-tools)
+        - [validate_geojson_tool](#validate_geojson_tool)
+        - [validate_expression_tool](#validate_expression_tool)
+        - [compare_styles_tool](#compare_styles_tool)
   - [Resources](#resources)
   - [Observability \& Tracing](#observability--tracing)
     - [Features](#features)
@@ -452,6 +456,151 @@ An array of four numbers representing the bounding box: `[minX, minY, maxX, maxY
 
 - "Calculate the bounding box of this GeoJSON file" (then upload a .geojson file)
 - "What's the bounding box for the coordinates in the uploaded parks.geojson file?"
+
+#### Validation Tools
+
+##### validate_geojson_tool
+
+Validates GeoJSON data structure against the GeoJSON specification (RFC 7946), performing comprehensive format and semantic validation.
+
+**Parameters:**
+
+- `geojson` (string or object, required): GeoJSON content to validate. Can be provided as:
+  - A JSON string that will be parsed
+  - A GeoJSON object
+
+**Supported GeoJSON types:**
+
+- Point, MultiPoint
+- LineString, MultiLineString
+- Polygon, MultiPolygon
+- GeometryCollection
+- Feature, FeatureCollection
+
+**Validation checks:**
+
+- Type field presence and validity
+- Coordinates array structure
+- Position format (longitude, latitude, optional altitude)
+- Coordinate range validation (longitude: -180 to 180, latitude: -90 to 90)
+- Ring closure for Polygons
+- Minimum coordinate requirements per geometry type
+- Feature properties validation
+- Nested geometry validation in Collections
+
+**Returns:**
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "summary": {
+    "type": "FeatureCollection",
+    "featureCount": 5,
+    "geometryTypes": ["Point", "LineString"]
+  }
+}
+```
+
+**Example prompts:**
+
+- "Validate this GeoJSON file" (then upload a .geojson file)
+- "Check if my GeoJSON is valid"
+- "Is this GeoJSON structure correct?"
+
+##### validate_expression_tool
+
+Validates Mapbox GL JS style expressions against the Mapbox Style Specification, checking syntax, types, and semantic correctness.
+
+**Parameters:**
+
+- `expression` (array or object, required): Mapbox expression to validate
+- `expectedType` (string, optional): Expected return type (e.g., "boolean", "number", "string", "color")
+- `context` (string, optional): Context where expression will be used ("layer", "filter", "paint", "layout")
+
+**Validation checks:**
+
+- Operator existence and validity
+- Argument count and types
+- Type coercion rules
+- Nested expression validation
+- Context-appropriate operators
+- Return type matching
+
+**Supported operators:**
+
+- Mathematical: `+`, `-`, `*`, `/`, `%`, `^`, `sqrt`, `log10`, `ln`, `abs`, `ceil`, `floor`, `round`
+- Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
+- Logical: `all`, `any`, `!`, `case`, `match`
+- String: `concat`, `downcase`, `upcase`
+- Type conversion: `to-boolean`, `to-number`, `to-string`, `to-color`
+- Lookup: `get`, `has`, `in`, `index-of`
+- Decision: `coalesce`, `step`, `interpolate`
+
+**Returns:**
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "expressionType": "number"
+}
+```
+
+**Example prompts:**
+
+- "Validate this Mapbox expression: ['get', 'population']"
+- "Check if this filter expression is valid"
+- "Is this paint property expression correct?"
+
+##### compare_styles_tool
+
+Compares two Mapbox styles and reports structural differences in layers, sources, and properties.
+
+**Parameters:**
+
+- `styleA` (string or object, required): First Mapbox style to compare (JSON string or style object)
+- `styleB` (string or object, required): Second Mapbox style to compare (JSON string or style object)
+- `ignoreMetadata` (boolean, optional): Ignore metadata fields like id, owner, created, modified, draft, visibility
+
+**Comparison features:**
+
+- Deep structural comparison of style objects
+- Layer comparison by ID (not position)
+- Source comparison with nested property checks
+- Property-level difference detection
+- Metadata filtering for logical comparisons
+
+**Returns:**
+
+```json
+{
+  "identical": false,
+  "differences": [
+    {
+      "path": "layers[id=\"background\"].paint.background-color",
+      "type": "modified",
+      "valueA": "#ffffff",
+      "valueB": "#000000",
+      "description": "Value changed from \"#ffffff\" to \"#000000\""
+    }
+  ],
+  "summary": {
+    "totalDifferences": 1,
+    "added": 0,
+    "removed": 0,
+    "modified": 1
+  }
+}
+```
+
+**Example prompts:**
+
+- "Compare these two Mapbox styles and show me the differences"
+- "What changed between my old style and new style?"
+- "Compare styles ignoring metadata fields"
 
 ## Agent Skills
 
