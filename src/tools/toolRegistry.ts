@@ -20,6 +20,7 @@ import { StyleBuilderTool } from './style-builder-tool/StyleBuilderTool.js';
 import { StyleComparisonTool } from './style-comparison-tool/StyleComparisonTool.js';
 import { TilequeryTool } from './tilequery-tool/TilequeryTool.js';
 import { UpdateStyleTool } from './update-style-tool/UpdateStyleTool.js';
+import { ValidateGeojsonTool } from './validate-geojson-tool/ValidateGeojsonTool.js';
 import { httpRequest } from '../utils/httpPipeline.js';
 
 // Central registry of all tools
@@ -42,7 +43,8 @@ export const ALL_TOOLS = [
   new GetMapboxDocSourceTool({ httpRequest }),
   new GetReferenceTool(),
   new StyleComparisonTool(),
-  new TilequeryTool({ httpRequest })
+  new TilequeryTool({ httpRequest }),
+  new ValidateGeojsonTool()
 ] as const;
 
 export type ToolInstance = (typeof ALL_TOOLS)[number];
