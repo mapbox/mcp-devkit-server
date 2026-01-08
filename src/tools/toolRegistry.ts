@@ -14,6 +14,7 @@ import { GetMapboxDocSourceTool } from './get-mapbox-doc-source-tool/GetMapboxDo
 import { GetReferenceTool } from './get-reference-tool/GetReferenceTool.js';
 import { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
 import { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
+import { OptimizeStyleTool } from './optimize-style-tool/OptimizeStyleTool.js';
 import { PreviewStyleTool } from './preview-style-tool/PreviewStyleTool.js';
 import { RetrieveStyleTool } from './retrieve-style-tool/RetrieveStyleTool.js';
 import { StyleBuilderTool } from './style-builder-tool/StyleBuilderTool.js';
@@ -32,6 +33,7 @@ export const ALL_TOOLS = [
   new PreviewStyleTool(),
   new StyleBuilderTool(),
   new GeojsonPreviewTool(),
+  new OptimizeStyleTool(),
   new CreateTokenTool({ httpRequest }),
   new ListTokensTool({ httpRequest }),
   new BoundingBoxTool(),
