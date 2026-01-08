@@ -26,6 +26,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [GeoJSON Preview tool (Beta)](#geojson-preview-tool-beta)
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
       - [Bounding Box tool](#bounding-box-tool)
+      - [Color Contrast Checker tool](#color-contrast-checker-tool)
   - [Resources](#resources)
   - [Observability \& Tracing](#observability--tracing)
     - [Features](#features)
@@ -452,6 +453,66 @@ An array of four numbers representing the bounding box: `[minX, minY, maxX, maxY
 
 - "Calculate the bounding box of this GeoJSON file" (then upload a .geojson file)
 - "What's the bounding box for the coordinates in the uploaded parks.geojson file?"
+
+#### Color Contrast Checker tool
+
+Checks color contrast ratios between foreground and background colors for WCAG 2.1 accessibility compliance.
+
+**Parameters:**
+
+- `foregroundColor` (string, required): Foreground color (text color) in any CSS format (hex, rgb, rgba, named colors)
+- `backgroundColor` (string, required): Background color in any CSS format (hex, rgb, rgba, named colors)
+- `level` (string, optional): WCAG conformance level to check against ("AA" or "AAA", default: "AA")
+- `fontSize` (string, optional): Font size category ("normal" or "large", default: "normal")
+  - Normal: < 18pt or < 14pt bold
+  - Large: ≥ 18pt or ≥ 14pt bold
+
+**Color format support:**
+
+- Hex colors: `#RGB`, `#RRGGBB`, `#RRGGBBAA`
+- RGB/RGBA: `rgb(r, g, b)`, `rgba(r, g, b, a)`
+- Named colors: `black`, `white`, `red`, `blue`, `gray`, etc.
+
+**WCAG 2.1 requirements:**
+
+- WCAG AA: 4.5:1 for normal text, 3:1 for large text
+- WCAG AAA: 7:1 for normal text, 4.5:1 for large text
+
+**Returns:**
+
+A JSON object with:
+
+- `contrastRatio`: Calculated contrast ratio (e.g., 21 for black on white)
+- `passes`: Whether the combination meets the specified WCAG level
+- `level`: WCAG level checked ("AA" or "AAA")
+- `fontSize`: Font size category ("normal" or "large")
+- `minimumRequired`: Minimum contrast ratio required for the level and font size
+- `wcagRequirements`: Complete WCAG contrast requirements for all levels
+- `recommendations`: Array of suggestions (only included when contrast fails)
+
+**Example:**
+
+```json
+{
+  "contrastRatio": 21,
+  "passes": true,
+  "level": "AA",
+  "fontSize": "normal",
+  "minimumRequired": 4.5,
+  "wcagRequirements": {
+    "AA": { "normal": 4.5, "large": 3.0 },
+    "AAA": { "normal": 7.0, "large": 4.5 }
+  }
+}
+```
+
+**Example prompts:**
+
+- "Check if black text on white background is WCAG AA compliant"
+- "What's the contrast ratio between #4264fb and white?"
+- "Does gray text (#767676) on white meet AAA standards for large text?"
+- "Check color contrast for rgb(51, 51, 51) on rgb(245, 245, 245)"
+- "Is this color combination accessible: foreground 'navy' on background 'lightblue'?"
 
 ## Agent Skills
 
