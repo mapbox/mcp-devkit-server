@@ -68,6 +68,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "list_tokens_tool",
   },
   {
+    "className": "OptimizeStyleTool",
+    "description": "Optimizes Mapbox styles by removing unused sources, duplicate layers, and simplifying expressions",
+    "toolName": "optimize_style_tool",
+  },
+  {
     "className": "PreviewStyleTool",
     "description": "Generate preview URL for a Mapbox style using an existing public token",
     "toolName": "preview_style_tool",
