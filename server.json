@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "name": "io.github.mapbox/mcp-devkit-server",
-  "description": "Provides AI assistants with direct access to Mapbox developer APIs and documentation.",
+  "description": "AI-powered Mapbox development toolkit for building map applications. Create and validate styles, manage tokens, check accessibility (WCAG), optimize performance, and get expert cartography guidance. Complements the main Mapbox MCP server with development-focused tools.",
   "repository": {
     "url": "https://github.com/mapbox/mcp-devkit-server",
     "source": "github"
