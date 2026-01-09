@@ -162,5 +162,10 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
     "description": "Validates GeoJSON objects for correctness, checking structure, coordinates, and geometry types",
     "toolName": "validate_geojson_tool",
   },
+  {
+    "className": "ValidateStyleTool",
+    "description": "Validates Mapbox style JSON against the Mapbox Style Specification, checking for errors, warnings, and providing suggestions for improvement",
+    "toolName": "validate_style_tool",
+  },
 ]
 `;

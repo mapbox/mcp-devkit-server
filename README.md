@@ -189,6 +189,17 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - Returns: URL to open the style preview in browser
 - **Note**: This tool automatically fetches the first available public token from your account for the preview URL. Requires at least one public token with `styles:read` scope.
 
+**ValidateStyleTool** - Validate Mapbox style JSON against the Mapbox Style Specification
+
+- Input: `style` (Mapbox style JSON object or JSON string)
+- Returns: Validation results including errors, warnings, info messages, and style summary
+- Performs comprehensive offline validation checking:
+  - Required fields (version, sources, layers)
+  - Valid layer and source types
+  - Source references and layer IDs
+  - Common configuration issues
+- **Note**: This is an offline validation tool that doesn't require API access or token scopes
+
 **⚠️ Required Token Scopes:**
 
 **All style tools require a valid Mapbox access token with specific scopes. Using a token without the correct scope will result in authentication errors.**
