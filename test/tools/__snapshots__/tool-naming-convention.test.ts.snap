@@ -8,6 +8,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "bounding_box_tool",
   },
   {
+    "className": "CheckColorContrastTool",
+    "description": "Checks color contrast ratios between foreground and background colors for WCAG 2.1 accessibility compliance",
+    "toolName": "check_color_contrast_tool",
+  },
+  {
     "className": "CoordinateConversionTool",
     "description": "Converts coordinates between WGS84 (longitude/latitude) and EPSG:3857 (Web Mercator) coordinate systems",
     "toolName": "coordinate_conversion_tool",
