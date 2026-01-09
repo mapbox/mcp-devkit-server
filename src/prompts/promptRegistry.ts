@@ -7,6 +7,7 @@ import { AnalyzeGeojsonPrompt } from './AnalyzeGeojsonPrompt.js';
 import { SetupMapboxProjectPrompt } from './SetupMapboxProjectPrompt.js';
 import { DebugMapboxIntegrationPrompt } from './DebugMapboxIntegrationPrompt.js';
 import { DesignDataDrivenStylePrompt } from './DesignDataDrivenStylePrompt.js';
+import { PrepareStyleForProductionPrompt } from './PrepareStyleForProductionPrompt.js';
 
 // Central registry of all prompts
 export const ALL_PROMPTS = [
@@ -15,7 +16,8 @@ export const ALL_PROMPTS = [
   new AnalyzeGeojsonPrompt(),
   new SetupMapboxProjectPrompt(),
   new DebugMapboxIntegrationPrompt(),
-  new DesignDataDrivenStylePrompt()
+  new DesignDataDrivenStylePrompt(),
+  new PrepareStyleForProductionPrompt()
 ] as const;
 
 export type PromptInstance = (typeof ALL_PROMPTS)[number];
