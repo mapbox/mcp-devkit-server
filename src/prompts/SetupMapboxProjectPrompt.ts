@@ -254,14 +254,27 @@ Type: ${projectType}
 
     instructionText += `
 
-📋 **Optional: Validate the Style for Production**
+📋 **Validate the Style**
 
-Before deploying to production, consider validating the created style:
-- Ask the user: "Would you like to validate this style for production readiness? This will check expressions, accessibility, and optimize the style."
-- If yes, use the prepare-style-for-production prompt with the style ID created above
-- If no, note that validation is recommended before production deployment
+Automatically validate the created style:
+- Use the prepare-style-for-production prompt with the style ID created above
+- This checks:
+  * Expression syntax and correctness
+  * Color contrast for accessibility (WCAG AA)
+  * Style optimization opportunities
+- Validation is fast (offline processing only)
+- Include validation results in the final summary
 
-The setup is now complete! The user can start building their map application.`;
+🎉 **Setup Complete!**
+
+Present the complete setup summary:
+- All tokens created with proper security restrictions
+- Map style created and validated
+- Preview URL for testing
+- Validation results (any issues or "✅ Production-ready")
+- Next steps for integration
+
+The user can now start building their map application with confidence that their setup follows best practices.`;
 
     return [
       {

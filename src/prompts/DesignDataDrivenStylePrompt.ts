@@ -395,31 +395,32 @@ Show property values as labels:
 - Use red/green combinations (colorblind-unfriendly)
 - Forget to handle null/undefined property values
 
-## Step 8: Validate the Style (Recommended for Production)
+## Step 8: Validate the Style
 
-After creating your data-driven style:
+After creating your data-driven style, automatically run validation:
 
-1. **Ask the user about validation:**
-   - "Would you like to validate this data-driven style for production readiness? This will check expression syntax, accessibility, and optimize the style."
-   - Data-driven styles use complex expressions that benefit from validation
-
-2. **If yes, validate:**
+1. **Run validation:**
    - Use the prepare-style-for-production prompt
    - Pass the style ID as the style_id_or_json parameter
+   - Data-driven styles use complex expressions that benefit from validation
    - This checks:
      * Expression syntax and type correctness
-     * Color contrast for accessibility (WCAG AA/AAA)
+     * Color contrast for accessibility (WCAG AA)
      * Overall style optimization
+   - Validation is fast (offline processing only)
+
+2. **Present validation results:**
+   - Include validation summary with the preview:
+     * ✅ Issues found or "Style is production-ready"
+     * Expression validation status (critical for data-driven styles)
+     * Accessibility compliance (WCAG AA)
+     * Optimization recommendations
    - This ensures your expressions work correctly with real data
 
-3. **If no:**
-   - Note: "You can validate later using prepare-style-for-production when ready for production"
-
-4. **When validation is especially important:**
-   - ✅ Production maps with real user data
-   - ✅ Styles with complex nested expressions
-   - ✅ Maps requiring accessibility compliance
-   - ⚠️ Quick prototypes can skip validation initially
+3. **Note for users:**
+   - Validation runs automatically to catch issues early
+   - For quick prototypes, warnings can be addressed later
+   - Complex nested expressions especially benefit from validation
 
 ## Step 9: Documentation
 

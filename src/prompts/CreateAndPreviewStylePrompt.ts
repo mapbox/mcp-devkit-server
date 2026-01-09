@@ -112,27 +112,33 @@ Follow these steps carefully:
     instructionText += `\n   - Set zoom level to: ${previewZoom}
    - The tool will automatically use the public token you created/found earlier
 
-5. **Present results**
+5. **Validate the style**
+   - Automatically run validation using the prepare-style-for-production prompt
+   - Pass the style ID from step 3 as the style_id_or_json parameter
+   - This checks:
+     * Expression syntax and correctness
+     * Color contrast for accessibility (WCAG AA)
+     * Style optimization opportunities
+   - Validation is fast (offline processing only)
+
+6. **Present complete results**
    - Show the user:
      * The created style ID
      * The preview URL (they can click to open in browser)
+     * Validation results summary:
+       - ✅ Issues found or "Style is production-ready"
+       - Expression validation status
+       - Accessibility compliance (WCAG AA)
+       - Optimization recommendations
      * Instructions to share or embed the preview
-
-6. **Validate the style (recommended for production)**
-   - After presenting the preview, ask the user:
-     * "Would you like to validate this style for production readiness? This will check expressions, accessibility, and optimize the style."
-   - If yes:
-     * Use the prepare-style-for-production prompt
-     * Pass the style ID from step 3 as the style_id_or_json parameter
-   - If no:
-     * Note: "You can validate later by running the prepare-style-for-production prompt when needed"
-   - For quick prototypes or demos, validation can be skipped
+   - Note: Validation warnings can be ignored for quick prototypes
 
 **Important notes:**
 - The preview_style_tool will automatically fetch and use an available public token
 - Make sure the style is created successfully before generating the preview
+- Validation runs automatically to catch issues early (offline, fast)
 - If any step fails, provide clear error messages and suggest fixes
-- For production deployment, always validate styles to catch issues early`;
+- For quick prototypes, validation warnings can be addressed later`;
 
     return [
       {
