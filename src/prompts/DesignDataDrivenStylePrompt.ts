@@ -395,7 +395,33 @@ Show property values as labels:
 - Use red/green combinations (colorblind-unfriendly)
 - Forget to handle null/undefined property values
 
-## Step 8: Documentation
+## Step 8: Validate the Style (Recommended for Production)
+
+After creating your data-driven style:
+
+1. **Ask the user about validation:**
+   - "Would you like to validate this data-driven style for production readiness? This will check expression syntax, accessibility, and optimize the style."
+   - Data-driven styles use complex expressions that benefit from validation
+
+2. **If yes, validate:**
+   - Use the prepare-style-for-production prompt
+   - Pass the style ID as the style_id_or_json parameter
+   - This checks:
+     * Expression syntax and type correctness
+     * Color contrast for accessibility (WCAG AA/AAA)
+     * Overall style optimization
+   - This ensures your expressions work correctly with real data
+
+3. **If no:**
+   - Note: "You can validate later using prepare-style-for-production when ready for production"
+
+4. **When validation is especially important:**
+   - ✅ Production maps with real user data
+   - ✅ Styles with complex nested expressions
+   - ✅ Maps requiring accessibility compliance
+   - ⚠️ Quick prototypes can skip validation initially
+
+## Step 9: Documentation
 
 For more information on expressions:
 - Use get_reference_tool with 'style-spec-reference'

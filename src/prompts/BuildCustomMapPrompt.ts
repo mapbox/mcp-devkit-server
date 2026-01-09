@@ -96,6 +96,16 @@ Follow these steps to create and preview the styled map:
      * The preview URL to view the map
      * Suggestions for further customization if desired
 
+6. **Validate the style (recommended for production)**
+   - After presenting the preview, ask the user:
+     * "Would you like to validate this style for production readiness? This will check expressions, accessibility, and optimize the style."
+   - If yes:
+     * Use the prepare-style-for-production prompt
+     * Pass the style ID from step 3 as the style_id_or_json parameter
+   - If no:
+     * Note: "You can validate later by running the prepare-style-for-production prompt when needed"
+   - For experimental or demo maps, validation can be skipped
+
 **Theme interpretation tips:**
 - "Dark cyberpunk": Dark backgrounds, neon colors (cyan, magenta, purple), high contrast
 - "Nature-focused": Earth tones, emphasize parks/forests/water, soften urban features
@@ -110,7 +120,8 @@ Follow these steps to create and preview the styled map:
 - The style_builder_tool is powered by AI and may need refinement
 - You can iterate on the style by making additional calls to style_builder_tool
 - If the initial result doesn't match expectations, try refining the theme description
-- Consider the map's use case when choosing zoom levels and preview locations`;
+- Consider the map's use case when choosing zoom levels and preview locations
+- For production deployment, always validate styles to ensure quality and accessibility`;
 
     return [
       {

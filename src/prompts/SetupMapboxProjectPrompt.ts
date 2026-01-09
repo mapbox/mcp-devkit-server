@@ -254,6 +254,13 @@ Type: ${projectType}
 
     instructionText += `
 
+📋 **Optional: Validate the Style for Production**
+
+Before deploying to production, consider validating the created style:
+- Ask the user: "Would you like to validate this style for production readiness? This will check expressions, accessibility, and optimize the style."
+- If yes, use the prepare-style-for-production prompt with the style ID created above
+- If no, note that validation is recommended before production deployment
+
 The setup is now complete! The user can start building their map application.`;
 
     return [

@@ -118,10 +118,21 @@ Follow these steps carefully:
      * The preview URL (they can click to open in browser)
      * Instructions to share or embed the preview
 
+6. **Validate the style (recommended for production)**
+   - After presenting the preview, ask the user:
+     * "Would you like to validate this style for production readiness? This will check expressions, accessibility, and optimize the style."
+   - If yes:
+     * Use the prepare-style-for-production prompt
+     * Pass the style ID from step 3 as the style_id_or_json parameter
+   - If no:
+     * Note: "You can validate later by running the prepare-style-for-production prompt when needed"
+   - For quick prototypes or demos, validation can be skipped
+
 **Important notes:**
 - The preview_style_tool will automatically fetch and use an available public token
 - Make sure the style is created successfully before generating the preview
-- If any step fails, provide clear error messages and suggest fixes`;
+- If any step fails, provide clear error messages and suggest fixes
+- For production deployment, always validate styles to catch issues early`;
 
     return [
       {
