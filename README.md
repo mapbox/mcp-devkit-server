@@ -368,6 +368,82 @@ Generate a geojson.io URL to visualize GeoJSON data. This tool:
 - "Generate a preview URL for this GeoJSON data"
 - "Create a geojson.io link for my uploaded route.geojson file"
 
+#### Validate GeoJSON tool
+
+Validates GeoJSON objects for correctness, checking structure, coordinates, and geometry types. This offline validation tool performs comprehensive checks on GeoJSON data without requiring API access.
+
+**Parameters:**
+
+- `geojson` (string or object, required): GeoJSON object or JSON string to validate
+
+**What it validates:**
+
+- GeoJSON type validity (Feature, FeatureCollection, Point, LineString, Polygon, etc.)
+- Required properties (type, coordinates, geometry, features)
+- Coordinate array structure and position validity
+- Longitude ranges [-180, 180] and latitude ranges [-90, 90]
+- Polygon ring closure (first and last coordinates should match)
+- Minimum position requirements (LineString needs 2+, Polygon rings need 4+ positions)
+
+**Returns:**
+
+Validation results including:
+
+- `valid` (boolean): Overall validity
+- `errors` (array): Critical errors that make the GeoJSON invalid
+- `warnings` (array): Non-critical issues (e.g., unclosed polygon rings, out-of-range coordinates)
+- `info` (array): Informational messages
+- `statistics`: Object with type, feature count, geometry types, and bounding box
+
+Each issue includes:
+
+- `severity`: "error", "warning", or "info"
+- `message`: Description of the issue
+- `path`: JSON path to the problem (optional)
+- `suggestion`: How to fix the issue (optional)
+
+**Example:**
+
+```json
+{
+  "geojson": {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [102.0, 0.5]
+    },
+    "properties": {
+      "name": "Test Point"
+    }
+  }
+}
+```
+
+**Returns:**
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "info": [],
+  "statistics": {
+    "type": "Feature",
+    "featureCount": 1,
+    "geometryTypes": ["Point"],
+    "bbox": [102.0, 0.5, 102.0, 0.5]
+  }
+}
+```
+
+**Example prompts:**
+
+- "Validate this GeoJSON file and tell me if there are any errors"
+- "Check if my GeoJSON coordinates are valid"
+- "Is this Feature Collection properly formatted?"
+
+**Note:** This is an offline validation tool that doesn't require API access or token scopes.
+
 #### Coordinate Conversion tool
 
 Convert coordinates between different coordinate reference systems (CRS), specifically between WGS84 (EPSG:4326) and Web Mercator (EPSG:3857).
