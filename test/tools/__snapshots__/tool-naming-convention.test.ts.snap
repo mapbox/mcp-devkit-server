@@ -8,6 +8,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "bounding_box_tool",
   },
   {
+    "className": "CheckColorContrastTool",
+    "description": "Checks color contrast ratios between foreground and background colors for WCAG 2.1 accessibility compliance",
+    "toolName": "check_color_contrast_tool",
+  },
+  {
     "className": "CompareStylesTool",
     "description": "Compares two Mapbox styles and reports differences in structure, layers, sources, and properties",
     "toolName": "compare_styles_tool",
