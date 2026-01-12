@@ -24,9 +24,6 @@ Before deploying any Mapbox style to production:
 **When adding GeoJSON data:**
 
 - Always validate external GeoJSON with `validate_geojson_tool` before using as a source
-- Check coordinate validity (longitude: -180 to 180, latitude: -90 to 90)
-- Verify polygon ring closure
-- Validate feature properties structure
 
 **When writing expressions:**
 
