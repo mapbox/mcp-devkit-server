@@ -21,6 +21,8 @@ import { StyleComparisonTool } from './style-comparison-tool/StyleComparisonTool
 import { TilequeryTool } from './tilequery-tool/TilequeryTool.js';
 import { UpdateStyleTool } from './update-style-tool/UpdateStyleTool.js';
 import { ValidateExpressionTool } from './validate-expression-tool/ValidateExpressionTool.js';
+import { ValidateGeojsonTool } from './validate-geojson-tool/ValidateGeojsonTool.js';
+import { ValidateStyleTool } from './validate-style-tool/ValidateStyleTool.js';
 import { httpRequest } from '../utils/httpPipeline.js';
 
 // Central registry of all tools
@@ -44,7 +46,9 @@ export const ALL_TOOLS = [
   new GetReferenceTool(),
   new StyleComparisonTool(),
   new TilequeryTool({ httpRequest }),
-  new ValidateExpressionTool()
+  new ValidateExpressionTool(),
+  new ValidateGeojsonTool(),
+  new ValidateStyleTool()
 ] as const;
 
 export type ToolInstance = (typeof ALL_TOOLS)[number];

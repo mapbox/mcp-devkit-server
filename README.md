@@ -189,6 +189,17 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - Returns: URL to open the style preview in browser
 - **Note**: This tool automatically fetches the first available public token from your account for the preview URL. Requires at least one public token with `styles:read` scope.
 
+**ValidateStyleTool** - Validate Mapbox style JSON against the Mapbox Style Specification
+
+- Input: `style` (Mapbox style JSON object or JSON string)
+- Returns: Validation results including errors, warnings, info messages, and style summary
+- Performs comprehensive offline validation checking:
+  - Required fields (version, sources, layers)
+  - Valid layer and source types
+  - Source references and layer IDs
+  - Common configuration issues
+- **Note**: This is an offline validation tool that doesn't require API access or token scopes
+
 **⚠️ Required Token Scopes:**
 
 **All style tools require a valid Mapbox access token with specific scopes. Using a token without the correct scope will result in authentication errors.**
@@ -357,19 +368,94 @@ Generate a geojson.io URL to visualize GeoJSON data. This tool:
 - "Generate a preview URL for this GeoJSON data"
 - "Create a geojson.io link for my uploaded route.geojson file"
 
+#### Validate GeoJSON tool
+
+Validates GeoJSON objects for correctness, checking structure, coordinates, and geometry types. This offline validation tool performs comprehensive checks on GeoJSON data without requiring API access.
+
+**Parameters:**
+
+- `geojson` (string or object, required): GeoJSON object or JSON string to validate
+
+**What it validates:**
+
+- GeoJSON type validity (Feature, FeatureCollection, Point, LineString, Polygon, etc.)
+- Required properties (type, coordinates, geometry, features)
+- Coordinate array structure and position validity
+- Longitude ranges [-180, 180] and latitude ranges [-90, 90]
+- Polygon ring closure (first and last coordinates should match)
+- Minimum position requirements (LineString needs 2+, Polygon rings need 4+ positions)
+
+**Returns:**
+
+Validation results including:
+
+- `valid` (boolean): Overall validity
+- `errors` (array): Critical errors that make the GeoJSON invalid
+- `warnings` (array): Non-critical issues (e.g., unclosed polygon rings, out-of-range coordinates)
+- `info` (array): Informational messages
+- `statistics`: Object with type, feature count, geometry types, and bounding box
+
+Each issue includes:
+
+- `severity`: "error", "warning", or "info"
+- `message`: Description of the issue
+- `path`: JSON path to the problem (optional)
+- `suggestion`: How to fix the issue (optional)
+
+**Example:**
+
+```json
+{
+  "geojson": {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [102.0, 0.5]
+    },
+    "properties": {
+      "name": "Test Point"
+    }
+  }
+}
+```
+
+**Returns:**
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "info": [],
+  "statistics": {
+    "type": "Feature",
+    "featureCount": 1,
+    "geometryTypes": ["Point"],
+    "bbox": [102.0, 0.5, 102.0, 0.5]
+  }
+}
+```
+
+**Example prompts:**
+
+- "Validate this GeoJSON file and tell me if there are any errors"
+- "Check if my GeoJSON coordinates are valid"
+- "Is this Feature Collection properly formatted?"
+
+**Note:** This is an offline validation tool that doesn't require API access or token scopes.
+
 #### Validate Expression tool
 
 Validates Mapbox style expressions for syntax, operators, and argument correctness. This offline validation tool performs comprehensive checks on Mapbox expressions without requiring API access.
 
 **Parameters:**
 
-- `expression` (string or array, required): Mapbox expression to validate (JSON string or expression array)
-- `context` (string, optional): Context where the expression will be used ("style", "filter", "layout", "paint")
+- `expression` (array or string, required): Mapbox expression to validate (array format or JSON string)
 
 **What it validates:**
 
-- Expression syntax (array format with operator as first element)
-- Valid operators (get, case, match, interpolate, math operators, etc.)
+- Expression syntax and structure
+- Valid operator names
 - Correct argument counts for each operator
 - Nested expression validation
 - Expression depth (warns about deeply nested expressions)
@@ -391,18 +477,16 @@ Each issue includes:
 - `path`: Path to the problem in the expression (optional)
 - `suggestion`: How to fix the issue (optional)
 
-**Supported operators:**
+**Supported expression types:**
 
+- **Data**: get, has, id, geometry-type, feature-state, properties
+- **Lookup**: at, in, index-of, slice, length
 - **Decision**: case, match, coalesce
-- **Lookup**: get, has, in, index-of, length, slice
-- **Math**: +, -, \*, /, %, ^, min, max, round, floor, ceil, abs, sqrt, log10, log2, ln, e, pi
-- **Comparison**: ==, !=, >, <, >=, <=
-- **Logical**: !, all, any
-- **String**: concat, downcase, upcase
-- **Color**: rgb, rgba, to-rgba
-- **Type conversion**: array, boolean, number, string, to-boolean, to-color, to-number, to-string, typeof
-- **Interpolation**: interpolate, step
-- **Feature data**: get, has, feature-state, geometry-type, id, properties
+- **Ramps & interpolation**: interpolate, step
+- **Math**: +, -, \*, /, %, ^, sqrt, log10, log2, ln, abs, etc.
+- **String**: concat, downcase, upcase, is-supported-script
+- **Color**: rgb, rgba, to-rgba, hsl, hsla
+- **Type**: array, boolean, collator, format, image, literal, number, number-format, object, string, to-boolean, to-color, to-number, to-string, typeof
 - **Camera**: zoom, pitch, distance-from-center
 - **Variable binding**: let, var
 
@@ -421,20 +505,25 @@ Each issue includes:
   "valid": true,
   "errors": [],
   "warnings": [],
-  "info": [],
+  "info": [
+    {
+      "severity": "info",
+      "message": "Expression validated successfully"
+    }
+  ],
   "metadata": {
-    "expressionType": "get",
+    "expressionType": "data",
     "returnType": "any",
-    "depth": 0
+    "depth": 1
   }
 }
 ```
 
 **Example prompts:**
 
-- "Validate this Mapbox expression: ['get', 'name']"
-- "Check if my case expression is correctly formatted"
-- "Is this interpolate expression valid?"
+- "Validate this Mapbox expression: [\"get\", \"population\"]"
+- "Check if this interpolation expression is correct"
+- "Is this expression syntax valid for Mapbox styles?"
 
 **Note:** This is an offline validation tool that doesn't require API access or token scopes.
 
