@@ -26,7 +26,8 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [GeoJSON Preview tool (Beta)](#geojson-preview-tool-beta)
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
       - [Bounding Box tool](#bounding-box-tool)
-      - [Color Contrast Checker tool](#color-contrast-checker-tool)
+      - [compare_styles_tool](#compare_styles_tool)
+      - [Style Optimization tool](#style-optimization-tool)
   - [Resources](#resources)
   - [Observability \& Tracing](#observability--tracing)
     - [Features](#features)
@@ -189,6 +190,17 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - Input: `styleId`, `title` (optional), `zoomwheel` (optional), `zoom` (optional), `center` (optional), `bearing` (optional), `pitch` (optional)
 - Returns: URL to open the style preview in browser
 - **Note**: This tool automatically fetches the first available public token from your account for the preview URL. Requires at least one public token with `styles:read` scope.
+
+**ValidateStyleTool** - Validate Mapbox style JSON against the Mapbox Style Specification
+
+- Input: `style` (Mapbox style JSON object or JSON string)
+- Returns: Validation results including errors, warnings, info messages, and style summary
+- Performs comprehensive offline validation checking:
+  - Required fields (version, sources, layers)
+  - Valid layer and source types
+  - Source references and layer IDs
+  - Common configuration issues
+- **Note**: This is an offline validation tool that doesn't require API access or token scopes
 
 **⚠️ Required Token Scopes:**
 
@@ -358,6 +370,165 @@ Generate a geojson.io URL to visualize GeoJSON data. This tool:
 - "Generate a preview URL for this GeoJSON data"
 - "Create a geojson.io link for my uploaded route.geojson file"
 
+#### Validate GeoJSON tool
+
+Validates GeoJSON objects for correctness, checking structure, coordinates, and geometry types. This offline validation tool performs comprehensive checks on GeoJSON data without requiring API access.
+
+**Parameters:**
+
+- `geojson` (string or object, required): GeoJSON object or JSON string to validate
+
+**What it validates:**
+
+- GeoJSON type validity (Feature, FeatureCollection, Point, LineString, Polygon, etc.)
+- Required properties (type, coordinates, geometry, features)
+- Coordinate array structure and position validity
+- Longitude ranges [-180, 180] and latitude ranges [-90, 90]
+- Polygon ring closure (first and last coordinates should match)
+- Minimum position requirements (LineString needs 2+, Polygon rings need 4+ positions)
+
+**Returns:**
+
+Validation results including:
+
+- `valid` (boolean): Overall validity
+- `errors` (array): Critical errors that make the GeoJSON invalid
+- `warnings` (array): Non-critical issues (e.g., unclosed polygon rings, out-of-range coordinates)
+- `info` (array): Informational messages
+- `statistics`: Object with type, feature count, geometry types, and bounding box
+
+Each issue includes:
+
+- `severity`: "error", "warning", or "info"
+- `message`: Description of the issue
+- `path`: JSON path to the problem (optional)
+- `suggestion`: How to fix the issue (optional)
+
+**Example:**
+
+```json
+{
+  "geojson": {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [102.0, 0.5]
+    },
+    "properties": {
+      "name": "Test Point"
+    }
+  }
+}
+```
+
+**Returns:**
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "info": [],
+  "statistics": {
+    "type": "Feature",
+    "featureCount": 1,
+    "geometryTypes": ["Point"],
+    "bbox": [102.0, 0.5, 102.0, 0.5]
+  }
+}
+```
+
+**Example prompts:**
+
+- "Validate this GeoJSON file and tell me if there are any errors"
+- "Check if my GeoJSON coordinates are valid"
+- "Is this Feature Collection properly formatted?"
+
+**Note:** This is an offline validation tool that doesn't require API access or token scopes.
+
+#### Validate Expression tool
+
+Validates Mapbox style expressions for syntax, operators, and argument correctness. This offline validation tool performs comprehensive checks on Mapbox expressions without requiring API access.
+
+**Parameters:**
+
+- `expression` (array or string, required): Mapbox expression to validate (array format or JSON string)
+
+**What it validates:**
+
+- Expression syntax and structure
+- Valid operator names
+- Correct argument counts for each operator
+- Nested expression validation
+- Expression depth (warns about deeply nested expressions)
+
+**Returns:**
+
+Validation results including:
+
+- `valid` (boolean): Overall validity
+- `errors` (array): Critical errors that make the expression invalid
+- `warnings` (array): Non-critical issues (e.g., deeply nested expressions)
+- `info` (array): Informational messages
+- `metadata`: Object with expressionType, returnType, and depth
+
+Each issue includes:
+
+- `severity`: "error", "warning", or "info"
+- `message`: Description of the issue
+- `path`: Path to the problem in the expression (optional)
+- `suggestion`: How to fix the issue (optional)
+
+**Supported expression types:**
+
+- **Data**: get, has, id, geometry-type, feature-state, properties
+- **Lookup**: at, in, index-of, slice, length
+- **Decision**: case, match, coalesce
+- **Ramps & interpolation**: interpolate, step
+- **Math**: +, -, \*, /, %, ^, sqrt, log10, log2, ln, abs, etc.
+- **String**: concat, downcase, upcase, is-supported-script
+- **Color**: rgb, rgba, to-rgba, hsl, hsla
+- **Type**: array, boolean, collator, format, image, literal, number, number-format, object, string, to-boolean, to-color, to-number, to-string, typeof
+- **Camera**: zoom, pitch, distance-from-center
+- **Variable binding**: let, var
+
+**Example:**
+
+```json
+{
+  "expression": ["get", "population"]
+}
+```
+
+**Returns:**
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "info": [
+    {
+      "severity": "info",
+      "message": "Expression validated successfully"
+    }
+  ],
+  "metadata": {
+    "expressionType": "data",
+    "returnType": "any",
+    "depth": 1
+  }
+}
+```
+
+**Example prompts:**
+
+- "Validate this Mapbox expression: [\"get\", \"population\"]"
+- "Check if this interpolation expression is correct"
+- "Is this expression syntax valid for Mapbox styles?"
+
+**Note:** This is an offline validation tool that doesn't require API access or token scopes.
+
 #### Coordinate Conversion tool
 
 Convert coordinates between different coordinate reference systems (CRS), specifically between WGS84 (EPSG:4326) and Web Mercator (EPSG:3857).
@@ -513,6 +684,117 @@ A JSON object with:
 - "Does gray text (#767676) on white meet AAA standards for large text?"
 - "Check color contrast for rgb(51, 51, 51) on rgb(245, 245, 245)"
 - "Is this color combination accessible: foreground 'navy' on background 'lightblue'?"
+
+#### compare_styles_tool
+
+Compares two Mapbox styles and reports structural differences, including changes to layers, sources, and properties. This offline comparison tool performs deep object comparison without requiring API access.
+
+**Parameters:**
+
+- `styleA` (string or object, required): First Mapbox style to compare (JSON string or style object)
+- `styleB` (string or object, required): Second Mapbox style to compare (JSON string or style object)
+- `ignoreMetadata` (boolean, optional): If true, ignores metadata fields (id, owner, created, modified, draft, visibility) when comparing
+
+**Comparison features:**
+
+- Deep recursive comparison of nested structures
+- Layer comparison by ID (not array position)
+- Detailed diff reporting with JSON paths
+- Identifies additions, removals, and modifications
+- Optional metadata filtering
+
+**Returns:**
+
+```json
+{
+  "identical": false,
+  "differences": [
+    {
+      "path": "layers.water.paint.fill-color",
+      "type": "modified",
+      "valueA": "#a0c8f0",
+      "valueB": "#b0d0ff",
+      "description": "Modified property at layers.water.paint.fill-color"
+    }
+  ],
+  "summary": {
+    "totalDifferences": 1,
+    "added": 0,
+    "removed": 0,
+    "modified": 1
+  }
+}
+```
+
+**Example prompts:**
+
+- "Compare these two Mapbox styles and show me the differences"
+- "What changed between my old style and new style?"
+- "Compare styles ignoring metadata fields"
+
+#### Style Optimization tool
+
+Optimizes Mapbox styles by removing redundancies, simplifying expressions, and reducing file size.
+
+**Parameters:**
+
+- `style` (string or object, required): Mapbox style to optimize (JSON string or style object)
+- `optimizations` (array, optional): Specific optimizations to apply. If not specified, all optimizations are applied. Available optimizations:
+  - `remove-unused-sources`: Remove sources not referenced by any layer
+  - `remove-duplicate-layers`: Remove layers that are exact duplicates
+  - `simplify-expressions`: Simplify boolean expressions (e.g., `["all", true]` → `true`)
+  - `remove-empty-layers`: Remove layers with no visible properties (excluding background layers)
+  - `consolidate-filters`: Identify layers with identical filters that could be consolidated
+
+**Optimizations performed:**
+
+- **Remove unused sources**: Identifies and removes source definitions that aren't referenced by any layer
+- **Remove duplicate layers**: Detects layers with identical properties (excluding ID) and removes duplicates
+- **Simplify expressions**: Simplifies boolean logic in filters and property expressions:
+  - `["all", true]` → `true`
+  - `["any", false]` → `false`
+  - `["!", false]` → `true`
+  - `["!", true]` → `false`
+- **Remove empty layers**: Removes layers with no paint or layout properties (background layers are preserved)
+- **Consolidate filters**: Identifies groups of layers with identical filter expressions
+
+**Returns:**
+
+A JSON object with:
+
+- `optimizedStyle`: The optimized Mapbox style
+- `optimizations`: Array of optimizations applied
+- `summary`: Statistics including size savings and percent reduction
+
+**Example:**
+
+```json
+{
+  "optimizedStyle": { "version": 8, "sources": {}, "layers": [] },
+  "optimizations": [
+    {
+      "type": "remove-unused-sources",
+      "description": "Removed 2 unused source(s): unused-source1, unused-source2",
+      "count": 2
+    }
+  ],
+  "summary": {
+    "totalOptimizations": 2,
+    "originalSize": 1234,
+    "optimizedSize": 890,
+    "sizeSaved": 344,
+    "percentReduction": 27.88
+  }
+}
+```
+
+**Example prompts:**
+
+- "Optimize this Mapbox style to reduce its file size"
+- "Remove unused sources from my style"
+- "Simplify the expressions in this style"
+- "Find and remove duplicate layers in my map style"
+- "Optimize my style but only remove unused sources and empty layers"
 
 ## Agent Skills
 
