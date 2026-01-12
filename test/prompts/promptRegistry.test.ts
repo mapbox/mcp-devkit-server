@@ -11,7 +11,7 @@ describe('promptRegistry', () => {
   describe('getAllPrompts', () => {
     it('should return all registered prompts', () => {
       const prompts = getAllPrompts();
-      expect(prompts).toHaveLength(6);
+      expect(prompts).toHaveLength(7);
     });
 
     it('should include create-and-preview-style prompt', () => {
@@ -56,6 +56,15 @@ describe('promptRegistry', () => {
       expect(prompt?.description).toContain('data-driven properties');
     });
 
+    it('should include prepare-style-for-production prompt', () => {
+      const prompts = getAllPrompts();
+      const prompt = prompts.find(
+        (p) => p.name === 'prepare-style-for-production'
+      );
+      expect(prompt).toBeDefined();
+      expect(prompt?.description).toContain('quality validation');
+    });
+
     it('should return readonly array', () => {
       const prompts = getAllPrompts();
       expect(Object.isFrozen(prompts)).toBe(false); // ReadonlyArray is not frozen, just typed
@@ -82,7 +91,8 @@ describe('promptRegistry', () => {
         'analyze-geojson',
         'setup-mapbox-project',
         'debug-mapbox-integration',
-        'design-data-driven-style'
+        'design-data-driven-style',
+        'prepare-style-for-production'
       ];
 
       promptNames.forEach((name) => {

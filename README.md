@@ -746,6 +746,7 @@ This repository includes [Agent Skills](https://agentskills.io) that provide dom
 - **🔐 mapbox-token-security**: Token management, scope control, URL restrictions, rotation strategies
 - **📐 mapbox-style-patterns**: Common style patterns and layer configurations for typical scenarios
 - **🔧 mapbox-integration-patterns**: Framework-specific integration patterns for React, Vue, Svelte, Angular, and vanilla JS
+- **✅ mapbox-style-quality**: Expert guidance on validating, optimizing, and ensuring quality of Mapbox styles through validation, accessibility checks, and optimization
 
 Skills complement the MCP server by providing expertise (how to think about design) while tools provide capabilities (how to execute actions).
 
@@ -955,6 +956,39 @@ Arguments:
   visualization_type: "both"
   color_scheme: "sequential"
 ```
+
+### prepare-style-for-production
+
+Comprehensive quality validation workflow for Mapbox styles before production deployment.
+
+**Arguments:**
+
+- `style_id_or_json` (required): Either a Mapbox style ID or complete style JSON
+- `skip_optimization` (optional): Set to "true" to skip style optimization (default: false)
+- `wcag_level` (optional): WCAG compliance level: "AA" or "AAA" (default: "AA")
+
+**What it does:**
+
+1. Loads the style (retrieves from Mapbox or parses JSON)
+2. Validates all expressions (filters, paint properties, layout properties)
+3. Validates GeoJSON sources for coordinate and structure errors
+4. Checks color contrast for text layers (WCAG compliance)
+5. Optimizes the style (removes redundancies, simplifies expressions)
+6. Generates a comprehensive quality report with deployment readiness assessment
+
+**Example usage:**
+
+```
+Use prompt: prepare-style-for-production
+Arguments:
+  style_id_or_json: "username/my-style-id"
+  wcag_level: "AA"
+  skip_optimization: "false"
+```
+
+**Related:**
+
+See the [mapbox-style-quality skill](skills/mapbox-style-quality/SKILL.md) for detailed guidance on when to use validation tools, best practices, and optimization strategies.
 
 ## Resources
 

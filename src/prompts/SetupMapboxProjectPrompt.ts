@@ -254,7 +254,27 @@ Type: ${projectType}
 
     instructionText += `
 
-The setup is now complete! The user can start building their map application.`;
+📋 **Validate the Style**
+
+Automatically validate the created style:
+- Use the prepare-style-for-production prompt with the style ID created above
+- This checks:
+  * Expression syntax and correctness
+  * Color contrast for accessibility (WCAG AA)
+  * Style optimization opportunities
+- Validation is fast (offline processing only)
+- Include validation results in the final summary
+
+🎉 **Setup Complete!**
+
+Present the complete setup summary:
+- All tokens created with proper security restrictions
+- Map style created and validated
+- Preview URL for testing
+- Validation results (any issues or "✅ Production-ready")
+- Next steps for integration
+
+The user can now start building their map application with confidence that their setup follows best practices.`;
 
     return [
       {

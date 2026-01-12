@@ -395,7 +395,34 @@ Show property values as labels:
 - Use red/green combinations (colorblind-unfriendly)
 - Forget to handle null/undefined property values
 
-## Step 8: Documentation
+## Step 8: Validate the Style
+
+After creating your data-driven style, automatically run validation:
+
+1. **Run validation:**
+   - Use the prepare-style-for-production prompt
+   - Pass the style ID as the style_id_or_json parameter
+   - Data-driven styles use complex expressions that benefit from validation
+   - This checks:
+     * Expression syntax and type correctness
+     * Color contrast for accessibility (WCAG AA)
+     * Overall style optimization
+   - Validation is fast (offline processing only)
+
+2. **Present validation results:**
+   - Include validation summary with the preview:
+     * ✅ Issues found or "Style is production-ready"
+     * Expression validation status (critical for data-driven styles)
+     * Accessibility compliance (WCAG AA)
+     * Optimization recommendations
+   - This ensures your expressions work correctly with real data
+
+3. **Note for users:**
+   - Validation runs automatically to catch issues early
+   - For quick prototypes, warnings can be addressed later
+   - Complex nested expressions especially benefit from validation
+
+## Step 9: Documentation
 
 For more information on expressions:
 - Use get_reference_tool with 'style-spec-reference'
