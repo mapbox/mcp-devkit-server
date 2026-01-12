@@ -26,6 +26,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [GeoJSON Preview tool (Beta)](#geojson-preview-tool-beta)
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
       - [Bounding Box tool](#bounding-box-tool)
+      - [compare_styles_tool](#compare_styles_tool)
       - [Style Optimization tool](#style-optimization-tool)
   - [Resources](#resources)
   - [Observability \& Tracing](#observability--tracing)
@@ -623,6 +624,53 @@ An array of four numbers representing the bounding box: `[minX, minY, maxX, maxY
 
 - "Calculate the bounding box of this GeoJSON file" (then upload a .geojson file)
 - "What's the bounding box for the coordinates in the uploaded parks.geojson file?"
+
+#### compare_styles_tool
+
+Compares two Mapbox styles and reports structural differences, including changes to layers, sources, and properties. This offline comparison tool performs deep object comparison without requiring API access.
+
+**Parameters:**
+
+- `styleA` (string or object, required): First Mapbox style to compare (JSON string or style object)
+- `styleB` (string or object, required): Second Mapbox style to compare (JSON string or style object)
+- `ignoreMetadata` (boolean, optional): If true, ignores metadata fields (id, owner, created, modified, draft, visibility) when comparing
+
+**Comparison features:**
+
+- Deep recursive comparison of nested structures
+- Layer comparison by ID (not array position)
+- Detailed diff reporting with JSON paths
+- Identifies additions, removals, and modifications
+- Optional metadata filtering
+
+**Returns:**
+
+```json
+{
+  "identical": false,
+  "differences": [
+    {
+      "path": "layers.water.paint.fill-color",
+      "type": "modified",
+      "valueA": "#a0c8f0",
+      "valueB": "#b0d0ff",
+      "description": "Modified property at layers.water.paint.fill-color"
+    }
+  ],
+  "summary": {
+    "totalDifferences": 1,
+    "added": 0,
+    "removed": 0,
+    "modified": 1
+  }
+}
+```
+
+**Example prompts:**
+
+- "Compare these two Mapbox styles and show me the differences"
+- "What changed between my old style and new style?"
+- "Compare styles ignoring metadata fields"
 
 #### Style Optimization tool
 
