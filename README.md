@@ -445,6 +445,89 @@ Each issue includes:
 
 **Note:** This is an offline validation tool that doesn't require API access or token scopes.
 
+#### Validate Expression tool
+
+Validates Mapbox style expressions for syntax, operators, and argument correctness. This offline validation tool performs comprehensive checks on Mapbox expressions without requiring API access.
+
+**Parameters:**
+
+- `expression` (array or string, required): Mapbox expression to validate (array format or JSON string)
+
+**What it validates:**
+
+- Expression syntax and structure
+- Valid operator names
+- Correct argument counts for each operator
+- Nested expression validation
+- Expression depth (warns about deeply nested expressions)
+
+**Returns:**
+
+Validation results including:
+
+- `valid` (boolean): Overall validity
+- `errors` (array): Critical errors that make the expression invalid
+- `warnings` (array): Non-critical issues (e.g., deeply nested expressions)
+- `info` (array): Informational messages
+- `metadata`: Object with expressionType, returnType, and depth
+
+Each issue includes:
+
+- `severity`: "error", "warning", or "info"
+- `message`: Description of the issue
+- `path`: Path to the problem in the expression (optional)
+- `suggestion`: How to fix the issue (optional)
+
+**Supported expression types:**
+
+- **Data**: get, has, id, geometry-type, feature-state, properties
+- **Lookup**: at, in, index-of, slice, length
+- **Decision**: case, match, coalesce
+- **Ramps & interpolation**: interpolate, step
+- **Math**: +, -, \*, /, %, ^, sqrt, log10, log2, ln, abs, etc.
+- **String**: concat, downcase, upcase, is-supported-script
+- **Color**: rgb, rgba, to-rgba, hsl, hsla
+- **Type**: array, boolean, collator, format, image, literal, number, number-format, object, string, to-boolean, to-color, to-number, to-string, typeof
+- **Camera**: zoom, pitch, distance-from-center
+- **Variable binding**: let, var
+
+**Example:**
+
+```json
+{
+  "expression": ["get", "population"]
+}
+```
+
+**Returns:**
+
+```json
+{
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "info": [
+    {
+      "severity": "info",
+      "message": "Expression validated successfully"
+    }
+  ],
+  "metadata": {
+    "expressionType": "data",
+    "returnType": "any",
+    "depth": 1
+  }
+}
+```
+
+**Example prompts:**
+
+- "Validate this Mapbox expression: [\"get\", \"population\"]"
+- "Check if this interpolation expression is correct"
+- "Is this expression syntax valid for Mapbox styles?"
+
+**Note:** This is an offline validation tool that doesn't require API access or token scopes.
+
 #### Coordinate Conversion tool
 
 Convert coordinates between different coordinate reference systems (CRS), specifically between WGS84 (EPSG:4326) and Web Mercator (EPSG:3857).

@@ -21,6 +21,7 @@ import { StyleBuilderTool } from './style-builder-tool/StyleBuilderTool.js';
 import { StyleComparisonTool } from './style-comparison-tool/StyleComparisonTool.js';
 import { TilequeryTool } from './tilequery-tool/TilequeryTool.js';
 import { UpdateStyleTool } from './update-style-tool/UpdateStyleTool.js';
+import { ValidateExpressionTool } from './validate-expression-tool/ValidateExpressionTool.js';
 import { ValidateGeojsonTool } from './validate-geojson-tool/ValidateGeojsonTool.js';
 import { ValidateStyleTool } from './validate-style-tool/ValidateStyleTool.js';
 import { httpRequest } from '../utils/httpPipeline.js';
@@ -47,6 +48,7 @@ export const ALL_TOOLS = [
   new GetReferenceTool(),
   new StyleComparisonTool(),
   new TilequeryTool({ httpRequest }),
+  new ValidateExpressionTool(),
   new ValidateGeojsonTool(),
   new ValidateStyleTool()
 ] as const;

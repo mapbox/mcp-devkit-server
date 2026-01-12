@@ -163,6 +163,11 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
     "toolName": "update_style_tool",
   },
   {
+    "className": "ValidateExpressionTool",
+    "description": "Validates Mapbox style expressions for syntax, operators, and argument correctness",
+    "toolName": "validate_expression_tool",
+  },
+  {
     "className": "ValidateGeojsonTool",
     "description": "Validates GeoJSON objects for correctness, checking structure, coordinates, and geometry types",
     "toolName": "validate_geojson_tool",
