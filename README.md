@@ -26,6 +26,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
       - [GeoJSON Preview tool (Beta)](#geojson-preview-tool-beta)
       - [Coordinate Conversion tool](#coordinate-conversion-tool)
       - [Bounding Box tool](#bounding-box-tool)
+      - [Style Optimization tool](#style-optimization-tool)
   - [Resources](#resources)
   - [Observability \& Tracing](#observability--tracing)
     - [Features](#features)
@@ -539,6 +540,70 @@ An array of four numbers representing the bounding box: `[minX, minY, maxX, maxY
 
 - "Calculate the bounding box of this GeoJSON file" (then upload a .geojson file)
 - "What's the bounding box for the coordinates in the uploaded parks.geojson file?"
+
+#### Style Optimization tool
+
+Optimizes Mapbox styles by removing redundancies, simplifying expressions, and reducing file size.
+
+**Parameters:**
+
+- `style` (string or object, required): Mapbox style to optimize (JSON string or style object)
+- `optimizations` (array, optional): Specific optimizations to apply. If not specified, all optimizations are applied. Available optimizations:
+  - `remove-unused-sources`: Remove sources not referenced by any layer
+  - `remove-duplicate-layers`: Remove layers that are exact duplicates
+  - `simplify-expressions`: Simplify boolean expressions (e.g., `["all", true]` → `true`)
+  - `remove-empty-layers`: Remove layers with no visible properties (excluding background layers)
+  - `consolidate-filters`: Identify layers with identical filters that could be consolidated
+
+**Optimizations performed:**
+
+- **Remove unused sources**: Identifies and removes source definitions that aren't referenced by any layer
+- **Remove duplicate layers**: Detects layers with identical properties (excluding ID) and removes duplicates
+- **Simplify expressions**: Simplifies boolean logic in filters and property expressions:
+  - `["all", true]` → `true`
+  - `["any", false]` → `false`
+  - `["!", false]` → `true`
+  - `["!", true]` → `false`
+- **Remove empty layers**: Removes layers with no paint or layout properties (background layers are preserved)
+- **Consolidate filters**: Identifies groups of layers with identical filter expressions
+
+**Returns:**
+
+A JSON object with:
+
+- `optimizedStyle`: The optimized Mapbox style
+- `optimizations`: Array of optimizations applied
+- `summary`: Statistics including size savings and percent reduction
+
+**Example:**
+
+```json
+{
+  "optimizedStyle": { "version": 8, "sources": {}, "layers": [] },
+  "optimizations": [
+    {
+      "type": "remove-unused-sources",
+      "description": "Removed 2 unused source(s): unused-source1, unused-source2",
+      "count": 2
+    }
+  ],
+  "summary": {
+    "totalOptimizations": 2,
+    "originalSize": 1234,
+    "optimizedSize": 890,
+    "sizeSaved": 344,
+    "percentReduction": 27.88
+  }
+}
+```
+
+**Example prompts:**
+
+- "Optimize this Mapbox style to reduce its file size"
+- "Remove unused sources from my style"
+- "Simplify the expressions in this style"
+- "Find and remove duplicate layers in my map style"
+- "Optimize my style but only remove unused sources and empty layers"
 
 ## Agent Skills
 
