@@ -73,6 +73,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "list_tokens_tool",
   },
   {
+    "className": "OptimizeStyleTool",
+    "description": "Optimizes Mapbox styles by removing unused sources, duplicate layers, and simplifying expressions",
+    "toolName": "optimize_style_tool",
+  },
+  {
     "className": "PreviewStyleTool",
     "description": "Generate preview URL for a Mapbox style using an existing public token",
     "toolName": "preview_style_tool",
@@ -161,6 +166,21 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
     "className": "UpdateStyleTool",
     "description": "Update an existing Mapbox style",
     "toolName": "update_style_tool",
+  },
+  {
+    "className": "ValidateExpressionTool",
+    "description": "Validates Mapbox style expressions for syntax, operators, and argument correctness",
+    "toolName": "validate_expression_tool",
+  },
+  {
+    "className": "ValidateGeojsonTool",
+    "description": "Validates GeoJSON objects for correctness, checking structure, coordinates, and geometry types",
+    "toolName": "validate_geojson_tool",
+  },
+  {
+    "className": "ValidateStyleTool",
+    "description": "Validates Mapbox style JSON against the Mapbox Style Specification, checking for errors, warnings, and providing suggestions for improvement",
+    "toolName": "validate_style_tool",
   },
 ]
 `;
