@@ -1,5 +1,7 @@
 # Goose MCP Elicitation Bug Report
 
+**Status**: 🐛 Filed - https://github.com/block/goose/issues/6471
+
 ## Summary
 
 MCP elicitation forms display after tool execution timeout, preventing user input and making the elicitation feature unusable.
