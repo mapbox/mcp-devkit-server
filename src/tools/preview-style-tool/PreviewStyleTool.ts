@@ -78,6 +78,22 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
           };
         }
 
+        // Check if client supports elicitation capability
+        const clientCapabilities = this.server.server.getClientCapabilities();
+        if (!clientCapabilities?.elicitation) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text:
+                  'Preview token required but client does not support elicitation. ' +
+                  'Please provide an accessToken parameter directly, or use a client that supports MCP elicitation (e.g., Claude Desktop, Claude Code).'
+              }
+            ]
+          };
+        }
+
         // Get existing public tokens to show user
         const existingTokens = await this.listPublicTokens(serverAccessToken);
 
