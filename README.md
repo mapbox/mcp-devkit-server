@@ -61,8 +61,10 @@ Get started by integrating with your preferred AI development environment:
 **Note on MCP Elicitation Support**: Some tools (like `preview_style_tool`) use [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) to securely request tokens without exposing them in chat history. Elicitation support varies by client:
 
 - **MCP Inspector**: ✅ Full support
+- **Cursor**: ✅ Full support
+- **VS Code (with Copilot)**: ✅ Full support
 - **Claude Desktop**: ⚠️ Not yet supported (Claude will fall back to creating tokens via chat)
-- **Claude Code, Cursor, VS Code**: Check client documentation for elicitation support status
+- **Claude Code**: Check for latest support status
 
 ### DXT Package Distribution
 
@@ -200,8 +202,8 @@ Complete set of tools for managing Mapbox styles via the Styles API:
   - `title` (optional): Show title in preview
   - `zoomwheel` (optional): Enable zoom wheel control
 - Returns: URL to open the style preview in browser
-- **🔐 Secure Token Handling**: If `accessToken` is not provided, this tool attempts to use MCP **elicitation** to securely request a preview token without storing it in chat history. However, **elicitation support varies by client**:
-  - **MCP Inspector**: ✅ Full support - Shows secure form dialog with three options:
+- **🔐 Secure Token Handling**: If `accessToken` is not provided, this tool attempts to use MCP **elicitation** to securely request a preview token without storing it in chat history. **Elicitation support varies by client**:
+  - **MCP Inspector, Cursor, VS Code**: ✅ Full support - Shows secure form dialog with three options:
     1. **Provide an existing token** - Paste a token you already have
     2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
     3. **Auto-create a basic token** - Let the tool create a simple preview token for you
