@@ -63,6 +63,7 @@ Get started by integrating with your preferred AI development environment:
 - **MCP Inspector**: ✅ Full support
 - **Cursor**: ✅ Full support
 - **VS Code (with Copilot)**: ✅ Full support
+- **Goose**: ⚠️ Known bug - Form displays after timeout ([bug report](./docs/goose-elicitation-bug-report.md))
 - **Claude Desktop**: ⚠️ Not yet supported (Claude will fall back to creating tokens via chat)
 - **Claude Code**: Check for latest support status
 
@@ -207,6 +208,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
     1. **Provide an existing token** - Paste a token you already have
     2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
     3. **Auto-create a basic token** - Let the tool create a simple preview token for you
+  - **Goose**: ⚠️ Known bug - Form displays after timeout (see [bug report](./docs/goose-elicitation-bug-report.md))
   - **Claude Desktop**: ⚠️ Not yet supported - When elicitation is unavailable, Claude will intelligently offer to create a token for you using `create_token_tool` (token will appear in chat history)
   - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
 - **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
