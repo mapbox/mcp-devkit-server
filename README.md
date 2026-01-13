@@ -58,6 +58,12 @@ Get started by integrating with your preferred AI development environment:
 - [Cursor Integration](./docs/cursor-integration.md) - Cursor IDE integration
 - [VS Code Integration](./docs/vscode-integration.md) - Visual Studio Code with GitHub Copilot
 
+**Note on MCP Elicitation Support**: Some tools (like `preview_style_tool`) use [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) to securely request tokens without exposing them in chat history. Elicitation support varies by client:
+
+- **MCP Inspector**: ✅ Full support
+- **Claude Desktop**: ⚠️ Not yet supported (Claude will fall back to creating tokens via chat)
+- **Claude Code, Cursor, VS Code**: Check client documentation for elicitation support status
+
 ### DXT Package Distribution
 
 This MCP server can be packaged as a DXT (Desktop Extension) file for easy distribution and installation. DXT is a standardized format for distributing local MCP servers, similar to browser extensions.
@@ -194,12 +200,15 @@ Complete set of tools for managing Mapbox styles via the Styles API:
   - `title` (optional): Show title in preview
   - `zoomwheel` (optional): Enable zoom wheel control
 - Returns: URL to open the style preview in browser
-- **🔐 Secure Token Handling**: If `accessToken` is not provided, this tool uses MCP **elicitation** to securely request a preview token from you without storing it in chat history. You'll be prompted to:
-  1. **Provide an existing token** - Paste a token you already have
-  2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
-  3. **Auto-create a basic token** - Let the tool create a simple preview token for you
-- **Session Storage**: Your token choice is cached for the session, so you only need to provide it once
-- **Best Practice**: Use URL-restricted tokens (option 2) to limit token usage to specific domains
+- **🔐 Secure Token Handling**: If `accessToken` is not provided, this tool attempts to use MCP **elicitation** to securely request a preview token without storing it in chat history. However, **elicitation support varies by client**:
+  - **MCP Inspector**: ✅ Full support - Shows secure form dialog with three options:
+    1. **Provide an existing token** - Paste a token you already have
+    2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
+    3. **Auto-create a basic token** - Let the tool create a simple preview token for you
+  - **Claude Desktop**: ⚠️ Not yet supported - When elicitation is unavailable, Claude will intelligently offer to create a token for you using `create_token_tool` (token will appear in chat history)
+  - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
+- **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
+- **Best Practice**: Use URL-restricted tokens to limit token usage to specific domains
 
 **ValidateStyleTool** - Validate Mapbox style JSON against the Mapbox Style Specification
 
