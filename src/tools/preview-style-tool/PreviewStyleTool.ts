@@ -277,9 +277,11 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
         note: string;
         scopes: string[];
         allowedUrls?: string[];
+        public?: boolean;
       } = {
         note: tokenNote,
-        scopes: ['styles:read', 'styles:tiles', 'styles:download']
+        scopes: ['styles:read', 'styles:tiles', 'styles:download'],
+        public: true // CRITICAL: Must be public token for browser URLs
       };
 
       if (urlRestrictions && urlRestrictions.length > 0) {
@@ -306,6 +308,15 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
       }
 
       const data = (await response.json()) as { token: string };
+
+      // Validate that we got a public token (starts with pk.)
+      if (!data.token.startsWith('pk.')) {
+        return {
+          success: false,
+          error: `API returned a non-public token (${data.token.substring(0, 3)}...). Preview tokens must be public tokens (pk.*) that can be safely exposed in URLs.`
+        };
+      }
+
       return {
         success: true,
         token: data.token
