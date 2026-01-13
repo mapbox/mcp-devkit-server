@@ -185,11 +185,21 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - Input: `styleId`
 - Returns: Success confirmation
 
-**PreviewStyleTool** - Generate preview URL for a Mapbox style using an existing public token
+**PreviewStyleTool** - Generate preview URL for a Mapbox style with secure token handling
 
-- Input: `styleId`, `title` (optional), `zoomwheel` (optional), `zoom` (optional), `center` (optional), `bearing` (optional), `pitch` (optional)
+- Input:
+  - `styleId` (required): Style ID to preview
+  - `accessToken` (optional): Provide a specific public token (for backward compatibility)
+  - `useCustomToken` (optional): Force token selection dialog even if a token is cached
+  - `title` (optional): Show title in preview
+  - `zoomwheel` (optional): Enable zoom wheel control
 - Returns: URL to open the style preview in browser
-- **Note**: This tool automatically fetches the first available public token from your account for the preview URL. Requires at least one public token with `styles:read` scope.
+- **🔐 Secure Token Handling**: If `accessToken` is not provided, this tool uses MCP **elicitation** to securely request a preview token from you without storing it in chat history. You'll be prompted to:
+  1. **Provide an existing token** - Paste a token you already have
+  2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
+  3. **Auto-create a basic token** - Let the tool create a simple preview token for you
+- **Session Storage**: Your token choice is cached for the session, so you only need to provide it once
+- **Best Practice**: Use URL-restricted tokens (option 2) to limit token usage to specific domains
 
 **ValidateStyleTool** - Validate Mapbox style JSON against the Mapbox Style Specification
 
@@ -211,7 +221,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - **RetrieveStyleTool**: Requires `styles:download` scope
 - **UpdateStyleTool**: Requires `styles:write` scope
 - **DeleteStyleTool**: Requires `styles:write` scope
-- **PreviewStyleTool**: Requires `tokens:read` scope (to list tokens) and at least one public token with `styles:read` scope
+- **PreviewStyleTool**: Can work without token scopes via elicitation, or optionally accepts a direct public token. If using automatic token listing, requires `tokens:read` scope
 
 **Note:** The username is automatically extracted from the JWT token payload.
 
