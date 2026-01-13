@@ -277,11 +277,11 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
         note: string;
         scopes: string[];
         allowedUrls?: string[];
-        public?: boolean;
       } = {
         note: tokenNote,
-        scopes: ['styles:read', 'styles:tiles', 'styles:download'],
-        public: true // CRITICAL: Must be public token for browser URLs
+        // CRITICAL: Only use public scopes to get a public token (pk.*)
+        // styles:download is a secret scope and would create sk.* token
+        scopes: ['styles:read', 'styles:tiles', 'fonts:read']
       };
 
       if (urlRestrictions && urlRestrictions.length > 0) {
