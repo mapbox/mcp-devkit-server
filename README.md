@@ -65,7 +65,7 @@ Get started by integrating with your preferred AI development environment:
 - **VS Code (with Copilot)**: ✅ Full support
 - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
 - **Claude Desktop**: ⚠️ Not yet supported (Claude will fall back to creating tokens via chat)
-- **Claude Code**: Check for latest support status
+- **Claude Code**: ⚠️ Not yet supported (provide `accessToken` parameter directly)
 
 ### DXT Package Distribution
 
@@ -209,7 +209,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
     2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
     3. **Auto-create a basic token** - Let the tool create a simple preview token for you
   - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
-  - **Claude Desktop**: ⚠️ Not yet supported - When elicitation is unavailable, Claude will intelligently offer to create a token for you using `create_token_tool` (token will appear in chat history)
+  - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool` (token will appear in chat history)
   - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
 - **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
 - **Best Practice**: Use URL-restricted tokens to limit token usage to specific domains
