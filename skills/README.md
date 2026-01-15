@@ -111,6 +111,58 @@ Use this skill when:
 
 [View skill →](./mapbox-integration-patterns/SKILL.md)
 
+### ⚡ mapbox-performance-patterns
+
+**Performance optimization patterns for building fast, efficient Mapbox applications. Covers initialization waterfalls, bundle size, rendering performance, memory management, and mobile optimization.**
+
+Use this skill when:
+
+- Optimizing map load time and time-to-interactive
+- Reducing bundle size or implementing code splitting
+- Debugging slow rendering or janky interactions
+- Managing thousands of markers or large datasets
+- Optimizing for mobile devices or low-end hardware
+- Preventing memory leaks in long-running applications
+- Improving frame rate during pan/zoom interactions
+
+**Key topics:**
+
+- Eliminating initialization waterfalls (parallel loading, preloading)
+- Bundle size optimization (dynamic imports, lazy loading)
+- Marker performance (HTML vs Canvas vs Symbol layers, clustering)
+- Data loading strategies (GeoJSON vs vector tiles, viewport-based loading)
+- Event handling optimization (debouncing, throttling)
+- Memory management (cleanup patterns, feature state)
+- Mobile-specific optimizations (battery awareness, touch events)
+- Layer consolidation and paint property optimization
+
+**Based on:** Performance principles from Vercel's react-best-practices and Mapbox-specific patterns
+
+[View skill →](./mapbox-performance-patterns/SKILL.md)
+
+### ✅ mapbox-style-quality
+
+**Expert guidance on validating, optimizing, and ensuring quality of Mapbox styles through validation, accessibility checks, and optimization.**
+
+Use this skill when:
+
+- Validating styles before production deployment
+- Checking accessibility compliance (WCAG)
+- Optimizing style file size and complexity
+- Reviewing styles for common issues
+- Setting up quality gates in CI/CD pipelines
+
+**Key topics:**
+
+- Style validation patterns
+- Expression validation
+- GeoJSON validation
+- Color contrast checking
+- Style optimization techniques
+- Production readiness checklists
+
+[View skill →](./mapbox-style-quality/SKILL.md)
+
 ## How Skills Work with the MCP Server
 
 The Mapbox MCP DevKit Server and Agent Skills work together:
