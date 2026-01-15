@@ -20,8 +20,16 @@ export const StyleComparisonSchema = z.object({
       'pk.',
       'Invalid token type. Style comparison requires a public token (pk.*) that can be used in browser URLs. Secret tokens (sk.*) cannot be exposed in client-side applications. Please provide a public token with styles:read permission.'
     )
+    .optional()
     .describe(
-      'Mapbox public access token (required, must start with pk.* and have styles:read permission). Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs. Please use a public token or create one with styles:read permission.'
+      'Mapbox public access token (optional). If not provided, you will be prompted to provide, create, or auto-create a preview token via MCP elicitation (supported in MCP Inspector, Cursor, VS Code). For clients without elicitation support (Claude Desktop, Claude Code), provide this parameter directly. Must start with pk.* and have styles:read permission. Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs.'
+    ),
+  useCustomToken: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      'Force token selection dialog even if a preview token is already stored for this session. Useful when you want to use a different token.'
     ),
   zoom: z
     .number()

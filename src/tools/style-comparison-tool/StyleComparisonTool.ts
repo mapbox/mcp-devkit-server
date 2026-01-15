@@ -10,6 +10,11 @@ import {
 } from './StyleComparisonTool.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import { isMcpUiEnabled } from '../../config/toolConfig.js';
+import {
+  elicitPreviewToken,
+  previewTokenStorage
+} from '../../utils/tokenElicitation.js';
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 
 export class StyleComparisonTool extends BaseTool<
   typeof StyleComparisonSchema
@@ -27,6 +32,122 @@ export class StyleComparisonTool extends BaseTool<
 
   constructor() {
     super({ inputSchema: StyleComparisonSchema });
+  }
+
+  /**
+   * Override run to handle elicitation via RequestHandlerExtra
+   */
+  async run(
+    rawInput: unknown,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    extra?: RequestHandlerExtra<any, any>
+  ): Promise<CallToolResult> {
+    try {
+      const input = this.inputSchema.parse(rawInput);
+      const serverAccessToken =
+        extra?.authInfo?.token || process.env.MAPBOX_ACCESS_TOKEN;
+
+      // Validate server token exists
+      if (!serverAccessToken) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: 'Server access token is required when no preview token is provided. Please configure MAPBOX_ACCESS_TOKEN environment variable.'
+            }
+          ]
+        };
+      }
+
+      return this.execute(input, serverAccessToken);
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: (error as Error).message }]
+      };
+    }
+  }
+
+  /**
+   * List existing public tokens for elicitation
+   */
+  private async listPublicTokens(
+    serverAccessToken?: string
+  ): Promise<{ id: string; note: string; scopes: string[] }[]> {
+    if (!serverAccessToken) return [];
+
+    try {
+      const response = await fetch(
+        'https://api.mapbox.com/tokens/v2?limit=100&usage=pk',
+        {
+          headers: {
+            Authorization: `Bearer ${serverAccessToken}`
+          }
+        }
+      );
+
+      if (!response.ok) return [];
+
+      const data = (await response.json()) as Array<{
+        id: string;
+        note: string;
+        scopes: string[];
+      }>;
+      return data.map((token) => ({
+        id: token.id,
+        note: token.note || 'Unnamed token',
+        scopes: token.scopes
+      }));
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Create a new public preview token
+   */
+  private async createPreviewToken(
+    serverAccessToken?: string,
+    tokenNote?: string,
+    urlRestrictions?: string[]
+  ): Promise<{ token: string }> {
+    if (!serverAccessToken) {
+      throw new Error('Server access token required to create preview tokens');
+    }
+
+    const body: {
+      note: string;
+      scopes: string[];
+      allowedUrls?: string[];
+    } = {
+      note: tokenNote || 'Auto-created preview token',
+      // CRITICAL: Only use public scopes to get a public token (pk.*)
+      // styles:download is a secret scope and would create sk.* token
+      scopes: ['styles:read', 'styles:tiles', 'fonts:read']
+    };
+
+    // Add URL restrictions if provided
+    if (urlRestrictions && urlRestrictions.length > 0) {
+      body.allowedUrls = urlRestrictions;
+    }
+
+    const response = await fetch('https://api.mapbox.com/tokens/v2', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${serverAccessToken}`
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Failed to create preview token: ${error}`);
+    }
+
+    const data = (await response.json()) as { token: string };
+    return { token: data.token };
   }
 
   /**
@@ -59,14 +180,97 @@ export class StyleComparisonTool extends BaseTool<
   }
 
   protected async execute(
-    input: StyleComparisonInput
+    input: StyleComparisonInput,
+    serverAccessToken?: string
   ): Promise<CallToolResult> {
+    // Handle token elicitation if accessToken not provided
+    let publicToken: string;
+
+    if (input.accessToken) {
+      // Backward compatibility - use provided token directly
+      publicToken = input.accessToken;
+    } else {
+      // Need to elicit token from user
+      const userName = getUserNameFromToken(serverAccessToken || '');
+      const storedToken = previewTokenStorage.get(userName);
+
+      if (storedToken && !input.useCustomToken) {
+        // Use cached token
+        publicToken = storedToken;
+      } else {
+        // Check if client supports elicitation
+        if (!this.server?.server) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: 'Server not initialized. Cannot use elicitation.'
+              }
+            ]
+          };
+        }
+
+        const clientCapabilities = this.server.server.getClientCapabilities();
+        if (!clientCapabilities?.elicitation) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text:
+                  'Preview token required but client does not support elicitation. ' +
+                  'Please provide an accessToken parameter directly, or use a client that supports ' +
+                  'MCP elicitation (MCP Inspector, Cursor, VS Code).'
+              }
+            ]
+          };
+        }
+
+        // Elicit from user
+        try {
+          const existingTokens = await this.listPublicTokens(serverAccessToken);
+          const elicited = await elicitPreviewToken(
+            this.server.server,
+            existingTokens
+          );
+
+          if (elicited.choice === 'provide') {
+            publicToken = elicited.token!;
+          } else if (elicited.choice === 'create') {
+            const created = await this.createPreviewToken(
+              serverAccessToken,
+              elicited.tokenNote,
+              elicited.urlRestrictions
+            );
+            publicToken = created.token!;
+          } else {
+            // auto-create
+            const created = await this.createPreviewToken(serverAccessToken);
+            publicToken = created.token!;
+          }
+
+          // Cache the token for this session
+          previewTokenStorage.set(userName, publicToken);
+        } catch (error) {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: `Failed to elicit or create preview token: ${error instanceof Error ? error.message : 'Unknown error'}`
+              }
+            ]
+          };
+        }
+      }
+    }
     let beforeStyleId;
     let afterStyleId;
     try {
       // Process style IDs to get username/styleId format
-      beforeStyleId = this.processStyleId(input.before, input.accessToken);
-      afterStyleId = this.processStyleId(input.after, input.accessToken);
+      beforeStyleId = this.processStyleId(input.before, publicToken);
+      afterStyleId = this.processStyleId(input.after, publicToken);
     } catch (error) {
       return {
         content: [
@@ -84,7 +288,7 @@ export class StyleComparisonTool extends BaseTool<
 
     // Build the comparison URL
     const params = new URLSearchParams();
-    params.append('access_token', input.accessToken);
+    params.append('access_token', publicToken);
     params.append('before', beforeStyleId);
     params.append('after', afterStyleId);
 

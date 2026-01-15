@@ -50,19 +50,18 @@ describe('StyleComparisonTool', () => {
       });
     });
 
-    it('should require access token', async () => {
+    it('should work with provided access token (backward compatibility)', async () => {
       const input = {
         before: 'mapbox/streets-v12',
-        after: 'mapbox/satellite-v9'
-        // Missing accessToken
-      } as any;
+        after: 'mapbox/satellite-v9',
+        accessToken: 'pk.test.token'
+      };
 
       const result = await tool.run(input);
 
-      expect(result.isError).toBe(true);
-      expect(
-        (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Required');
+      expect(result.isError).toBe(false);
+      const url = (result.content[0] as { type: 'text'; text: string }).text;
+      expect(url).toContain('access_token=pk.test.token');
     });
 
     it('should handle full style URLs', async () => {
@@ -232,6 +231,50 @@ describe('StyleComparisonTool', () => {
 
       // Clean up
       delete process.env.ENABLE_MCP_UI;
+    });
+  });
+
+  describe('elicitation behavior', () => {
+    it('returns error when no accessToken and no valid server token', async () => {
+      const tool = new StyleComparisonTool();
+
+      // Remove env var temporarily to test error path
+      const oldToken = process.env.MAPBOX_ACCESS_TOKEN;
+      delete process.env.MAPBOX_ACCESS_TOKEN;
+
+      const result = await tool.run({
+        before: 'mapbox/streets-v12',
+        after: 'mapbox/satellite-v9'
+        // No accessToken, no authInfo.token either
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toMatchObject({
+        type: 'text',
+        text: expect.stringContaining(
+          'Server access token is required when no preview token is provided'
+        )
+      });
+
+      // Restore env var
+      process.env.MAPBOX_ACCESS_TOKEN = oldToken;
+    });
+
+    it('works with backward compatibility when accessToken is provided', async () => {
+      const tool = new StyleComparisonTool();
+      // Even without server initialization, providing accessToken directly should work
+
+      const result = await tool.run({
+        before: 'mapbox/streets-v12',
+        after: 'mapbox/satellite-v9',
+        accessToken: 'pk.test.token'
+      });
+
+      expect(result.isError).toBe(false);
+      expect(result.content[0]).toMatchObject({
+        type: 'text',
+        text: expect.stringContaining('access_token=pk.test.token')
+      });
     });
   });
 

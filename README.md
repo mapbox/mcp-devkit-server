@@ -58,7 +58,7 @@ Get started by integrating with your preferred AI development environment:
 - [Cursor Integration](./docs/cursor-integration.md) - Cursor IDE integration
 - [VS Code Integration](./docs/vscode-integration.md) - Visual Studio Code with GitHub Copilot
 
-**Note on MCP Elicitation Support**: Some tools (like `preview_style_tool`) use [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) to securely request tokens without exposing them in chat history. Elicitation support varies by client:
+**Note on MCP Elicitation Support**: Some tools (like `preview_style_tool` and `style_comparison_tool`) use [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) to provide secure token management following the principle of least privilege. Elicitation ensures that only minimal-scope public tokens (pk._) appear in preview URLs, while your powerful server token (sk._) stays secure. This guided workflow also improves UX for token selection and creation. Elicitation support varies by client:
 
 - **MCP Inspector**: ✅ Full support
 - **Cursor**: ✅ Full support
@@ -203,16 +203,38 @@ Complete set of tools for managing Mapbox styles via the Styles API:
   - `title` (optional): Show title in preview
   - `zoomwheel` (optional): Enable zoom wheel control
 - Returns: URL to open the style preview in browser
-- **🔐 Secure Token Handling**: If `accessToken` is not provided, this tool attempts to use MCP **elicitation** to securely request a preview token without storing it in chat history. **Elicitation support varies by client**:
-  - **MCP Inspector, Cursor, VS Code**: ✅ Full support - Shows secure form dialog with three options:
+- **🔐 Secure Token Management**: If `accessToken` is not provided, this tool uses MCP **elicitation** to create minimal-scope public tokens (pk._) instead of exposing your powerful server token. This follows the **principle of least privilege** - preview/comparison URLs only contain read-only tokens (styles:read, styles:tiles, fonts:read), keeping your server token (sk._) with write permissions secure. **Elicitation support varies by client**:
+  - **MCP Inspector, Cursor, VS Code**: ✅ Full support - Shows guided form dialog with three options:
     1. **Provide an existing token** - Paste a token you already have
     2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
     3. **Auto-create a basic token** - Let the tool create a simple preview token for you
   - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
-  - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool` (token will appear in chat history)
+  - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool`
   - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
 - **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
-- **Best Practice**: Use URL-restricted tokens to limit token usage to specific domains
+- **Best Practice**: Use URL-restricted tokens to further limit token usage to specific domains. While public tokens in URLs are read-only, URL restrictions add an extra layer of security by ensuring tokens only work on your specified domains
+
+**StyleComparisonTool** - Generate side-by-side comparison URL for two Mapbox styles
+
+- Input:
+  - `before` (required): Mapbox style for the "before" side (accepts full style URL, username/styleId format, or just styleId)
+  - `after` (required): Mapbox style for the "after" side (accepts full style URL, username/styleId format, or just styleId)
+  - `accessToken` (optional): Provide a specific public token (for backward compatibility)
+  - `useCustomToken` (optional): Force token selection dialog even if a token is cached
+  - `zoom` (optional): Initial zoom level (0-22)
+  - `latitude` (optional): Latitude coordinate for initial map center (-90 to 90)
+  - `longitude` (optional): Longitude coordinate for initial map center (-180 to 180)
+- Returns: URL to open the side-by-side style comparison in browser
+- **🔐 Secure Token Management**: If `accessToken` is not provided, this tool uses MCP **elicitation** to create minimal-scope public tokens (pk._) instead of exposing your powerful server token. This follows the **principle of least privilege** - preview/comparison URLs only contain read-only tokens (styles:read, styles:tiles, fonts:read), keeping your server token (sk._) with write permissions secure. **Elicitation support varies by client**:
+  - **MCP Inspector, Cursor, VS Code**: ✅ Full support - Shows guided form dialog with three options:
+    1. **Provide an existing token** - Paste a token you already have
+    2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
+    3. **Auto-create a basic token** - Let the tool create a simple preview token for you
+  - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
+  - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool`
+  - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
+- **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
+- **Best Practice**: Use URL-restricted tokens to further limit token usage to specific domains. While public tokens in URLs are read-only, URL restrictions add an extra layer of security by ensuring tokens only work on your specified domains
 
 **ValidateStyleTool** - Validate Mapbox style JSON against the Mapbox Style Specification
 
@@ -235,6 +257,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - **UpdateStyleTool**: Requires `styles:write` scope
 - **DeleteStyleTool**: Requires `styles:write` scope
 - **PreviewStyleTool**: Can work without token scopes via elicitation, or optionally accepts a direct public token. If using automatic token listing, requires `tokens:read` scope
+- **StyleComparisonTool**: Can work without token scopes via elicitation, or optionally accepts a direct public token. If using automatic token listing, requires `tokens:read` scope
 
 **Note:** The username is automatically extracted from the JWT token payload.
 
