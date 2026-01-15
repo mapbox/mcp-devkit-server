@@ -69,7 +69,7 @@ export class GetReferenceTool extends BaseTool<typeof GetReferenceSchema> {
         content: [
           {
             type: 'text',
-            text: result.contents[0].text
+            text: result.contents[0].text as string
           }
         ],
         isError: false
