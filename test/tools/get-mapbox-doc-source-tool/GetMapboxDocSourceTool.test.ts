@@ -43,6 +43,7 @@ This is the Mapbox developer documentation for LLMs.
       'https://docs.mapbox.com/llms.txt',
       {
         headers: {
+          Accept: 'text/markdown, text/plain;q=0.9, */*;q=0.8',
           'User-Agent': 'TestServer/1.0.0 (default, no-tag, abcdef)'
         }
       }

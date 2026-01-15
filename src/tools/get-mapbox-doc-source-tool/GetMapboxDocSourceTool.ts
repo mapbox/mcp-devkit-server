@@ -37,7 +37,12 @@ export class GetMapboxDocSourceTool extends BaseTool<
   ): Promise<CallToolResult> {
     try {
       const response = await this.httpRequest(
-        'https://docs.mapbox.com/llms.txt'
+        'https://docs.mapbox.com/llms.txt',
+        {
+          headers: {
+            Accept: 'text/markdown, text/plain;q=0.9, */*;q=0.8'
+          }
+        }
       );
 
       if (!response.ok) {
