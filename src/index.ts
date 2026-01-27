@@ -13,7 +13,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import { parseToolConfigFromArgs, filterTools } from './config/toolConfig.js';
-import { getAllTools } from './tools/toolRegistry.js';
+import {
+  getCoreTools,
+  getElicitationTools,
+  getResourceFallbackTools
+} from './tools/toolRegistry.js';
 import { getAllResources } from './resources/resourceRegistry.js';
 import { getAllPrompts } from './prompts/promptRegistry.js';
 import { getVersionInfo } from './utils/versionUtils.js';
@@ -54,8 +58,14 @@ const versionInfo = getVersionInfo();
 const config = parseToolConfigFromArgs();
 
 // Get and filter tools based on configuration
-const allTools = getAllTools();
-const enabledTools = filterTools(allTools, config);
+// Split into categories for capability-aware registration
+const coreTools = getCoreTools();
+const elicitationTools = getElicitationTools();
+const resourceFallbackTools = getResourceFallbackTools();
+
+const enabledCoreTools = filterTools(coreTools, config);
+const enabledElicitationTools = filterTools(elicitationTools, config);
+const enabledResourceFallbackTools = filterTools(resourceFallbackTools, config);
 
 // Create an MCP server
 const server = new McpServer(
@@ -65,15 +75,18 @@ const server = new McpServer(
   },
   {
     capabilities: {
-      tools: {},
+      tools: {
+        listChanged: true // Advertise support for dynamic tool registration
+      },
       resources: {},
       prompts: {}
     }
   }
 );
 
-// Register enabled tools to the server
-enabledTools.forEach((tool) => {
+// Register only core tools before connection
+// Capability-dependent tools will be registered dynamically after connection
+enabledCoreTools.forEach((tool) => {
   tool.installTo(server);
 });
 
@@ -210,6 +223,66 @@ async function main() {
   // Start receiving messages on stdin and sending messages on stdout
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // After connection, dynamically register capability-dependent tools
+  const clientCapabilities = server.server.getClientCapabilities();
+  let toolsAdded = false;
+
+  // Register elicitation tools if client supports elicitation
+  if (clientCapabilities?.elicitation && enabledElicitationTools.length > 0) {
+    server.server.sendLoggingMessage({
+      level: 'info',
+      data: `Client supports elicitation. Registering ${enabledElicitationTools.length} elicitation-dependent tools`
+    });
+
+    enabledElicitationTools.forEach((tool) => {
+      tool.installTo(server);
+    });
+    toolsAdded = true;
+  } else if (enabledElicitationTools.length > 0) {
+    server.server.sendLoggingMessage({
+      level: 'debug',
+      data: `Client does not support elicitation. Skipping ${enabledElicitationTools.length} elicitation-dependent tools`
+    });
+  }
+
+  // Register resource fallback tools if client doesn't properly support resources
+  // Note: GetReferenceTool exists as a workaround for Claude Desktop which lists resources
+  // but doesn't automatically fetch them. Most modern clients support resources properly.
+  const supportsResources = clientCapabilities?.resources !== undefined;
+  if (!supportsResources && enabledResourceFallbackTools.length > 0) {
+    server.server.sendLoggingMessage({
+      level: 'info',
+      data: `Client lacks full resource support. Registering ${enabledResourceFallbackTools.length} resource fallback tools`
+    });
+
+    enabledResourceFallbackTools.forEach((tool) => {
+      tool.installTo(server);
+    });
+    toolsAdded = true;
+  } else if (enabledResourceFallbackTools.length > 0) {
+    server.server.sendLoggingMessage({
+      level: 'debug',
+      data: `Client supports resources properly. Skipping ${enabledResourceFallbackTools.length} resource fallback tools`
+    });
+  }
+
+  // Notify client about tool list changes if any tools were added
+  if (toolsAdded) {
+    try {
+      server.sendToolListChanged();
+
+      server.server.sendLoggingMessage({
+        level: 'debug',
+        data: 'Sent notifications/tools/list_changed to client'
+      });
+    } catch (error) {
+      server.server.sendLoggingMessage({
+        level: 'warning',
+        data: `Failed to send tool list change notification: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+  }
 }
 
 // Ensure cleanup interval is cleared when the process exits
