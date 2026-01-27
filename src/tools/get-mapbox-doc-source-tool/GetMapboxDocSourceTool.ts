@@ -14,7 +14,7 @@ export class GetMapboxDocSourceTool extends BaseTool<
 > {
   name = 'get_latest_mapbox_docs_tool';
   description =
-    'Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search.';
+    'Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search. For clients that support resources, use resource://mapbox-documentation for proper text/markdown MIME type support.';
   readonly annotations = {
     readOnlyHint: true,
     destructiveHint: false,
