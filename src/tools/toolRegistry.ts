@@ -38,11 +38,13 @@ export const CORE_TOOLS = [
   new RetrieveStyleTool({ httpRequest }),
   new UpdateStyleTool({ httpRequest }),
   new DeleteStyleTool({ httpRequest }),
+  new PreviewStyleTool(),
   new StyleBuilderTool(),
   new GeojsonPreviewTool(),
   new CheckColorContrastTool(),
   new CompareStylesTool(),
   new OptimizeStyleTool(),
+  new StyleComparisonTool(),
   new CreateTokenTool({ httpRequest }),
   new ListTokensTool({ httpRequest }),
   new BoundingBoxTool(),
@@ -61,11 +63,11 @@ export const CORE_TOOLS = [
  * Tools that require elicitation capability for optimal functionality
  * These tools use elicitInput() for secure token management
  * Registered only if client supports elicitation
+ *
+ * Currently empty - elicitation support will be added in a future PR.
+ * This category is ready for tools that require the elicitation capability.
  */
-export const ELICITATION_TOOLS = [
-  new PreviewStyleTool(),
-  new StyleComparisonTool()
-] as const;
+export const ELICITATION_TOOLS = [] as const;
 
 /**
  * Tools that serve as bridges/workarounds for missing resource support

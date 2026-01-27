@@ -28,13 +28,14 @@ describe('Tool Registry', () => {
       expect(toolNames).toContain('validate_style_tool');
     });
 
-    it('should not include elicitation-dependent tools', () => {
+    it('should include preview and comparison tools (until elicitation support is added)', () => {
       const coreTools = getCoreTools();
       const toolNames = coreTools.map((tool) => tool.name);
 
-      // Elicitation tools should not be in core
-      expect(toolNames).not.toContain('preview_style_tool');
-      expect(toolNames).not.toContain('style_comparison_tool');
+      // These tools are currently in CORE_TOOLS
+      // They will move to ELICITATION_TOOLS when elicitation support is added
+      expect(toolNames).toContain('preview_style_tool');
+      expect(toolNames).toContain('style_comparison_tool');
     });
 
     it('should not include resource fallback tools', () => {
@@ -50,19 +51,18 @@ describe('Tool Registry', () => {
     it('should return an array of elicitation tools', () => {
       const elicitationTools = getElicitationTools();
       expect(Array.isArray(elicitationTools)).toBe(true);
-      expect(elicitationTools.length).toBe(2);
     });
 
-    it('should include preview_style_tool', () => {
+    it('should currently be empty (elicitation support pending)', () => {
       const elicitationTools = getElicitationTools();
-      const toolNames = elicitationTools.map((tool) => tool.name);
-      expect(toolNames).toContain('preview_style_tool');
+      expect(elicitationTools.length).toBe(0);
     });
 
-    it('should include style_comparison_tool', () => {
+    it('should be ready for future elicitation-dependent tools', () => {
+      // This test documents that the infrastructure is in place
+      // When elicitation support is added, tools can be moved here
       const elicitationTools = getElicitationTools();
-      const toolNames = elicitationTools.map((tool) => tool.name);
-      expect(toolNames).toContain('style_comparison_tool');
+      expect(Array.isArray(elicitationTools)).toBe(true);
     });
   });
 
@@ -106,12 +106,12 @@ describe('Tool Registry', () => {
       const allTools = getAllTools();
       const toolNames = allTools.map((tool) => tool.name);
 
-      // Core tool
+      // Core tools
       expect(toolNames).toContain('list_styles_tool');
-      // Elicitation tool
       expect(toolNames).toContain('preview_style_tool');
       // Resource fallback tool
       expect(toolNames).toContain('get_reference_tool');
+      // Note: No elicitation tools yet (empty array)
     });
   });
 
