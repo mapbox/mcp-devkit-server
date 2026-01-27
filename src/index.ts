@@ -226,6 +226,13 @@ async function main() {
 
   // After connection, dynamically register capability-dependent tools
   const clientCapabilities = server.server.getClientCapabilities();
+
+  // Debug: Log what capabilities we detected
+  server.server.sendLoggingMessage({
+    level: 'info',
+    data: `Client capabilities detected: ${JSON.stringify(clientCapabilities, null, 2)}`
+  });
+
   let toolsAdded = false;
 
   // Register elicitation tools if client supports elicitation
@@ -246,14 +253,20 @@ async function main() {
     });
   }
 
-  // Register resource fallback tools if client doesn't properly support resources
-  // Note: GetReferenceTool exists as a workaround for Claude Desktop which lists resources
-  // but doesn't automatically fetch them. Most modern clients support resources properly.
-  const supportsResources = clientCapabilities?.resources !== undefined;
-  if (!supportsResources && enabledResourceFallbackTools.length > 0) {
+  // Register resource fallback tools for clients with known resource support issues
+  // Note: Resources are a core MCP feature, but some clients (like Claude Desktop) can list
+  // resources but don't automatically fetch them. We detect these clients by name.
+  // Most modern MCP clients (Inspector, VS Code, etc.) support resources properly.
+  const clientVersion = server.server.getClientVersion();
+  const clientName = clientVersion?.name?.toLowerCase() || '';
+
+  // Known clients with resource support issues
+  const needsResourceFallback = clientName.includes('claude');
+
+  if (needsResourceFallback && enabledResourceFallbackTools.length > 0) {
     server.server.sendLoggingMessage({
       level: 'info',
-      data: `Client lacks full resource support. Registering ${enabledResourceFallbackTools.length} resource fallback tools`
+      data: `Client "${clientVersion?.name}" has known resource issues. Registering ${enabledResourceFallbackTools.length} resource fallback tools`
     });
 
     enabledResourceFallbackTools.forEach((tool) => {
@@ -263,7 +276,7 @@ async function main() {
   } else if (enabledResourceFallbackTools.length > 0) {
     server.server.sendLoggingMessage({
       level: 'debug',
-      data: `Client supports resources properly. Skipping ${enabledResourceFallbackTools.length} resource fallback tools`
+      data: `Client "${clientVersion?.name}" supports resources properly. Skipping ${enabledResourceFallbackTools.length} resource fallback tools`
     });
   }
 
