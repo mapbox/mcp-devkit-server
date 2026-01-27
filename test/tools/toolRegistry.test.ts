@@ -44,6 +44,7 @@ describe('Tool Registry', () => {
 
       // Resource fallback tools should not be in core
       expect(toolNames).not.toContain('get_reference_tool');
+      expect(toolNames).not.toContain('get_latest_mapbox_docs_tool');
     });
   });
 
@@ -70,13 +71,19 @@ describe('Tool Registry', () => {
     it('should return an array of resource fallback tools', () => {
       const resourceFallbackTools = getResourceFallbackTools();
       expect(Array.isArray(resourceFallbackTools)).toBe(true);
-      expect(resourceFallbackTools.length).toBe(1);
+      expect(resourceFallbackTools.length).toBe(2);
     });
 
     it('should include get_reference_tool', () => {
       const resourceFallbackTools = getResourceFallbackTools();
       const toolNames = resourceFallbackTools.map((tool) => tool.name);
       expect(toolNames).toContain('get_reference_tool');
+    });
+
+    it('should include get_latest_mapbox_docs_tool', () => {
+      const resourceFallbackTools = getResourceFallbackTools();
+      const toolNames = resourceFallbackTools.map((tool) => tool.name);
+      expect(toolNames).toContain('get_latest_mapbox_docs_tool');
     });
   });
 
@@ -109,8 +116,9 @@ describe('Tool Registry', () => {
       // Core tools
       expect(toolNames).toContain('list_styles_tool');
       expect(toolNames).toContain('preview_style_tool');
-      // Resource fallback tool
+      // Resource fallback tools
       expect(toolNames).toContain('get_reference_tool');
+      expect(toolNames).toContain('get_latest_mapbox_docs_tool');
       // Note: No elicitation tools yet (empty array)
     });
   });

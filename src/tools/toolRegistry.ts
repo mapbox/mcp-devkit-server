@@ -52,7 +52,6 @@ export const CORE_TOOLS = [
   new CoordinateConversionTool(),
   new GetFeedbackTool({ httpRequest }),
   new ListFeedbackTool({ httpRequest }),
-  new GetMapboxDocSourceTool({ httpRequest }),
   new TilequeryTool({ httpRequest }),
   new ValidateExpressionTool(),
   new ValidateGeojsonTool(),
@@ -73,11 +72,17 @@ export const ELICITATION_TOOLS = [] as const;
  * Tools that serve as bridges/workarounds for missing resource support
  * These tools are only registered if client does NOT support resources properly
  *
- * Context: GetReferenceTool exists as a workaround for Claude Desktop's limitation
- * where it can list resources but doesn't automatically fetch them. Clients that
- * properly support resources don't need this bridge tool.
+ * Context: These tools exist as workarounds for clients (like Claude Desktop) that
+ * can list resources but don't automatically fetch them. Clients that properly
+ * support resources don't need these bridge tools.
+ *
+ * - GetReferenceTool: Provides access to reference resources (style layers, Streets v8 fields, token scopes, layer type mapping)
+ * - GetMapboxDocSourceTool: Provides access to Mapbox documentation (resource://mapbox-documentation)
  */
-export const RESOURCE_FALLBACK_TOOLS = [new GetReferenceTool()] as const;
+export const RESOURCE_FALLBACK_TOOLS = [
+  new GetReferenceTool(),
+  new GetMapboxDocSourceTool({ httpRequest })
+] as const;
 
 /**
  * All tools combined (for backward compatibility and testing)
