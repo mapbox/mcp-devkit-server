@@ -81,43 +81,35 @@ export class PreviewStyleUIResource extends BaseResource {
   <iframe id="preview-frame" style="display:none"></iframe>
 
   <script type="module">
-    // MCP Apps pattern: Extract parameters from tool result
-    // The iframe URL should be passed via toolresult
-    const username = '${username}';
-    const styleId = '${styleId}';
+    import { App } from "https://esm.sh/@modelcontextprotocol/ext-apps@0.1.1";
 
-    // For now, construct a basic preview URL
-    // In a full MCP Apps implementation, the App SDK would communicate
-    // with the host to get the access token and other parameters
-    const baseUrl = 'https://api.mapbox.com/styles/v1';
+    const frame = document.getElementById('preview-frame');
+    const loading = document.getElementById('loading');
 
-    // Note: This is a simplified version. Full MCP Apps would use
-    // @modelcontextprotocol/ext-apps SDK for:
-    // - Receiving tool results with preview URL
-    // - Bidirectional communication with host
-    // - Context updates
+    try {
+      const app = new App();
+      await app.connect();
 
-    document.addEventListener('DOMContentLoaded', () => {
-      const frame = document.getElementById('preview-frame');
-      const loading = document.getElementById('loading');
+      // Receive tool result from host and extract preview URL
+      app.onContextUpdate((context) => {
+        if (!context.toolResult) return;
 
-      // In production, this would come from the host via MCP Apps SDK
-      // For now, show a message that the preview URL is needed
-      loading.textContent = 'Preview requires access token from host';
-      loading.style.color = '#0066cc';
+        // Find the text content which contains the preview URL
+        const textContent = context.toolResult.content.find(
+          (c) => c.type === 'text'
+        );
 
-      // TODO: Integrate @modelcontextprotocol/ext-apps SDK
-      // import { App } from "@modelcontextprotocol/ext-apps";
-      // const app = new App();
-      // await app.connect();
-      // app.ontoolresult = (result) => {
-      //   if (result.previewUrl) {
-      //     frame.src = result.previewUrl;
-      //     frame.style.display = 'block';
-      //     loading.style.display = 'none';
-      //   }
-      // };
-    });
+        if (textContent && textContent.text) {
+          // Set iframe to the preview URL from tool result
+          frame.src = textContent.text;
+          frame.style.display = 'block';
+          loading.style.display = 'none';
+        }
+      });
+    } catch (error) {
+      loading.textContent = 'Failed to connect to MCP host: ' + error.message;
+      loading.style.color = '#cc0000';
+    }
   </script>
 </body>
 </html>`;

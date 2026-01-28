@@ -80,30 +80,35 @@ export class StyleComparisonUIResource extends BaseResource {
   <iframe id="comparison-frame" style="display:none"></iframe>
 
   <script type="module">
-    // MCP Apps pattern: Extract parameters from tool result
-    const beforeStyle = '${beforeStyle}';
-    const afterStyle = '${afterStyle}';
+    import { App } from "https://esm.sh/@modelcontextprotocol/ext-apps@0.1.1";
 
-    // For now, show a message that the comparison URL is needed from the host
-    document.addEventListener('DOMContentLoaded', () => {
-      const frame = document.getElementById('comparison-frame');
-      const loading = document.getElementById('loading');
+    const frame = document.getElementById('comparison-frame');
+    const loading = document.getElementById('loading');
 
-      loading.textContent = 'Comparison requires access token from host';
-      loading.style.color = '#0066cc';
+    try {
+      const app = new App();
+      await app.connect();
 
-      // TODO: Integrate @modelcontextprotocol/ext-apps SDK
-      // import { App } from "@modelcontextprotocol/ext-apps";
-      // const app = new App();
-      // await app.connect();
-      // app.ontoolresult = (result) => {
-      //   if (result.comparisonUrl) {
-      //     frame.src = result.comparisonUrl;
-      //     frame.style.display = 'block';
-      //     loading.style.display = 'none';
-      //   }
-      // };
-    });
+      // Receive tool result from host and extract comparison URL
+      app.onContextUpdate((context) => {
+        if (!context.toolResult) return;
+
+        // Find the text content which contains the comparison URL
+        const textContent = context.toolResult.content.find(
+          (c) => c.type === 'text'
+        );
+
+        if (textContent && textContent.text) {
+          // Set iframe to the comparison URL from tool result
+          frame.src = textContent.text;
+          frame.style.display = 'block';
+          loading.style.display = 'none';
+        }
+      });
+    } catch (error) {
+      loading.textContent = 'Failed to connect to MCP host: ' + error.message;
+      loading.style.color = '#cc0000';
+    }
   </script>
 </body>
 </html>`;
