@@ -253,20 +253,21 @@ async function main() {
     });
   }
 
-  // Register resource fallback tools for clients with known resource support issues
-  // Note: Resources are a core MCP feature, but some clients (like Claude Desktop) can list
-  // resources but don't automatically fetch them. We detect these clients by name.
-  // Most modern MCP clients (Inspector, VS Code, etc.) support resources properly.
+  // Register resource fallback tools for clients that may not support resources properly
+  // Note: Resources are a core MCP feature, but not all clients support them perfectly.
+  // We use an allowlist approach: only skip fallback tools for clients we KNOW support resources.
+  // This is safer than blocklisting - unknown clients get fallback tools by default.
   const clientVersion = server.server.getClientVersion();
   const clientName = clientVersion?.name?.toLowerCase() || '';
 
-  // Known clients with resource support issues
-  const needsResourceFallback = clientName.includes('claude');
+  // Known clients with proper resource support (can skip fallback tools)
+  const supportsResourcesProperly =
+    clientName.includes('inspector') || clientName.includes('vscode');
 
-  if (needsResourceFallback && enabledResourceFallbackTools.length > 0) {
+  if (!supportsResourcesProperly && enabledResourceFallbackTools.length > 0) {
     server.server.sendLoggingMessage({
       level: 'info',
-      data: `Client "${clientVersion?.name}" has known resource issues. Registering ${enabledResourceFallbackTools.length} resource fallback tools`
+      data: `Client "${clientVersion?.name}" may need resource fallback tools. Registering ${enabledResourceFallbackTools.length} resource fallback tools`
     });
 
     enabledResourceFallbackTools.forEach((tool) => {
