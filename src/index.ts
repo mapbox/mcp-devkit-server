@@ -253,21 +253,24 @@ async function main() {
     });
   }
 
-  // Register resource fallback tools for clients that may not support resources properly
-  // Note: Resources are a core MCP feature, but not all clients support them perfectly.
+  // Register resource fallback tools for clients that don't support resources
+  // Note: Resources are a core MCP feature, but some clients (like smolagents) don't support them.
+  // These fallback tools provide the same content as resources but via tool calls instead.
   // We use an allowlist approach: only skip fallback tools for clients we KNOW support resources.
   // This is safer than blocklisting - unknown clients get fallback tools by default.
   const clientVersion = server.server.getClientVersion();
   const clientName = clientVersion?.name?.toLowerCase() || '';
 
-  // Known clients with proper resource support (can skip fallback tools)
-  const supportsResourcesProperly =
-    clientName.includes('inspector') || clientName.includes('vscode');
+  // Known clients with resource support (can skip fallback tools)
+  const supportsResources =
+    clientName.includes('inspector') ||
+    clientName.includes('vscode') ||
+    clientName.includes('claude');
 
-  if (!supportsResourcesProperly && enabledResourceFallbackTools.length > 0) {
+  if (!supportsResources && enabledResourceFallbackTools.length > 0) {
     server.server.sendLoggingMessage({
       level: 'info',
-      data: `Client "${clientVersion?.name}" may need resource fallback tools. Registering ${enabledResourceFallbackTools.length} resource fallback tools`
+      data: `Client "${clientVersion?.name}" does not support resources. Registering ${enabledResourceFallbackTools.length} resource fallback tools`
     });
 
     enabledResourceFallbackTools.forEach((tool) => {
@@ -277,7 +280,7 @@ async function main() {
   } else if (enabledResourceFallbackTools.length > 0) {
     server.server.sendLoggingMessage({
       level: 'debug',
-      data: `Client "${clientVersion?.name}" supports resources properly. Skipping ${enabledResourceFallbackTools.length} resource fallback tools`
+      data: `Client "${clientVersion?.name}" supports resources. Skipping ${enabledResourceFallbackTools.length} resource fallback tools`
     });
   }
 

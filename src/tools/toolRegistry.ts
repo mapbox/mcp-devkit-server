@@ -69,12 +69,13 @@ export const CORE_TOOLS = [
 export const ELICITATION_TOOLS = [] as const;
 
 /**
- * Tools that serve as bridges/workarounds for missing resource support
- * These tools are only registered if client does NOT support resources properly
+ * Tools that serve as bridges for clients without resource support
+ * These tools are only registered if client does NOT support resources
  *
- * Context: These tools exist as workarounds for clients (like Claude Desktop) that
- * can list resources but don't automatically fetch them. Clients that properly
- * support resources don't need these bridge tools.
+ * Context: Some MCP clients (like smolagents) don't support resources at all.
+ * These tools provide the same content as resources but via tool calls instead,
+ * allowing these clients to access reference data and documentation.
+ * Clients that support resources (Claude Desktop, VS Code, Inspector) don't need these.
  *
  * - GetReferenceTool: Provides access to reference resources (style layers, Streets v8 fields, token scopes, layer type mapping)
  * - GetMapboxDocSourceTool: Provides access to Mapbox documentation (resource://mapbox-documentation)
