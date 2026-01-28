@@ -1304,6 +1304,29 @@ node dist/esm/index.js --disable-mcp-ui
 
 **Note:** You typically don't need to disable this. The implementation is fully backwards compatible and doesn't affect clients that don't support MCP-UI. See [mcpui.dev](https://mcpui.dev) for compatible clients.
 
+#### CLIENT_NEEDS_RESOURCE_FALLBACK
+
+**Resource Fallback Tools (Opt-In for Non-Compliant Clients)**
+
+Resources are a core MCP feature supported by most clients (Claude Desktop, VS Code, MCP Inspector, etc.). However, some clients (like smolagents) don't support resources at all. For these clients, the server can provide "resource fallback tools" that deliver the same content as resources but via tool calls.
+
+**Fallback Tools:**
+
+- `get_reference_tool` - Access to style layers, Streets v8 fields, token scopes, layer type mapping
+- `get_latest_mapbox_docs_tool` - Access to Mapbox documentation
+
+**By default, these tools are NOT included** (assumes your client supports resources). If your client doesn't support resources, enable the fallback tools:
+
+```bash
+export CLIENT_NEEDS_RESOURCE_FALLBACK=true
+```
+
+**When to set this:**
+
+- ✅ Set to `true` if using smolagents or other clients without resource support
+- ❌ Leave unset (default) if using Claude Desktop, VS Code, MCP Inspector, or any resource-capable client
+- ❌ Leave unset if unsure (most clients support resources)
+
 ## Troubleshooting
 
 **Issue:** Tools fail with authentication errors

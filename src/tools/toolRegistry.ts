@@ -70,13 +70,17 @@ export const ELICITATION_TOOLS = [] as const;
 
 /**
  * Tools that serve as bridges for clients without resource support
- * These tools are only registered if client does NOT support resources
+ * These tools are only registered if CLIENT_NEEDS_RESOURCE_FALLBACK env var is set to "true"
  *
- * Context: Some MCP clients (like smolagents) don't support resources at all.
- * These tools provide the same content as resources but via tool calls instead,
- * allowing these clients to access reference data and documentation.
- * Clients that support resources (Claude Desktop, VS Code, Inspector) don't need these.
+ * Context: Most MCP clients support resources (Claude Desktop, VS Code, Inspector, etc.).
+ * However, some clients (like smolagents) don't support resources at all.
+ * These tools provide the same content as resources but via tool calls instead.
  *
+ * Configuration:
+ * - Leave unset (default) = Skip these tools (assumes client supports resources)
+ * - Set CLIENT_NEEDS_RESOURCE_FALLBACK=true = Include these tools (for smolagents, etc.)
+ *
+ * Tools:
  * - GetReferenceTool: Provides access to reference resources (style layers, Streets v8 fields, token scopes, layer type mapping)
  * - GetMapboxDocSourceTool: Provides access to Mapbox documentation (resource://mapbox-documentation)
  */
