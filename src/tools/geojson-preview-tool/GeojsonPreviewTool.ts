@@ -105,11 +105,39 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
       const encodedGeoJSON = encodeURIComponent(geojsonString);
       const geojsonIOUrl = `https://geojson.io/#data=data:application/json,${encodedGeoJSON}`;
 
-      // Build content array with URL
+      // Extract GeoJSON metadata for descriptive text
+      const geojsonType = (geojsonData as { type: string }).type;
+      let featureInfo = '';
+      if (geojsonType === 'FeatureCollection') {
+        const fc = geojsonData as {
+          features: Array<{ geometry: { type: string } }>;
+        };
+        const featureCount = fc.features.length;
+        const geometryTypes = [
+          ...new Set(fc.features.map((f) => f.geometry.type))
+        ];
+        featureInfo = `Features: ${featureCount} (${geometryTypes.join(', ')})`;
+      } else if (geojsonType === 'Feature') {
+        const feature = geojsonData as { geometry: { type: string } };
+        featureInfo = `Geometry: ${feature.geometry.type}`;
+      } else {
+        featureInfo = `Geometry: ${geojsonType}`;
+      }
+
+      // Build descriptive text with GeoJSON metadata for better client compatibility
+      // This ensures all MCP clients can display meaningful information
+      const textDescription = [
+        'GeoJSON preview generated successfully.',
+        `Type: ${geojsonType}`,
+        featureInfo,
+        `Preview URL: ${geojsonIOUrl}`
+      ].join('\n');
+
+      // Build content array with text first (for compatibility)
       const content: CallToolResult['content'] = [
         {
           type: 'text',
-          text: geojsonIOUrl
+          text: textDescription
         }
       ];
 

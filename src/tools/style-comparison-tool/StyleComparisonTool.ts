@@ -101,11 +101,27 @@ export class StyleComparisonTool extends BaseTool<
       url += `#${input.zoom}/${input.latitude}/${input.longitude}`;
     }
 
-    // Build content array with URL
+    // Build descriptive text with comparison metadata for better client compatibility
+    // This ensures all MCP clients can display meaningful information
+    const textDescription = [
+      'Mapbox style comparison generated successfully.',
+      `Before: ${beforeStyleId}`,
+      `After: ${afterStyleId}`,
+      input.zoom !== undefined &&
+      input.latitude !== undefined &&
+      input.longitude !== undefined
+        ? `View: ${input.latitude}, ${input.longitude} @ zoom ${input.zoom}`
+        : null,
+      `Comparison URL: ${url}`
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    // Build content array with text first (for compatibility)
     const content: CallToolResult['content'] = [
       {
         type: 'text',
-        text: url
+        text: textDescription
       }
     ];
 
