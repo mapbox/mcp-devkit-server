@@ -6,6 +6,9 @@ import { MapboxStreetsV8FieldsResource } from './mapbox-streets-v8-fields-resour
 import { MapboxTokenScopesResource } from './mapbox-token-scopes-resource/MapboxTokenScopesResource.js';
 import { MapboxLayerTypeMappingResource } from './mapbox-layer-type-mapping-resource/MapboxLayerTypeMappingResource.js';
 import { MapboxDocumentationResource } from './mapbox-documentation-resource/MapboxDocumentationResource.js';
+import { PreviewStyleUIResource } from './ui-apps/PreviewStyleUIResource.js';
+import { StyleComparisonUIResource } from './ui-apps/StyleComparisonUIResource.js';
+import { GeojsonPreviewUIResource } from './ui-apps/GeojsonPreviewUIResource.js';
 import { httpRequest } from '../utils/httpPipeline.js';
 
 // Central registry of all resources
@@ -14,7 +17,11 @@ export const ALL_RESOURCES = [
   new MapboxStreetsV8FieldsResource(),
   new MapboxTokenScopesResource(),
   new MapboxLayerTypeMappingResource(),
-  new MapboxDocumentationResource({ httpRequest })
+  new MapboxDocumentationResource({ httpRequest }),
+  // MCP Apps UI resources (ui:// scheme)
+  new PreviewStyleUIResource(),
+  new StyleComparisonUIResource(),
+  new GeojsonPreviewUIResource()
 ] as const;
 
 export type ResourceInstance = (typeof ALL_RESOURCES)[number];

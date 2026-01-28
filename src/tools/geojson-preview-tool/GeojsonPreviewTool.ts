@@ -157,10 +157,29 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
         }
       }
 
-      return {
-        isError: false,
-        content
+      // Add MCP Apps metadata (new pattern for broader client compatibility)
+      const result: CallToolResult = {
+        content,
+        isError: false
       };
+
+      // Add ui:// resource URI for MCP Apps pattern
+      // This works alongside MCP-UI for backward compatibility
+      if (isMcpUiEnabled()) {
+        // Create content-addressable URI using hash of GeoJSON
+        const contentHash = createHash('md5')
+          .update(geojsonString)
+          .digest('hex')
+          .substring(0, 16);
+
+        result._meta = {
+          ui: {
+            resourceUri: `ui://mapbox/geojson-preview/${contentHash}`
+          }
+        };
+      }
+
+      return result;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
