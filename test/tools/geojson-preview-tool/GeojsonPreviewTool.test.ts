@@ -40,14 +40,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content[0].type).toBe('text');
     const content = result.content[0];
     if (content.type === 'text') {
-      // Verify descriptive text includes metadata
-      expect(content.text).toContain('GeoJSON preview generated successfully');
-      expect(content.text).toContain('Type: Point');
-      expect(content.text).toContain('Geometry: Point');
-      expect(content.text).toContain('Preview URL:');
-      // Verify URL is present in the text
-      expect(content.text).toContain(
-        'https://geojson.io/#data=data:application/json,'
+      expect(content.text).toMatch(
+        /^https:\/\/geojson\.io\/#data=data:application\/json,/
       );
       expect(content.text).toContain(
         encodeURIComponent(JSON.stringify(pointGeoJSON))
@@ -110,14 +104,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.isError).toBe(false);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Verify descriptive text includes metadata
-      expect(content.text).toContain('GeoJSON preview generated successfully');
-      expect(content.text).toContain('Type: Feature');
-      expect(content.text).toContain('Geometry: Point');
-      expect(content.text).toContain('Preview URL:');
-      // Verify URL is present in the text
-      expect(content.text).toContain(
-        'https://geojson.io/#data=data:application/json,'
+      expect(content.text).toMatch(
+        /^https:\/\/geojson\.io\/#data=data:application\/json,/
       );
       expect(content.text).toContain(encodeURIComponent(geoJSONString));
     }
@@ -154,16 +142,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.isError).toBe(false);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Verify descriptive text includes metadata
-      expect(content.text).toContain('GeoJSON preview generated successfully');
-      expect(content.text).toContain('Type: FeatureCollection');
-      expect(content.text).toContain('Features: 2');
-      expect(content.text).toContain('Point');
-      expect(content.text).toContain('LineString');
-      expect(content.text).toContain('Preview URL:');
-      // Verify URL is present in the text
-      expect(content.text).toContain(
-        'https://geojson.io/#data=data:application/json,'
+      expect(content.text).toMatch(
+        /^https:\/\/geojson\.io\/#data=data:application\/json,/
       );
       expect(content.text).toContain(
         encodeURIComponent(JSON.stringify(featureCollection))
@@ -217,14 +197,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.isError).toBe(false);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Verify descriptive text includes metadata
-      expect(content.text).toContain('GeoJSON preview generated successfully');
-      expect(content.text).toContain('Type: Feature');
-      expect(content.text).toContain('Geometry: Point');
-      expect(content.text).toContain('Preview URL:');
-      // Verify URL is present in the text
-      expect(content.text).toContain(
-        'https://geojson.io/#data=data:application/json,'
+      expect(content.text).toMatch(
+        /^https:\/\/geojson\.io\/#data=data:application\/json,/
       );
       // Verify URL contains properly encoded content
       expect(content.text).toContain('%22'); // Encoded quotes

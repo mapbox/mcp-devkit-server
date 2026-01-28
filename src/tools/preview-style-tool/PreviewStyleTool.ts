@@ -65,25 +65,11 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
 
     const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${userName}/${input.styleId}.html?${params.toString()}${hashFragment}`;
 
-    // Build descriptive text with map metadata for better client compatibility
-    // This ensures all MCP clients can display meaningful information
-    const textDescription = [
-      'Mapbox style preview generated successfully.',
-      `Style: ${userName}/${input.styleId}`,
-      `Preview URL: ${url}`,
-      input.title !== undefined ? `Title display: ${input.title}` : null,
-      input.zoomwheel !== undefined
-        ? `Zoom control: ${input.zoomwheel ? 'enabled' : 'disabled'}`
-        : null
-    ]
-      .filter(Boolean)
-      .join('\n');
-
-    // Build content array with text first (for compatibility)
+    // Build content array with URL
     const content: CallToolResult['content'] = [
       {
         type: 'text',
-        text: textDescription
+        text: url
       }
     ];
 
