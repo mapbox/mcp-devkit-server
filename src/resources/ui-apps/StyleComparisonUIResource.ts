@@ -7,6 +7,7 @@ import type {
   ServerNotification,
   ServerRequest
 } from '@modelcontextprotocol/sdk/types.js';
+import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { BaseResource } from '../BaseResource.js';
 
 /**
@@ -15,34 +16,15 @@ import { BaseResource } from '../BaseResource.js';
  */
 export class StyleComparisonUIResource extends BaseResource {
   readonly name = 'Mapbox Style Comparison UI';
-  readonly uri = 'ui://mapbox/style-comparison/*';
+  readonly uri = 'ui://mapbox/style-comparison/index.html';
   readonly description =
     'Interactive UI for comparing Mapbox styles side-by-side (MCP Apps)';
-  readonly mimeType = 'text/html';
+  readonly mimeType = RESOURCE_MIME_TYPE;
 
   public async readCallback(
-    uri: URL,
+    _uri: URL,
     _extra: RequestHandlerExtra<ServerRequest, ServerNotification>
   ): Promise<ReadResourceResult> {
-    // Extract before and after styles from URI path
-    // Format: ui://mapbox/style-comparison/{beforeStyle}/{afterStyle}
-    const pathParts = uri.pathname.split('/').filter((p) => p);
-    const beforeStyle = pathParts[2];
-    const afterStyle = pathParts[3];
-
-    if (!beforeStyle || !afterStyle) {
-      return {
-        contents: [
-          {
-            uri: uri.toString(),
-            mimeType: 'text/plain',
-            text: 'Error: Invalid URI format. Expected ui://mapbox/style-comparison/{beforeStyle}/{afterStyle}'
-          }
-        ]
-      };
-    }
-
-    // Generate HTML with embedded iframe for style comparison
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -59,11 +41,11 @@ export class StyleComparisonUIResource extends BaseResource {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
     }
-    #comparison-frame {
-      width: 100vw;
+    #comparison-iframe {
+      width: 100%;
       height: 100vh;
       border: none;
-      display: block;
+      display: none;
     }
     #loading {
       position: absolute;
@@ -73,42 +55,113 @@ export class StyleComparisonUIResource extends BaseResource {
       text-align: center;
       color: #666;
     }
+    #error {
+      padding: 20px;
+      color: #cc0000;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <div id="loading">Loading comparison...</div>
-  <iframe id="comparison-frame" style="display:none"></iframe>
+  <div id="loading">Loading style comparison...</div>
+  <iframe id="comparison-iframe"></iframe>
+  <div id="error" style="display:none"></div>
 
   <script type="module">
-    import { App } from "https://esm.sh/@modelcontextprotocol/ext-apps@0.1.1";
-
-    const frame = document.getElementById('comparison-frame');
+    const iframe = document.getElementById('comparison-iframe');
     const loading = document.getElementById('loading');
+    const errorDiv = document.getElementById('error');
 
-    try {
-      const app = new App();
-      await app.connect();
+    let messageId = 0;
+    const pendingRequests = new Map();
 
-      // Receive tool result from host and extract comparison URL
-      app.onContextUpdate((context) => {
-        if (!context.toolResult) return;
-
-        // Find the text content which contains the comparison URL
-        const textContent = context.toolResult.content.find(
-          (c) => c.type === 'text'
-        );
-
-        if (textContent && textContent.text) {
-          // Set iframe to the comparison URL from tool result
-          frame.src = textContent.text;
-          frame.style.display = 'block';
-          loading.style.display = 'none';
-        }
+    function sendRequest(method, params = {}) {
+      const id = ++messageId;
+      const message = { jsonrpc: '2.0', id, method, params };
+      window.parent.postMessage(message, '*');
+      return new Promise((resolve, reject) => {
+        pendingRequests.set(id, { resolve, reject });
       });
-    } catch (error) {
-      loading.textContent = 'Failed to connect to MCP host: ' + error.message;
-      loading.style.color = '#cc0000';
     }
+
+    function sendNotification(method, params = {}) {
+      const message = { jsonrpc: '2.0', method, params };
+      window.parent.postMessage(message, '*');
+    }
+
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (!message || typeof message !== 'object') return;
+
+      console.log('Received message:', JSON.stringify(message, null, 2));
+
+      if (message.id && pendingRequests.has(message.id)) {
+        const { resolve, reject } = pendingRequests.get(message.id);
+        pendingRequests.delete(message.id);
+        if (message.error) {
+          reject(new Error(message.error.message));
+        } else {
+          resolve(message.result);
+        }
+        return;
+      }
+
+      if (message.method === 'ui/notifications/tool-result') {
+        if (message.params) {
+          handleToolResult(message.params);
+        }
+      }
+    });
+
+    async function handleToolResult(result) {
+      console.log('Tool result received:', result);
+
+      const textContent = result.content?.find(c => c.type === 'text');
+
+      if (textContent && textContent.text) {
+        const url = textContent.text;
+        console.log('Received comparison URL:', url);
+
+        if (url.includes('agent.mapbox.com/tools/style-compare')) {
+          iframe.src = url;
+          iframe.style.display = 'block';
+          loading.style.display = 'none';
+        } else {
+          loading.style.display = 'none';
+          errorDiv.textContent = 'Invalid comparison URL format';
+          errorDiv.style.display = 'block';
+        }
+      } else {
+        loading.style.display = 'none';
+        errorDiv.textContent = 'No URL found in tool result';
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    async function init() {
+      try {
+        console.log('Connecting to MCP host...');
+
+        const result = await sendRequest('ui/initialize', {
+          protocolVersion: '2026-01-26',
+          appCapabilities: {},
+          appInfo: {
+            name: 'Mapbox Style Comparison',
+            version: '1.0.0'
+          }
+        });
+
+        console.log('Initialize result:', result);
+        sendNotification('ui/notifications/initialized', {});
+        console.log('Connected to MCP host');
+      } catch (error) {
+        console.error('Failed to connect:', error);
+        loading.textContent = 'Failed to connect to MCP host: ' + error.message;
+        loading.style.color = '#cc0000';
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>`;
@@ -116,9 +169,18 @@ export class StyleComparisonUIResource extends BaseResource {
     return {
       contents: [
         {
-          uri: uri.toString(),
-          mimeType: 'text/html',
-          text: html
+          uri: this.uri,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: html,
+          _meta: {
+            ui: {
+              csp: {
+                connectDomains: ['https://*.mapbox.com'],
+                resourceDomains: ['https://*.mapbox.com'],
+                frameDomains: ['https://agent.mapbox.com']
+              }
+            }
+          }
         }
       ]
     };

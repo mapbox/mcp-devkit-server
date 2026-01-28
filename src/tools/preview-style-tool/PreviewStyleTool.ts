@@ -7,7 +7,6 @@ import {
   PreviewStyleInput
 } from './PreviewStyleTool.input.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
-import { isMcpUiEnabled } from '../../config/toolConfig.js';
 
 export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   readonly name = 'preview_style_tool';
@@ -19,6 +18,17 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     idempotentHint: true,
     openWorldHint: false,
     title: 'Preview Mapbox Style Tool'
+  };
+
+  readonly meta = {
+    ui: {
+      resourceUri: 'ui://mapbox/preview-style/index.html',
+      csp: {
+        connectDomains: ['https://*.mapbox.com'],
+        resourceDomains: ['https://*.mapbox.com'],
+        frameDomains: ['https://*.mapbox.com']
+      }
+    }
   };
 
   constructor() {
@@ -73,38 +83,23 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
       }
     ];
 
-    // Conditionally add MCP-UI resource if enabled
-    if (isMcpUiEnabled()) {
-      const uiResource = createUIResource({
-        uri: `ui://mapbox/preview-style/${userName}/${input.styleId}`,
-        content: {
-          type: 'externalUrl',
-          iframeUrl: url
-        },
-        encoding: 'text',
-        uiMetadata: {
-          'preferred-frame-size': ['1000px', '700px']
-        }
-      });
-      content.push(uiResource);
-    }
+    // Add MCP-UI resource (for legacy MCP-UI clients)
+    const uiResource = createUIResource({
+      uri: `ui://mapbox/preview-style/${userName}/${input.styleId}`,
+      content: {
+        type: 'externalUrl',
+        iframeUrl: url
+      },
+      encoding: 'text',
+      uiMetadata: {
+        'preferred-frame-size': ['1000px', '700px']
+      }
+    });
+    content.push(uiResource);
 
-    // Add MCP Apps metadata (new pattern for broader client compatibility)
-    const result: CallToolResult = {
+    return {
       content,
       isError: false
     };
-
-    // Add ui:// resource URI for MCP Apps pattern
-    // This works alongside MCP-UI for backward compatibility
-    if (isMcpUiEnabled()) {
-      result._meta = {
-        ui: {
-          resourceUri: `ui://mapbox/preview-style/${userName}/${input.styleId}`
-        }
-      };
-    }
-
-    return result;
   }
 }

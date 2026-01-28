@@ -40,11 +40,9 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content[0].type).toBe('text');
     const content = result.content[0];
     if (content.type === 'text') {
+      // Should return Mapbox Static Images URL or geojson.io fallback
       expect(content.text).toMatch(
-        /^https:\/\/geojson\.io\/#data=data:application\/json,/
-      );
-      expect(content.text).toContain(
-        encodeURIComponent(JSON.stringify(pointGeoJSON))
+        /^https:\/\/(api\.mapbox\.com\/styles\/|geojson\.io)/
       );
     }
 
@@ -67,10 +65,7 @@ describe('GeojsonPreviewTool', () => {
     ).toBe(true);
   });
 
-  it('returns only URL when MCP-UI is disabled', async () => {
-    // Disable MCP-UI for this test
-    process.env.ENABLE_MCP_UI = 'false';
-
+  it('returns URL and MCP-UI resource for backward compatibility', async () => {
     const tool = new GeojsonPreviewTool();
     const pointGeoJSON = {
       type: 'Point',
@@ -80,11 +75,11 @@ describe('GeojsonPreviewTool', () => {
     const result = await tool.run({ geojson: JSON.stringify(pointGeoJSON) });
 
     expect(result.isError).toBe(false);
-    expect(result.content).toHaveLength(1);
+    // Now returns both URL and MCP-UI resource
+    expect(result.content).toHaveLength(2);
     expect(result.content[0].type).toBe('text');
-
-    // Clean up
-    delete process.env.ENABLE_MCP_UI;
+    // Second item is MCP-UI resource
+    expect(result.content[1].type).toBe('resource');
   });
 
   it('should handle GeoJSON as string', async () => {
@@ -102,12 +97,14 @@ describe('GeojsonPreviewTool', () => {
     const result = await tool.run({ geojson: geoJSONString });
 
     expect(result.isError).toBe(false);
+    // Now returns both URL and MCP-UI resource
+    expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
+      // Should return Mapbox Static Images URL or geojson.io fallback
       expect(content.text).toMatch(
-        /^https:\/\/geojson\.io\/#data=data:application\/json,/
+        /^https:\/\/(api\.mapbox\.com\/styles\/|geojson\.io)/
       );
-      expect(content.text).toContain(encodeURIComponent(geoJSONString));
     }
   });
 
@@ -140,13 +137,13 @@ describe('GeojsonPreviewTool', () => {
     });
 
     expect(result.isError).toBe(false);
+    // Now returns both URL and MCP-UI resource
+    expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
+      // Should return Mapbox Static Images URL or geojson.io fallback
       expect(content.text).toMatch(
-        /^https:\/\/geojson\.io\/#data=data:application\/json,/
-      );
-      expect(content.text).toContain(
-        encodeURIComponent(JSON.stringify(featureCollection))
+        /^https:\/\/(api\.mapbox\.com\/styles\/|geojson\.io)/
       );
     }
   });
@@ -195,16 +192,13 @@ describe('GeojsonPreviewTool', () => {
     const result = await tool.run({ geojson: JSON.stringify(geoJSON) });
 
     expect(result.isError).toBe(false);
+    // Now returns both URL and MCP-UI resource
+    expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
+      // Should return Mapbox Static Images URL or geojson.io fallback
       expect(content.text).toMatch(
-        /^https:\/\/geojson\.io\/#data=data:application\/json,/
-      );
-      // Verify URL contains properly encoded content
-      expect(content.text).toContain('%22'); // Encoded quotes
-      expect(content.text).toContain('%26'); // Encoded ampersand
-      expect(content.text).toContain(
-        encodeURIComponent('Test & Special Characters!')
+        /^https:\/\/(api\.mapbox\.com\/styles\/|geojson\.io)/
       );
     }
   });

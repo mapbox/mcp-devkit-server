@@ -7,6 +7,7 @@ import type {
   ServerNotification,
   ServerRequest
 } from '@modelcontextprotocol/sdk/types.js';
+import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { BaseResource } from '../BaseResource.js';
 
 /**
@@ -15,32 +16,15 @@ import { BaseResource } from '../BaseResource.js';
  */
 export class GeojsonPreviewUIResource extends BaseResource {
   readonly name = 'GeoJSON Preview UI';
-  readonly uri = 'ui://mapbox/geojson-preview/*';
+  readonly uri = 'ui://mapbox/geojson-preview/index.html';
   readonly description =
     'Interactive UI for previewing GeoJSON data (MCP Apps)';
-  readonly mimeType = 'text/html';
+  readonly mimeType = RESOURCE_MIME_TYPE;
 
   public async readCallback(
-    uri: URL,
+    _uri: URL,
     _extra: RequestHandlerExtra<ServerRequest, ServerNotification>
   ): Promise<ReadResourceResult> {
-    // Extract content hash from URI path
-    // Format: ui://mapbox/geojson-preview/{contentHash}
-    const pathParts = uri.pathname.split('/').filter((p) => p);
-    const contentHash = pathParts[2];
-
-    if (!contentHash) {
-      return {
-        contents: [
-          {
-            uri: uri.toString(),
-            mimeType: 'text/plain',
-            text: 'Error: Invalid URI format. Expected ui://mapbox/geojson-preview/{contentHash}'
-          }
-        ]
-      };
-    }
-
     // Generate HTML with embedded iframe for GeoJSON visualization
     const html = `<!DOCTYPE html>
 <html>
@@ -58,11 +42,11 @@ export class GeojsonPreviewUIResource extends BaseResource {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
     }
-    #preview-frame {
-      width: 100vw;
-      height: 100vh;
-      border: none;
+    #preview-image {
+      max-width: 100%;
+      max-height: 100vh;
       display: block;
+      margin: 0 auto;
     }
     #loading {
       position: absolute;
@@ -72,42 +56,162 @@ export class GeojsonPreviewUIResource extends BaseResource {
       text-align: center;
       color: #666;
     }
+    #error {
+      padding: 20px;
+      color: #cc0000;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
   <div id="loading">Loading GeoJSON preview...</div>
-  <iframe id="preview-frame" style="display:none"></iframe>
+  <img id="preview-image" style="display:none" alt="GeoJSON Preview">
+  <div id="error" style="display:none"></div>
 
   <script type="module">
-    import { App } from "https://esm.sh/@modelcontextprotocol/ext-apps@0.1.1";
-
-    const frame = document.getElementById('preview-frame');
+    // Minimal MCP Apps client implementation (inlined to avoid CSP issues)
+    const image = document.getElementById('preview-image');
     const loading = document.getElementById('loading');
+    const errorDiv = document.getElementById('error');
 
-    try {
-      const app = new App();
-      await app.connect();
+    let messageId = 0;
+    const pendingRequests = new Map();
 
-      // Receive tool result from host and extract preview URL
-      app.onContextUpdate((context) => {
-        if (!context.toolResult) return;
-
-        // Find the text content which contains the preview URL
-        const textContent = context.toolResult.content.find(
-          (c) => c.type === 'text'
-        );
-
-        if (textContent && textContent.text) {
-          // Set iframe to the preview URL from tool result
-          frame.src = textContent.text;
-          frame.style.display = 'block';
-          loading.style.display = 'none';
-        }
+    // Send JSON-RPC request to host (expects response)
+    function sendRequest(method, params = {}) {
+      const id = ++messageId;
+      const message = { jsonrpc: '2.0', id, method, params };
+      window.parent.postMessage(message, '*');
+      return new Promise((resolve, reject) => {
+        pendingRequests.set(id, { resolve, reject });
       });
-    } catch (error) {
-      loading.textContent = 'Failed to connect to MCP host: ' + error.message;
-      loading.style.color = '#cc0000';
     }
+
+    // Send JSON-RPC notification to host (no response expected)
+    function sendNotification(method, params = {}) {
+      const message = { jsonrpc: '2.0', method, params };
+      window.parent.postMessage(message, '*');
+    }
+
+    // Handle messages from host
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (!message || typeof message !== 'object') return;
+
+      console.log('Received message:', JSON.stringify(message, null, 2));
+
+      // Handle JSON-RPC responses
+      if (message.id && pendingRequests.has(message.id)) {
+        const { resolve, reject } = pendingRequests.get(message.id);
+        pendingRequests.delete(message.id);
+        if (message.error) {
+          reject(new Error(message.error.message));
+        } else {
+          resolve(message.result);
+        }
+        return;
+      }
+
+      // Handle notifications (tool results)
+      if (message.method === 'ui/notifications/tool-result') {
+        if (message.params) {
+          handleToolResult(message.params);
+        }
+      }
+    });
+
+    async function handleToolResult(result) {
+      console.log('Tool result received:', result);
+
+      // Find the text content which contains the preview URL
+      const textContent = result.content?.find(c => c.type === 'text');
+
+      if (textContent && textContent.text) {
+        const url = textContent.text;
+        console.log('Received URL:', url.substring(0, 100) + '...');
+
+        // Check if it's a Mapbox Static Images URL
+        if (url.includes('api.mapbox.com/styles/') && url.includes('/static/')) {
+          loading.textContent = 'Fetching image from Mapbox...';
+
+          try {
+            // Fetch the image and convert to blob URL to work with CSP
+            const response = await fetch(url);
+            if (!response.ok) {
+              throw new Error('Failed to fetch image: ' + response.status);
+            }
+
+            const blob = await response.blob();
+            const blobUrl = URL.createObjectURL(blob);
+
+            // Display the image using blob URL (allowed by CSP)
+            image.src = blobUrl;
+            image.style.display = 'block';
+            loading.style.display = 'none';
+          } catch (error) {
+            loading.style.display = 'none';
+            errorDiv.textContent = 'Failed to load image: ' + error.message;
+            errorDiv.style.display = 'block';
+          }
+        } else if (url.includes('geojson.io')) {
+          // geojson.io doesn't work in iframes due to CSP
+          loading.style.display = 'none';
+          errorDiv.textContent = 'Cannot display geojson.io in iframe due to CSP. Open the URL directly:';
+          errorDiv.style.display = 'block';
+
+          // Create a clickable link
+          const link = document.createElement('a');
+          link.href = url;
+          link.target = '_blank';
+          link.textContent = url;
+          link.style.display = 'block';
+          link.style.marginTop = '10px';
+          link.style.color = '#0066cc';
+          link.style.wordBreak = 'break-all';
+          errorDiv.appendChild(link);
+        } else {
+          // Unknown URL format
+          loading.style.display = 'none';
+          errorDiv.textContent = 'Unsupported URL format: ' + url.substring(0, 100);
+          errorDiv.style.display = 'block';
+        }
+      } else {
+        console.log('No text content found in tool result');
+        loading.style.display = 'none';
+        errorDiv.textContent = 'No URL found in tool result';
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    // Initialize connection
+    async function init() {
+      try {
+        console.log('Connecting to MCP host...');
+
+        // Send initialize request according to MCP Apps protocol
+        const result = await sendRequest('ui/initialize', {
+          protocolVersion: '2026-01-26',
+          appCapabilities: {},
+          appInfo: {
+            name: 'GeoJSON Preview',
+            version: '1.0.0'
+          }
+        });
+
+        console.log('Initialize result:', result);
+
+        // Send initialized notification
+        sendNotification('ui/notifications/initialized', {});
+
+        console.log('Connected to MCP host');
+      } catch (error) {
+        console.error('Failed to connect:', error);
+        loading.textContent = 'Failed to connect to MCP host: ' + error.message;
+        loading.style.color = '#cc0000';
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>`;
@@ -115,9 +219,17 @@ export class GeojsonPreviewUIResource extends BaseResource {
     return {
       contents: [
         {
-          uri: uri.toString(),
-          mimeType: 'text/html',
-          text: html
+          uri: this.uri,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: html,
+          _meta: {
+            ui: {
+              csp: {
+                connectDomains: ['https://api.mapbox.com'],
+                resourceDomains: ['https://api.mapbox.com']
+              }
+            }
+          }
         }
       ]
     };

@@ -65,11 +65,17 @@ export class GetReferenceTool extends BaseTool<typeof GetReferenceSchema> {
         };
       }
 
+      const firstContent = result.contents[0];
+      const text =
+        'text' in firstContent
+          ? firstContent.text
+          : 'No text content available';
+
       return {
         content: [
           {
             type: 'text',
-            text: result.contents[0].text as string
+            text
           }
         ],
         isError: false

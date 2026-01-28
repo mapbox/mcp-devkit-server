@@ -10,7 +10,6 @@ import {
   GeojsonPreviewSchema,
   GeojsonPreviewInput
 } from './GeojsonPreviewTool.input.schema.js';
-import { isMcpUiEnabled } from '../../config/toolConfig.js';
 
 export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
   name = 'geojson_preview_tool';
@@ -22,6 +21,16 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
     idempotentHint: true,
     openWorldHint: false,
     title: 'Preview GeoJSON Data Tool'
+  };
+
+  readonly meta = {
+    ui: {
+      resourceUri: 'ui://mapbox/geojson-preview/index.html',
+      csp: {
+        connectDomains: ['https://api.mapbox.com'],
+        resourceDomains: ['https://api.mapbox.com']
+      }
+    }
   };
 
   constructor() {
@@ -63,7 +72,6 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
     }
 
     // Create a simplified GeoJSON for the overlay
-    // The Static API requires specific format for GeoJSON overlays
     const geojsonString = JSON.stringify(geojsonData);
     const encodedGeoJSON = encodeURIComponent(geojsonString);
 
@@ -105,81 +113,48 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
       const encodedGeoJSON = encodeURIComponent(geojsonString);
       const geojsonIOUrl = `https://geojson.io/#data=data:application/json,${encodedGeoJSON}`;
 
+      // Try to generate a Mapbox Static Image URL
+      // The MCP App will fetch this and convert to blob URL to work with CSP
+      const staticImageUrl = this.generateStaticImageUrl(geojsonData);
+
+      // Use static image URL if available (MCP App will handle CSP via blob URL),
+      // otherwise fall back to geojson.io
+      const displayUrl = staticImageUrl || geojsonIOUrl;
+
       // Build content array with URL
       const content: CallToolResult['content'] = [
         {
           type: 'text',
-          text: geojsonIOUrl
+          text: displayUrl
         }
       ];
 
-      // Conditionally add MCP-UI resource if enabled
-      if (isMcpUiEnabled()) {
-        // Create content-addressable URI using hash of GeoJSON
-        // This enables client-side caching - same GeoJSON = same URI
-        const contentHash = createHash('md5')
-          .update(geojsonString)
-          .digest('hex')
-          .substring(0, 16); // Use first 16 chars for brevity
+      // Add MCP-UI resource (for legacy MCP-UI clients)
+      // Create content-addressable URI using hash of GeoJSON
+      // This enables client-side caching - same GeoJSON = same URI
+      const contentHash = createHash('md5')
+        .update(geojsonString)
+        .digest('hex')
+        .substring(0, 16); // Use first 16 chars for brevity
 
-        // Try to generate a Mapbox Static Image URL
-        const staticImageUrl = this.generateStaticImageUrl(geojsonData);
-
-        if (staticImageUrl) {
-          // Use Mapbox Static Images API - embeds as an image
-          const uiResource = createUIResource({
-            uri: `ui://mapbox/geojson-preview/${contentHash}`,
-            content: {
-              type: 'externalUrl',
-              iframeUrl: staticImageUrl
-            },
-            encoding: 'text',
-            uiMetadata: {
-              'preferred-frame-size': ['1000px', '700px']
-            }
-          });
-          content.push(uiResource);
-        } else {
-          // Fallback to geojson.io URL (for large GeoJSON or when no token)
-          // Note: geojson.io may not work in iframes due to X-Frame-Options
-          const uiResource = createUIResource({
-            uri: `ui://mapbox/geojson-preview/${contentHash}`,
-            content: {
-              type: 'externalUrl',
-              iframeUrl: geojsonIOUrl
-            },
-            encoding: 'text',
-            uiMetadata: {
-              'preferred-frame-size': ['1000px', '700px']
-            }
-          });
-          content.push(uiResource);
+      // Use the same URL for MCP-UI as we returned in text content
+      const uiResource = createUIResource({
+        uri: `ui://mapbox/geojson-preview/${contentHash}`,
+        content: {
+          type: 'externalUrl',
+          iframeUrl: displayUrl
+        },
+        encoding: 'text',
+        uiMetadata: {
+          'preferred-frame-size': ['1000px', '700px']
         }
-      }
+      });
+      content.push(uiResource);
 
-      // Add MCP Apps metadata (new pattern for broader client compatibility)
-      const result: CallToolResult = {
+      return {
         content,
         isError: false
       };
-
-      // Add ui:// resource URI for MCP Apps pattern
-      // This works alongside MCP-UI for backward compatibility
-      if (isMcpUiEnabled()) {
-        // Create content-addressable URI using hash of GeoJSON
-        const contentHash = createHash('md5')
-          .update(geojsonString)
-          .digest('hex')
-          .substring(0, 16);
-
-        result._meta = {
-          ui: {
-            resourceUri: `ui://mapbox/geojson-preview/${contentHash}`
-          }
-        };
-      }
-
-      return result;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';

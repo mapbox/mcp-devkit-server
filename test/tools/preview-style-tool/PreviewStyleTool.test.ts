@@ -172,10 +172,7 @@ describe('PreviewStyleTool', () => {
     });
   });
 
-  it('returns only URL when MCP-UI is disabled', async () => {
-    // Disable MCP-UI for this test
-    process.env.ENABLE_MCP_UI = 'false';
-
+  it('returns URL and MCP-UI resource for backward compatibility', async () => {
     const result = await new PreviewStyleTool().run({
       styleId: 'test-style',
       accessToken: TEST_ACCESS_TOKEN,
@@ -184,15 +181,17 @@ describe('PreviewStyleTool', () => {
     });
 
     expect(result.isError).toBe(false);
-    expect(result.content).toHaveLength(1);
+    // Now returns both URL (for text) and MCP-UI resource (for backward compat)
+    expect(result.content).toHaveLength(2);
     expect(result.content[0]).toMatchObject({
       type: 'text',
       text: expect.stringContaining(
         'https://api.mapbox.com/styles/v1/test-user/test-style.html?access_token=pk.'
       )
     });
-
-    // Clean up
-    delete process.env.ENABLE_MCP_UI;
+    // Second item is MCP-UI resource
+    expect(result.content[1]).toMatchObject({
+      type: 'resource'
+    });
   });
 });

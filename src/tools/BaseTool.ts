@@ -23,6 +23,16 @@ export abstract class BaseTool<
 
   readonly inputSchema: InputSchema;
   readonly outputSchema?: OutputSchema;
+  readonly meta?: {
+    ui?: {
+      resourceUri?: string;
+      csp?: {
+        connectDomains?: string[];
+        resourceDomains?: string[];
+        frameDomains?: string[];
+      };
+    };
+  };
   protected server: McpServer | null = null;
 
   constructor(params: {
@@ -74,6 +84,16 @@ export abstract class BaseTool<
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       outputSchema?: any;
       annotations?: ToolAnnotations;
+      _meta?: {
+        ui?: {
+          resourceUri?: string;
+          csp?: {
+            connectDomains?: string[];
+            resourceDomains?: string[];
+            frameDomains?: string[];
+          };
+        };
+      };
     } = {
       title: this.annotations.title,
       description: this.description,
@@ -91,8 +111,16 @@ export abstract class BaseTool<
         (this.outputSchema as unknown as z.ZodObject<any>).shape;
     }
 
-    return server.registerTool(this.name, config, (args, extra) =>
-      this.run(args, extra)
+    // Add _meta for MCP Apps support if provided (includes CSP configuration)
+    if (this.meta) {
+      config._meta = this.meta;
+    }
+
+    return server.registerTool(
+      this.name,
+      config,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (args: any, extra: any) => this.run(args, extra)
     );
   }
 

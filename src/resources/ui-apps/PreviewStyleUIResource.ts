@@ -7,6 +7,7 @@ import type {
   ServerNotification,
   ServerRequest
 } from '@modelcontextprotocol/sdk/types.js';
+import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { BaseResource } from '../BaseResource.js';
 
 /**
@@ -15,35 +16,15 @@ import { BaseResource } from '../BaseResource.js';
  */
 export class PreviewStyleUIResource extends BaseResource {
   readonly name = 'Mapbox Style Preview UI';
-  readonly uri = 'ui://mapbox/preview-style/*';
+  readonly uri = 'ui://mapbox/preview-style/index.html';
   readonly description =
     'Interactive UI for previewing Mapbox styles (MCP Apps)';
-  readonly mimeType = 'text/html';
+  readonly mimeType = RESOURCE_MIME_TYPE;
 
   public async readCallback(
-    uri: URL,
+    _uri: URL,
     _extra: RequestHandlerExtra<ServerRequest, ServerNotification>
   ): Promise<ReadResourceResult> {
-    // Extract username and styleId from URI path
-    // Format: ui://mapbox/preview-style/{username}/{styleId}
-    const pathParts = uri.pathname.split('/').filter((p) => p);
-    const username = pathParts[2];
-    const styleId = pathParts[3];
-
-    if (!username || !styleId) {
-      return {
-        contents: [
-          {
-            uri: uri.toString(),
-            mimeType: 'text/plain',
-            text: 'Error: Invalid URI format. Expected ui://mapbox/preview-style/{username}/{styleId}'
-          }
-        ]
-      };
-    }
-
-    // Generate HTML with embedded iframe and MCP Apps SDK
-    // The iframe URL will be constructed client-side based on parameters
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -60,11 +41,11 @@ export class PreviewStyleUIResource extends BaseResource {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
     }
-    #preview-frame {
-      width: 100vw;
+    #preview-iframe {
+      width: 100%;
       height: 100vh;
       border: none;
-      display: block;
+      display: none;
     }
     #loading {
       position: absolute;
@@ -74,42 +55,113 @@ export class PreviewStyleUIResource extends BaseResource {
       text-align: center;
       color: #666;
     }
+    #error {
+      padding: 20px;
+      color: #cc0000;
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <div id="loading">Loading preview...</div>
-  <iframe id="preview-frame" style="display:none"></iframe>
+  <div id="loading">Loading style preview...</div>
+  <iframe id="preview-iframe"></iframe>
+  <div id="error" style="display:none"></div>
 
   <script type="module">
-    import { App } from "https://esm.sh/@modelcontextprotocol/ext-apps@0.1.1";
-
-    const frame = document.getElementById('preview-frame');
+    const iframe = document.getElementById('preview-iframe');
     const loading = document.getElementById('loading');
+    const errorDiv = document.getElementById('error');
 
-    try {
-      const app = new App();
-      await app.connect();
+    let messageId = 0;
+    const pendingRequests = new Map();
 
-      // Receive tool result from host and extract preview URL
-      app.onContextUpdate((context) => {
-        if (!context.toolResult) return;
-
-        // Find the text content which contains the preview URL
-        const textContent = context.toolResult.content.find(
-          (c) => c.type === 'text'
-        );
-
-        if (textContent && textContent.text) {
-          // Set iframe to the preview URL from tool result
-          frame.src = textContent.text;
-          frame.style.display = 'block';
-          loading.style.display = 'none';
-        }
+    function sendRequest(method, params = {}) {
+      const id = ++messageId;
+      const message = { jsonrpc: '2.0', id, method, params };
+      window.parent.postMessage(message, '*');
+      return new Promise((resolve, reject) => {
+        pendingRequests.set(id, { resolve, reject });
       });
-    } catch (error) {
-      loading.textContent = 'Failed to connect to MCP host: ' + error.message;
-      loading.style.color = '#cc0000';
     }
+
+    function sendNotification(method, params = {}) {
+      const message = { jsonrpc: '2.0', method, params };
+      window.parent.postMessage(message, '*');
+    }
+
+    window.addEventListener('message', (event) => {
+      const message = event.data;
+      if (!message || typeof message !== 'object') return;
+
+      console.log('Received message:', JSON.stringify(message, null, 2));
+
+      if (message.id && pendingRequests.has(message.id)) {
+        const { resolve, reject } = pendingRequests.get(message.id);
+        pendingRequests.delete(message.id);
+        if (message.error) {
+          reject(new Error(message.error.message));
+        } else {
+          resolve(message.result);
+        }
+        return;
+      }
+
+      if (message.method === 'ui/notifications/tool-result') {
+        if (message.params) {
+          handleToolResult(message.params);
+        }
+      }
+    });
+
+    async function handleToolResult(result) {
+      console.log('Tool result received:', result);
+
+      const textContent = result.content?.find(c => c.type === 'text');
+
+      if (textContent && textContent.text) {
+        const url = textContent.text;
+        console.log('Received preview URL:', url);
+
+        if (url.includes('api.mapbox.com/styles/') && url.includes('.html')) {
+          iframe.src = url;
+          iframe.style.display = 'block';
+          loading.style.display = 'none';
+        } else {
+          loading.style.display = 'none';
+          errorDiv.textContent = 'Invalid preview URL format';
+          errorDiv.style.display = 'block';
+        }
+      } else {
+        loading.style.display = 'none';
+        errorDiv.textContent = 'No URL found in tool result';
+        errorDiv.style.display = 'block';
+      }
+    }
+
+    async function init() {
+      try {
+        console.log('Connecting to MCP host...');
+
+        const result = await sendRequest('ui/initialize', {
+          protocolVersion: '2026-01-26',
+          appCapabilities: {},
+          appInfo: {
+            name: 'Mapbox Style Preview',
+            version: '1.0.0'
+          }
+        });
+
+        console.log('Initialize result:', result);
+        sendNotification('ui/notifications/initialized', {});
+        console.log('Connected to MCP host');
+      } catch (error) {
+        console.error('Failed to connect:', error);
+        loading.textContent = 'Failed to connect to MCP host: ' + error.message;
+        loading.style.color = '#cc0000';
+      }
+    }
+
+    init();
   </script>
 </body>
 </html>`;
@@ -117,9 +169,18 @@ export class PreviewStyleUIResource extends BaseResource {
     return {
       contents: [
         {
-          uri: uri.toString(),
-          mimeType: 'text/html',
-          text: html
+          uri: this.uri,
+          mimeType: RESOURCE_MIME_TYPE,
+          text: html,
+          _meta: {
+            ui: {
+              csp: {
+                connectDomains: ['https://*.mapbox.com'],
+                resourceDomains: ['https://*.mapbox.com'],
+                frameDomains: ['https://api.mapbox.com']
+              }
+            }
+          }
         }
       ]
     };
