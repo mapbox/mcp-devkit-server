@@ -75,10 +75,10 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
     const geojsonString = JSON.stringify(geojsonData);
     const encodedGeoJSON = encodeURIComponent(geojsonString);
 
-    // Use Mapbox Streets style with auto-bounds fitting
+    // Use Mapbox Light basemap style with auto-bounds fitting and retina display (@2x)
     // Format: /styles/v1/{username}/{style_id}/static/geojson({geojson})/auto/{width}x{height}@2x
     const staticImageUrl =
-      `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/` +
+      `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/` +
       `geojson(${encodedGeoJSON})/auto/1000x700@2x` +
       `?access_token=${accessToken}`;
 
