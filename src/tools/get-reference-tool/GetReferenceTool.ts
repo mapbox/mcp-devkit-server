@@ -65,11 +65,25 @@ export class GetReferenceTool extends BaseTool<typeof GetReferenceSchema> {
         };
       }
 
+      const content = result.contents[0];
+      // Type guard: check if content has 'text' property (vs 'blob' for binary resources)
+      if (!('text' in content)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Reference ${input.reference} returned binary content, expected text`
+            }
+          ],
+          isError: true
+        };
+      }
+
       return {
         content: [
           {
             type: 'text',
-            text: result.contents[0].text
+            text: content.text
           }
         ],
         isError: false
