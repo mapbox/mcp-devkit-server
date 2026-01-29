@@ -9,7 +9,9 @@ const CoordinatesSchema = z.tuple([z.number(), z.number()]);
 // Vector Tileset Feature Schema
 const VectorTilequeryFeatureSchema = z.object({
   type: z.literal('Feature'),
-  id: z.string().describe('Feature identifier'),
+  id: z
+    .union([z.string(), z.number()])
+    .describe('Feature identifier (string or number per GeoJSON spec)'),
   geometry: z.object({
     type: z.literal('Point'),
     coordinates: CoordinatesSchema

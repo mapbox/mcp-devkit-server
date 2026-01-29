@@ -1,3 +1,18 @@
+## 0.4.7
+
+### Security
+
+- **CVE-2026-0621**: Updated `@modelcontextprotocol/sdk` to 1.25.3 to fix ReDoS vulnerability in UriTemplate regex patterns
+
+### Bug Fixes
+
+- Migrated from deprecated `server.resource()` to `server.registerResource()` API in BaseResource
+- Fixed TypeScript implicit `any` type error in BaseTool registerTool callback
+
+### Dependencies
+
+- Updated `@modelcontextprotocol/sdk` from 1.17.5 to 1.25.3
+
 ## 0.4.6
 
 ### Features Added

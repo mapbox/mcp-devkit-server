@@ -1,18 +1,18 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.mapbox/mcp-devkit-server",
   "description": "Provides AI assistants with direct access to Mapbox developer APIs and documentation.",
   "repository": {
     "url": "https://github.com/mapbox/mcp-devkit-server",
     "source": "github"
   },
-  "version": "0.4.6",
+  "version": "0.4.7",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "runtimeHint": "npx",
-      "version": "0.4.6",
+      "version": "0.4.7",
       "identifier": "@mapbox/mcp-devkit-server",
       "transport": {
         "type": "stdio"
