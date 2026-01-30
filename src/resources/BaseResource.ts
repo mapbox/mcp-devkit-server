@@ -22,7 +22,7 @@ export abstract class BaseResource {
    * Install this resource to the MCP server
    */
   installTo(server: McpServer): void {
-    server.resource(
+    server.registerResource(
       this.name,
       this.uri,
       {
