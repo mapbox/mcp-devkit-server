@@ -195,4 +195,48 @@ describe('PreviewStyleTool', () => {
     // Clean up
     delete process.env.ENABLE_MCP_UI;
   });
+
+  describe('elicitation behavior', () => {
+    it('returns error when no accessToken and no valid server token', async () => {
+      const tool = new PreviewStyleTool();
+
+      // Remove env var temporarily to test error path
+      const oldToken = process.env.MAPBOX_ACCESS_TOKEN;
+      delete process.env.MAPBOX_ACCESS_TOKEN;
+
+      const result = await tool.run({
+        styleId: 'test-style'
+        // No accessToken, no authInfo.token either
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toMatchObject({
+        type: 'text',
+        text: expect.stringContaining(
+          'Server access token is required when no preview token is provided'
+        )
+      });
+
+      // Restore env var
+      process.env.MAPBOX_ACCESS_TOKEN = oldToken;
+    });
+
+    it('works with backward compatibility when accessToken is provided', async () => {
+      const tool = new PreviewStyleTool();
+      // Even without server initialization, providing accessToken directly should work
+
+      const result = await tool.run({
+        styleId: 'test-style',
+        accessToken: TEST_ACCESS_TOKEN
+      });
+
+      expect(result.isError).toBe(false);
+      expect(result.content[0]).toMatchObject({
+        type: 'text',
+        text: expect.stringContaining(
+          '/styles/v1/test-user/test-style.html?access_token=pk.'
+        )
+      });
+    });
+  });
 });
