@@ -1,115 +1,51 @@
 # Mapbox Agent Skills
 
-This directory contains [Agent Skills](https://agentskills.io) that provide domain expertise and best practices for building maps with Mapbox. These skills complement the MCP server by teaching AI assistants how to make better decisions about map design, security, and implementation patterns.
+> **Note:** Mapbox Agent Skills have moved to a dedicated repository for better maintenance and discoverability.
 
-## What are Agent Skills?
+## 📦 Install Skills from the Official Repository
 
-Agent Skills are folders containing instructions, scripts, and resources that AI agents can discover and use to perform tasks more effectively. Unlike MCP tools (which provide actions) or prompts (which provide workflows), skills provide **domain expertise** - the "know-how" that helps agents make informed decisions.
+All Mapbox Agent Skills are now maintained in the official **[mapbox-agent-skills](https://github.com/mapbox/mapbox-agent-skills)** repository.
 
-Think of skills as giving Claude a specialized education in cartography, security, and Mapbox development best practices.
+### Quick Install
 
-## Available Skills
+```bash
+# Install all Mapbox skills
+npx add-skill mapbox/mapbox-agent-skills
 
-### 🎨 mapbox-cartography
+# Install specific skills
+npx add-skill mapbox/mapbox-agent-skills --skill mapbox-web-performance-patterns
+npx add-skill mapbox/mapbox-agent-skills --skill mapbox-token-security
+npx add-skill mapbox/mapbox-agent-skills --skill mapbox-cartography
+```
 
-**Expert guidance on map design principles, color theory, visual hierarchy, typography, and cartographic best practices.**
+### Available Skills
 
-Use this skill when:
+The mapbox-agent-skills repository includes **10 comprehensive skills**:
 
-- Designing a new map style
-- Choosing colors for map elements
-- Making decisions about visual hierarchy
-- Optimizing for specific use cases
-- Ensuring accessibility
-- Creating themed maps (dark mode, vintage, etc.)
+**Migration & Platform:**
 
-**Key topics:**
+- `mapbox-google-maps-migration` - Migrate from Google Maps to Mapbox GL JS
+- `mapbox-maplibre-migration` - Migrate from MapLibre GL JS to Mapbox
 
-- Core cartographic principles (visual hierarchy, color theory)
-- Typography best practices for maps
-- Map context considerations (audience, platform, use case)
-- Zoom level strategies
-- Color palette templates
-- Common mapping scenarios (restaurant finders, real estate, etc.)
+**Performance & Integration:**
 
-[View skill →](./mapbox-cartography/SKILL.md)
+- `mapbox-web-performance-patterns` - Performance optimization for Mapbox GL JS
+- `mapbox-web-integration-patterns` - Framework integration (React, Vue, Svelte, Angular, Next.js)
 
-### 🔐 mapbox-token-security
+**Design & Styling:**
 
-**Security best practices for Mapbox access tokens, including scope management, URL restrictions, and rotation strategies.**
+- `mapbox-cartography` - Map design principles and best practices
+- `mapbox-style-patterns` - Common style patterns and layer configurations
+- `mapbox-style-quality` - Style validation, accessibility, and testing
 
-Use this skill when:
+**Security:**
 
-- Creating new tokens
-- Deciding between public vs secret tokens
-- Setting up token restrictions
-- Implementing token rotation
-- Investigating security incidents
-- Conducting security audits
+- `mapbox-token-security` - Access token security and best practices
 
-**Key topics:**
+**Mobile:**
 
-- Token types and when to use them (public, secret, temporary)
-- Scope management (principle of least privilege)
-- URL restrictions and patterns
-- Token storage and handling
-- Rotation strategies
-- Monitoring and auditing
-- Incident response plans
-
-[View skill →](./mapbox-token-security/SKILL.md)
-
-### 📐 mapbox-style-patterns
-
-**Common style patterns, layer configurations, and recipes for typical mapping scenarios.**
-
-Use this skill when:
-
-- Starting a new map style for a specific use case
-- Looking for layer configuration examples
-- Implementing common mapping patterns
-- Optimizing existing styles
-- Need proven recipes for typical scenarios
-
-**Key topics:**
-
-- Restaurant/POI finder pattern
-- Real estate map pattern
-- Data visualization base map pattern
-- Navigation/routing map pattern
-- Dark mode / night theme pattern
-- Layer optimization patterns
-- Common modifications (3D buildings, terrain, custom markers)
-
-[View skill →](./mapbox-style-patterns/SKILL.md)
-
-### 🔧 mapbox-integration-patterns
-
-**Official integration patterns for Mapbox GL JS across popular web frameworks including React, Vue, Svelte, Angular, and vanilla JavaScript.**
-
-Use this skill when:
-
-- Setting up Mapbox GL JS in a new project
-- Integrating Mapbox into a specific framework
-- Adding Mapbox Search functionality
-- Implementing proper cleanup and lifecycle management
-- Debugging map initialization issues
-- Converting between frameworks
-- Reviewing code for integration best practices
-
-**Key topics:**
-
-- Framework-specific patterns (React, Vue, Svelte, Angular, Next.js)
-- Token management (environment variables across frameworks)
-- Lifecycle management and cleanup (preventing memory leaks)
-- Mapbox Search JS integration
-- Common mistakes and how to avoid them
-- SSR handling (Angular Universal, Next.js)
-- Testing patterns for maps
-
-**Based on:** Mapbox's official `create-web-app` scaffolding tool
-
-[View skill →](./mapbox-integration-patterns/SKILL.md)
+- `mapbox-ios-patterns` - iOS integration with Swift, SwiftUI, UIKit
+- `mapbox-android-patterns` - Android integration with Kotlin, Jetpack Compose
 
 ## How Skills Work with the MCP Server
 
@@ -126,144 +62,32 @@ The Mapbox MCP DevKit Server and Agent Skills work together:
 ```
 User: "Create a map for my restaurant finder app"
 
-Without Skills:
-Claude → Uses create_style_tool with basic styling
-
-With Skills:
-Claude →
-1. [mapbox-cartography skill] Understands restaurant maps need:
-   - High contrast for restaurant markers
-   - Muted background (food photos will overlay)
-   - Clear street labels for navigation
-   - Mobile-optimized design
-
-2. [mapbox-token-security skill] Knows to create public token with:
-   - Only styles:read scope (principle of least privilege)
-   - URL restrictions to app domain
-
-3. [mapbox-style-patterns skill] Applies POI Finder pattern:
-   - Desaturated base map
-   - Orange markers (#FF6B35) for visibility
-   - White roads on light gray background
-
-4. → Uses style_builder_tool with informed design decisions
-5. → Uses create_style_tool with optimized configuration
-6. → Uses create_token_tool with secure settings
-7. → Uses preview_style_tool to generate shareable link
+With MCP Server + Skills:
+1. [mapbox-cartography skill] Understands restaurant map design principles
+2. [mapbox-style-patterns skill] Applies POI Finder pattern
+3. [mapbox-token-security skill] Knows secure token configuration
+4. → Uses MCP tools (style_builder_tool, create_style_tool, etc.)
+5. → Creates optimized, secure map
 ```
 
-## Using Skills
+## Why Skills Moved to a Separate Repository
 
-### With Claude Code
+**Benefits:**
 
-Skills in this directory are automatically discovered by Claude Code when placed in:
-
-- Project-level: `.claude/skills/` (recommended for this repository)
-- Global: `~/.claude/skills/` (available across all projects)
-
-To use these skills in Claude Code:
-
-```bash
-# Option 1: Symlink from project root (recommended)
-mkdir -p .claude
-ln -s ../skills .claude/skills
-
-# Option 2: Copy to global skills directory
-cp -r skills/* ~/.claude/skills/
-```
-
-For more information, see [Claude Code Skills documentation](https://code.claude.com/docs/en/skills).
-
-### With Claude API
-
-Upload skills via the Skills API:
-
-```bash
-# Create a zip of the skill directory
-cd skills/mapbox-cartography
-zip -r mapbox-cartography.zip .
-
-# Upload via API
-curl https://api.anthropic.com/v1/skills \
-  -H "anthropic-version: 2025-08-25" \
-  -H "x-api-key: $ANTHROPIC_API_KEY" \
-  -H "anthropic-beta: skills-2025-10-02" \
-  -F file=@mapbox-cartography.zip
-```
-
-For more information, see [Claude API Skills guide](https://docs.anthropic.com/en/build-with-claude/skills-guide).
-
-### With Claude.ai
-
-1. Go to Settings → Features
-2. Upload skill as a zip file
-3. Claude will automatically use the skill when relevant
-
-For more information, see [Using Skills in Claude](https://support.claude.com/en/articles/12512180-using-skills-in-claude).
-
-## Skill Structure
-
-Each skill follows the Agent Skills specification:
-
-```
-skill-name/
-├── SKILL.md              # Main skill file (required)
-│   ├── YAML frontmatter  # name, description
-│   └── Markdown content  # Instructions and guidance
-└── [optional files]      # Additional resources
-```
-
-**SKILL.md format:**
-
-```yaml
----
-name: skill-name
-description: What the skill does and when to use it
----
-# Skill Name
-
-[Instructions and guidance for Claude to follow]
-```
-
-## Creating Custom Skills
-
-To create your own Mapbox-related skill:
-
-1. **Create a new directory** in `skills/`
-2. **Create SKILL.md** with YAML frontmatter and instructions
-3. **Add reference materials** (optional)
-4. **Test with Claude Code** or upload to API
-5. **Share with team** via git or Skills API
-
-**Guidelines:**
-
-- Keep instructions clear and actionable
-- Provide concrete examples
-- Include decision trees when applicable
-- Reference official Mapbox documentation
-- Test with real scenarios
-
-For more best practices, see [Agent Skills authoring guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices).
-
-## License
-
-These skills are provided under the same license as the Mapbox MCP DevKit Server (MIT License).
+- ✅ **Dedicated maintenance**: Skills can be updated independently
+- ✅ **Better discoverability**: Easier to find and install via `npx add-skill`
+- ✅ **Comprehensive collection**: 10 skills covering web, mobile, and migration
+- ✅ **Community contributions**: Easier for community to contribute new skills
+- ✅ **Versioning**: Skills can be versioned independently from MCP server
 
 ## Resources
 
-- [Agent Skills Overview](https://agentskills.io)
-- [Agent Skills Specification](https://github.com/anthropics/skills)
-- [Claude Skills Documentation](https://docs.anthropic.com/en/agents-and-tools/agent-skills/overview)
-- [Mapbox Documentation](https://docs.mapbox.com)
-- [Mapbox Style Specification](https://docs.mapbox.com/style-spec/)
+- **[Mapbox Agent Skills Repository](https://github.com/mapbox/mapbox-agent-skills)** - Official skills repository
+- [Agent Skills Overview](https://agentskills.io) - Learn about Agent Skills
+- [Agent Skills Specification](https://github.com/anthropics/skills) - Technical specification
+- [Mapbox Documentation](https://docs.mapbox.com) - Official Mapbox docs
 
-## Contributing
+## Need Help?
 
-We welcome contributions of new skills or improvements to existing ones! Please:
-
-1. Follow the existing skill structure
-2. Test your skill thoroughly
-3. Include clear examples
-4. Submit a pull request with description
-
-For questions or suggestions, please open an issue.
+- Skills-related issues: [mapbox-agent-skills issues](https://github.com/mapbox/mapbox-agent-skills/issues)
+- MCP Server issues: [mcp-devkit-server issues](https://github.com/mapbox/mcp-devkit-server/issues)
