@@ -79,9 +79,10 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
       }
 
       // Generate geojson.io/next URL
+      // Note: geojson.io/next uses query params (?data=) not hash params (#data=)
       const geojsonString = JSON.stringify(geojsonData);
       const encodedGeoJSON = encodeURIComponent(geojsonString);
-      const geojsonIOUrl = `https://geojson.io/next/#data=data:application/json,${encodedGeoJSON}`;
+      const geojsonIOUrl = `https://geojson.io/next/?data=data:application/json,${encodedGeoJSON}`;
 
       // Use geojson.io/next as the display URL
       const displayUrl = geojsonIOUrl;
