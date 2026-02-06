@@ -18,14 +18,14 @@ export class GeojsonPreviewUIResource extends BaseResource {
   readonly name = 'GeoJSON Preview UI';
   readonly uri = 'ui://mapbox/geojson-preview/index.html';
   readonly description =
-    'Interactive UI for previewing GeoJSON data (MCP Apps)';
+    'Interactive UI for previewing GeoJSON data using geojson.io/next (MCP Apps)';
   readonly mimeType = RESOURCE_MIME_TYPE;
 
   public async readCallback(
     _uri: URL,
     _extra: RequestHandlerExtra<ServerRequest, ServerNotification>
   ): Promise<ReadResourceResult> {
-    // Generate HTML with embedded iframe for GeoJSON visualization
+    // Generate HTML with embedded iframe for GeoJSON visualization using geojson.io/next
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -41,52 +41,17 @@ export class GeojsonPreviewUIResource extends BaseResource {
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       overflow: hidden;
-      background: #000;
+      background: #f5f5f5;
       display: flex;
       flex-direction: column;
       height: 100vh;
     }
-    #zoom-hint {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(255, 255, 255, 0.9);
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 13px;
-      color: #333;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-    }
-    #zoom-hint.show {
-      opacity: 1;
-    }
-    #image-container {
+    #preview-iframe {
       flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: auto;
-    }
-    #preview-image {
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
+      width: 100%;
+      height: 100%;
+      border: none;
       display: none;
-      cursor: zoom-in;
-      transition: transform 0.2s;
-    }
-    #preview-image:hover {
-      transform: scale(1.02);
-    }
-    #preview-image.zoomed {
-      cursor: zoom-out;
-      max-width: none;
-      max-height: none;
     }
     #loading {
       position: absolute;
@@ -94,14 +59,14 @@ export class GeojsonPreviewUIResource extends BaseResource {
       left: 50%;
       transform: translate(-50%, -50%);
       text-align: center;
-      color: #fff;
+      color: #333;
       font-size: 16px;
     }
     #error {
       padding: 20px;
-      color: #ff6b6b;
+      color: #d32f2f;
       text-align: center;
-      background: rgba(255, 255, 255, 0.1);
+      background: #ffebee;
       border-radius: 8px;
       max-width: 600px;
       margin: 20px auto;
@@ -110,41 +75,14 @@ export class GeojsonPreviewUIResource extends BaseResource {
 </head>
 <body>
   <div id="loading">Loading GeoJSON preview...</div>
-  <div id="image-container">
-    <img id="preview-image" alt="GeoJSON Preview">
-  </div>
-  <div id="zoom-hint">Click to view full size</div>
+  <iframe id="preview-iframe" allow="geolocation"></iframe>
   <div id="error" style="display:none"></div>
 
   <script type="module">
     // Minimal MCP Apps client implementation (inlined to avoid CSP issues)
-    const image = document.getElementById('preview-image');
+    const iframe = document.getElementById('preview-iframe');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
-    const zoomHint = document.getElementById('zoom-hint');
-
-    let isZoomed = false;
-
-    // Click to zoom image
-    image.addEventListener('click', () => {
-      isZoomed = !isZoomed;
-      if (isZoomed) {
-        image.classList.add('zoomed');
-        zoomHint.textContent = 'Click to fit to window';
-      } else {
-        image.classList.remove('zoomed');
-        zoomHint.textContent = 'Click to view full size';
-      }
-    });
-
-    // Show hint on hover
-    image.addEventListener('mouseenter', () => {
-      zoomHint.classList.add('show');
-    });
-
-    image.addEventListener('mouseleave', () => {
-      zoomHint.classList.remove('show');
-    });
 
     let messageId = 0;
     const pendingRequests = new Map();
@@ -200,52 +138,46 @@ export class GeojsonPreviewUIResource extends BaseResource {
 
       if (textContent && textContent.text) {
         const url = textContent.text;
-        console.log('Received URL:', url.substring(0, 100) + '...');
+        console.log('Received URL:', url);
 
-        // Check if it's a Mapbox Static Images URL
-        if (url.includes('api.mapbox.com/styles/') && url.includes('/static/')) {
-          loading.textContent = 'Fetching image from Mapbox...';
-
-          try {
-            // Fetch the image and convert to blob URL to work with CSP
-            const response = await fetch(url);
-            if (!response.ok) {
-              throw new Error('Failed to fetch image: ' + response.status);
-            }
-
-            const blob = await response.blob();
-            const blobUrl = URL.createObjectURL(blob);
-
-            // Display the image using blob URL (allowed by CSP)
-            image.src = blobUrl;
-            image.style.display = 'block';
-            loading.style.display = 'none';
-          } catch (error) {
-            loading.style.display = 'none';
-            errorDiv.textContent = 'Failed to load image: ' + error.message;
-            errorDiv.style.display = 'block';
-          }
-        } else if (url.includes('geojson.io')) {
-          // geojson.io doesn't work in iframes due to CSP
+        // Check if it's a geojson.io/next URL
+        if (url.includes('geojson.io/next')) {
+          // Display geojson.io/next in iframe
+          iframe.src = url;
+          iframe.style.display = 'block';
           loading.style.display = 'none';
-          errorDiv.textContent = 'Cannot display geojson.io in iframe due to CSP. Open the URL directly:';
+
+          // Handle iframe load errors
+          iframe.addEventListener('error', () => {
+            loading.style.display = 'none';
+            errorDiv.textContent = 'Failed to load geojson.io/next. Try opening the URL directly:';
+            errorDiv.style.display = 'block';
+
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.textContent = url;
+            link.style.display = 'block';
+            link.style.marginTop = '10px';
+            link.style.color = '#1976d2';
+            link.style.wordBreak = 'break-all';
+            errorDiv.appendChild(link);
+          });
+        } else {
+          // Unknown URL format or old geojson.io URL
+          loading.style.display = 'none';
+          errorDiv.textContent = 'Unsupported URL format. Expected geojson.io/next URL. URL:';
           errorDiv.style.display = 'block';
 
-          // Create a clickable link
           const link = document.createElement('a');
           link.href = url;
           link.target = '_blank';
           link.textContent = url;
           link.style.display = 'block';
           link.style.marginTop = '10px';
-          link.style.color = '#0066cc';
+          link.style.color = '#1976d2';
           link.style.wordBreak = 'break-all';
           errorDiv.appendChild(link);
-        } else {
-          // Unknown URL format
-          loading.style.display = 'none';
-          errorDiv.textContent = 'Unsupported URL format: ' + url.substring(0, 100);
-          errorDiv.style.display = 'block';
         }
       } else {
         console.log('No text content found in tool result');
@@ -297,8 +229,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
           _meta: {
             ui: {
               csp: {
-                connectDomains: ['https://api.mapbox.com'],
-                resourceDomains: ['https://api.mapbox.com']
+                frameDomains: ['https://geojson.io']
               },
               preferredSize: {
                 width: 1200,

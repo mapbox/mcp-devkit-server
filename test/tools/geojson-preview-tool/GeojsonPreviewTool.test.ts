@@ -14,7 +14,7 @@ describe('GeojsonPreviewTool', () => {
       const tool = new GeojsonPreviewTool();
       expect(tool.name).toBe('geojson_preview_tool');
       expect(tool.description).toBe(
-        'Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.'
+        'Generate a geojson.io/next URL to visualize GeoJSON data. Returns only the URL link.'
       );
     });
 
@@ -40,14 +40,11 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content[0].type).toBe('text');
     const content = result.content[0];
     if (content.type === 'text') {
-      // Should return Mapbox Static Images URL or geojson.io fallback
-      expect(content.text).toMatch(
-        /^https:\/\/(api\.mapbox\.com\/styles\/|geojson\.io)/
-      );
+      // Should return geojson.io/next URL
+      expect(content.text).toMatch(/^https:\/\/geojson\.io\/next/);
     }
 
     // Verify MCP-UI resource is included by default
-    // Could be either Mapbox Static Images API or geojson.io (fallback)
     expect(result.content[1]).toMatchObject({
       type: 'resource',
       resource: {
@@ -57,12 +54,9 @@ describe('GeojsonPreviewTool', () => {
       }
     });
 
-    // Verify the iframe URL is either Mapbox Static Images API or geojson.io
+    // Verify the iframe URL is geojson.io/next
     const iframeUrl = (result.content[1] as any).resource.text;
-    expect(
-      iframeUrl.includes('api.mapbox.com/styles') ||
-        iframeUrl.includes('geojson.io')
-    ).toBe(true);
+    expect(iframeUrl.includes('geojson.io/next')).toBe(true);
   });
 
   it('returns URL and MCP-UI resource for backward compatibility', async () => {
@@ -101,10 +95,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Should return Mapbox Static Images URL or geojson.io fallback
-      expect(content.text).toMatch(
-        /^https:\/\/(api\.mapbox\.com\/styles\/|geojson\.io)/
-      );
+      // Should return geojson.io/next URL
+      expect(content.text).toMatch(/^https:\/\/geojson\.io\/next/);
     }
   });
 
@@ -141,10 +133,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Should return Mapbox Static Images URL or geojson.io fallback
-      expect(content.text).toMatch(
-        /^https:\/\/(api\.mapbox\.com\/styles\/|geojson\.io)/
-      );
+      // Should return geojson.io/next URL
+      expect(content.text).toMatch(/^https:\/\/geojson\.io\/next/);
     }
   });
 
@@ -196,10 +186,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Should return Mapbox Static Images URL or geojson.io fallback
-      expect(content.text).toMatch(
-        /^https:\/\/(api\.mapbox\.com\/styles\/|geojson\.io)/
-      );
+      // Should return geojson.io/next URL
+      expect(content.text).toMatch(/^https:\/\/geojson\.io\/next/);
     }
   });
 });
