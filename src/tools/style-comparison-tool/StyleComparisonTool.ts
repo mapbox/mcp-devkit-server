@@ -9,7 +9,6 @@ import {
   StyleComparisonInput
 } from './StyleComparisonTool.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
-import { isMcpUiEnabled } from '../../config/toolConfig.js';
 
 export class StyleComparisonTool extends BaseTool<
   typeof StyleComparisonSchema
@@ -23,6 +22,17 @@ export class StyleComparisonTool extends BaseTool<
     idempotentHint: true,
     openWorldHint: false,
     title: 'Compare Mapbox Styles Tool'
+  };
+
+  readonly meta = {
+    ui: {
+      resourceUri: 'ui://mapbox/style-comparison/index.html',
+      csp: {
+        connectDomains: ['https://*.mapbox.com'],
+        resourceDomains: ['https://*.mapbox.com'],
+        frameDomains: ['https://*.mapbox.com']
+      }
+    }
   };
 
   constructor() {
@@ -109,21 +119,19 @@ export class StyleComparisonTool extends BaseTool<
       }
     ];
 
-    // Conditionally add MCP-UI resource if enabled
-    if (isMcpUiEnabled()) {
-      const uiResource = createUIResource({
-        uri: `ui://mapbox/style-comparison/${beforeStyleId}/${afterStyleId}`,
-        content: {
-          type: 'externalUrl',
-          iframeUrl: url
-        },
-        encoding: 'text',
-        uiMetadata: {
-          'preferred-frame-size': ['1000px', '700px']
-        }
-      });
-      content.push(uiResource);
-    }
+    // Add MCP-UI resource (for legacy MCP-UI clients)
+    const uiResource = createUIResource({
+      uri: `ui://mapbox/style-comparison/${beforeStyleId}/${afterStyleId}`,
+      content: {
+        type: 'externalUrl',
+        iframeUrl: url
+      },
+      encoding: 'text',
+      uiMetadata: {
+        'preferred-frame-size': ['1000px', '700px']
+      }
+    });
+    content.push(uiResource);
 
     return {
       content,
