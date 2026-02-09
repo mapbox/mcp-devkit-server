@@ -77,6 +77,15 @@ Generates three files: `*.input.schema.ts`, `*.output.schema.ts`, and `*.test.ts
 - Never update snapshots without verifying changes
 - Tool snapshots capture class names, tool names, and descriptions
 
+**Pull Requests:**
+
+When creating pull requests:
+
+- **Always update CHANGELOG.md** - Document what changed, why, and any breaking changes
+- Follow the existing changelog format (check recent entries for examples)
+- Add your entry under the "Unreleased" section at the top
+- Include the PR number and a brief description of the change
+
 ## Important Constraints
 
 - **Tool naming:** Tool names (MCP identifiers) must be `snake_case_tool` (e.g., `list_styles_tool`). TypeScript class names follow `PascalCaseTool` convention (e.g., `ListStylesTool`)
