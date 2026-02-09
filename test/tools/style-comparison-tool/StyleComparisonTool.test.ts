@@ -214,10 +214,7 @@ describe('StyleComparisonTool', () => {
       expect(url2).not.toContain('#');
     });
 
-    it('should return only URL when MCP-UI is disabled', async () => {
-      // Disable MCP-UI for this test
-      process.env.ENABLE_MCP_UI = 'false';
-
+    it('should return URL and MCP-UI resource for backward compatibility', async () => {
       const input = {
         before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
@@ -227,11 +224,11 @@ describe('StyleComparisonTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      expect(result.content).toHaveLength(1);
+      // Now returns both URL (for text) and MCP-UI resource (for backward compat)
+      expect(result.content).toHaveLength(2);
       expect(result.content[0].type).toBe('text');
-
-      // Clean up
-      delete process.env.ENABLE_MCP_UI;
+      // Second item is MCP-UI resource
+      expect(result.content[1].type).toBe('resource');
     });
   });
 
