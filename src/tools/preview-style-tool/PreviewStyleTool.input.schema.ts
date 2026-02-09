@@ -8,8 +8,16 @@ export const PreviewStyleSchema = z.object({
       'pk.',
       'Invalid access token. Only public tokens (starting with pk.*) are allowed for preview URLs. Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs.'
     )
+    .optional()
     .describe(
-      'Mapbox public access token (required, must start with pk.* and have styles:read permission). Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs. Please use an existing public token or get one from list_tokens_tool or create one with create_token_tool with styles:read permission.'
+      'Mapbox public access token (optional). If not provided, you will be prompted to provide, create, or auto-create a preview token. Must start with pk.* and have styles:read permission. Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs.'
+    ),
+  useCustomToken: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe(
+      'Force token selection dialog even if a preview token is already stored for this session. Useful when you want to use a different token.'
     ),
   title: z
     .boolean()

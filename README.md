@@ -58,6 +58,15 @@ Get started by integrating with your preferred AI development environment:
 - [Cursor Integration](./docs/cursor-integration.md) - Cursor IDE integration
 - [VS Code Integration](./docs/vscode-integration.md) - Visual Studio Code with GitHub Copilot
 
+**Note on MCP Elicitation Support**: Some tools (like `preview_style_tool`) use [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) to securely request tokens without exposing them in chat history. Elicitation support varies by client:
+
+- **MCP Inspector**: ✅ Full support
+- **Cursor**: ✅ Full support
+- **VS Code (with Copilot)**: ✅ Full support
+- **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
+- **Claude Desktop**: ⚠️ Not yet supported (Claude will fall back to creating tokens via chat)
+- **Claude Code**: ⚠️ Not yet supported (provide `accessToken` parameter directly)
+
 ### DXT Package Distribution
 
 This MCP server can be packaged as a DXT (Desktop Extension) file for easy distribution and installation. DXT is a standardized format for distributing local MCP servers, similar to browser extensions.
@@ -185,11 +194,25 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - Input: `styleId`
 - Returns: Success confirmation
 
-**PreviewStyleTool** - Generate preview URL for a Mapbox style using an existing public token
+**PreviewStyleTool** - Generate preview URL for a Mapbox style with secure token handling
 
-- Input: `styleId`, `title` (optional), `zoomwheel` (optional), `zoom` (optional), `center` (optional), `bearing` (optional), `pitch` (optional)
+- Input:
+  - `styleId` (required): Style ID to preview
+  - `accessToken` (optional): Provide a specific public token (for backward compatibility)
+  - `useCustomToken` (optional): Force token selection dialog even if a token is cached
+  - `title` (optional): Show title in preview
+  - `zoomwheel` (optional): Enable zoom wheel control
 - Returns: URL to open the style preview in browser
-- **Note**: This tool automatically fetches the first available public token from your account for the preview URL. Requires at least one public token with `styles:read` scope.
+- **🔐 Secure Token Handling**: If `accessToken` is not provided, this tool attempts to use MCP **elicitation** to securely request a preview token without storing it in chat history. **Elicitation support varies by client**:
+  - **MCP Inspector, Cursor, VS Code**: ✅ Full support - Shows secure form dialog with three options:
+    1. **Provide an existing token** - Paste a token you already have
+    2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
+    3. **Auto-create a basic token** - Let the tool create a simple preview token for you
+  - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
+  - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool` (token will appear in chat history)
+  - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
+- **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
+- **Best Practice**: Use URL-restricted tokens to limit token usage to specific domains
 
 **ValidateStyleTool** - Validate Mapbox style JSON against the Mapbox Style Specification
 
@@ -211,7 +234,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - **RetrieveStyleTool**: Requires `styles:download` scope
 - **UpdateStyleTool**: Requires `styles:write` scope
 - **DeleteStyleTool**: Requires `styles:write` scope
-- **PreviewStyleTool**: Requires `tokens:read` scope (to list tokens) and at least one public token with `styles:read` scope
+- **PreviewStyleTool**: Can work without token scopes via elicitation, or optionally accepts a direct public token. If using automatic token listing, requires `tokens:read` scope
 
 **Note:** The username is automatically extracted from the JWT token payload.
 
