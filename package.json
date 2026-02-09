@@ -92,7 +92,11 @@
   "tshy": {
     "project": "./tsconfig.src.json",
     "exports": {
-      ".": "./src/index.ts"
+      ".": "./src/index.ts",
+      "./tools": "./src/tools/index.ts",
+      "./resources": "./src/resources/index.ts",
+      "./prompts": "./src/prompts/index.ts",
+      "./utils": "./src/utils/index.ts"
     },
     "dialects": [
       "esm",
@@ -109,6 +113,46 @@
       "require": {
         "types": "./dist/commonjs/index.d.ts",
         "default": "./dist/commonjs/index.js"
+      }
+    },
+    "./tools": {
+      "import": {
+        "types": "./dist/esm/tools/index.d.ts",
+        "default": "./dist/esm/tools/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/tools/index.d.ts",
+        "default": "./dist/commonjs/tools/index.js"
+      }
+    },
+    "./resources": {
+      "import": {
+        "types": "./dist/esm/resources/index.d.ts",
+        "default": "./dist/esm/resources/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/resources/index.d.ts",
+        "default": "./dist/commonjs/resources/index.js"
+      }
+    },
+    "./prompts": {
+      "import": {
+        "types": "./dist/esm/prompts/index.d.ts",
+        "default": "./dist/esm/prompts/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/prompts/index.d.ts",
+        "default": "./dist/commonjs/prompts/index.js"
+      }
+    },
+    "./utils": {
+      "import": {
+        "types": "./dist/esm/utils/index.d.ts",
+        "default": "./dist/esm/utils/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/utils/index.d.ts",
+        "default": "./dist/commonjs/utils/index.js"
       }
     }
   },
