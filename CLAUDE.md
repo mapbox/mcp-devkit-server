@@ -77,6 +77,36 @@ Generates three files: `*.input.schema.ts`, `*.output.schema.ts`, and `*.test.ts
 - Never update snapshots without verifying changes
 - Tool snapshots capture class names, tool names, and descriptions
 
+**Pull Requests:**
+
+When creating pull requests:
+
+- **Always update CHANGELOG.md** - Document what changed, why, and any breaking changes
+- Follow the existing changelog format (check recent entries for examples)
+- Add your entry under the "Unreleased" section at the top
+- Include the PR number and a brief description of the change
+
+**Release Process:**
+
+When preparing a new release:
+
+```bash
+# Prepare CHANGELOG for release (replaces "Unreleased" with version and date)
+npm run changelog:prepare-release 1.0.0
+
+# Review changes, then commit and tag
+git add CHANGELOG.md
+git commit -m "Release v1.0.0"
+git tag v1.0.0
+git push && git push --tags
+```
+
+The `changelog:prepare-release` script automatically:
+
+- Replaces "## Unreleased" with "## {version} - {date}"
+- Adds a new empty "## Unreleased" section at the top
+- Validates version format and CHANGELOG structure
+
 ## Important Constraints
 
 - **Tool naming:** Tool names (MCP identifiers) must be `snake_case_tool` (e.g., `list_styles_tool`). TypeScript class names follow `PascalCaseTool` convention (e.g., `ListStylesTool`)
