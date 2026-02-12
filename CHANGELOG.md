@@ -1,5 +1,15 @@
 ## Unreleased
 
+### Features Added
+
+- **API Endpoint Explorer Tool**: New `explore_mapbox_api_tool` provides structured, queryable information about Mapbox APIs (#71)
+  - List all available Mapbox APIs with descriptions and operation counts
+  - View detailed operations for specific APIs (geocoding, styles, tokens, static-images, directions, tilequery, feedback)
+  - Get complete endpoint details including HTTP methods, parameters, required scopes, and rate limits
+  - Optional detailed mode includes example requests and responses
+  - Complements `get_latest_mapbox_docs_tool` by providing structured API reference data
+  - No API access required - works with curated endpoint definitions
+
 ### Documentation
 
 - **PR Guidelines**: Added CHANGELOG requirement to CLAUDE.md (#67)

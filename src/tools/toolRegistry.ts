@@ -9,6 +9,7 @@ import { CoordinateConversionTool } from './coordinate-conversion-tool/Coordinat
 import { CreateStyleTool } from './create-style-tool/CreateStyleTool.js';
 import { CreateTokenTool } from './create-token-tool/CreateTokenTool.js';
 import { DeleteStyleTool } from './delete-style-tool/DeleteStyleTool.js';
+import { ExploreMapboxApiTool } from './explore-mapbox-api-tool/ExploreMapboxApiTool.js';
 import { GetFeedbackTool } from './get-feedback-tool/GetFeedbackTool.js';
 import { ListFeedbackTool } from './list-feedback-tool/ListFeedbackTool.js';
 import { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js';
@@ -50,6 +51,7 @@ export const CORE_TOOLS = [
   new BoundingBoxTool(),
   new CountryBoundingBoxTool(),
   new CoordinateConversionTool(),
+  new ExploreMapboxApiTool(),
   new GetFeedbackTool({ httpRequest }),
   new ListFeedbackTool({ httpRequest }),
   new TilequeryTool({ httpRequest }),
