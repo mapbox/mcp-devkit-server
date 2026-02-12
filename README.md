@@ -148,6 +148,26 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 - "What scopes do I need for the Styles API?"
 - "How do I use the directions API? Show me examples"
 
+**test_api_request_tool** - Execute actual Mapbox API requests and generate code examples. Makes real HTTP calls to test endpoints and returns actual responses, with optional code generation showing how to replicate the call in curl, JavaScript, and Python.
+
+**Features:**
+
+- Makes real HTTP requests to Mapbox APIs
+- Returns actual API responses with status codes and headers
+- Generates code snippets in multiple languages (curl, JavaScript, Python)
+- Shows execution timing and rate limit information
+- Masks access tokens in generated code for security
+- Supports all HTTP methods (GET, POST, PUT, PATCH, DELETE)
+- Handles path, query, and body parameters
+
+**Example prompts:**
+
+- "Test the geocoding API with query 'San Francisco'"
+- "Make a request to list my styles and show me the curl command"
+- "Call the directions API from Paris to Lyon and generate code examples"
+- "Test creating a token and show me how to do it in JavaScript"
+- "Execute a tilequery request and generate Python code"
+
 ### Reference Tools
 
 **get_reference_tool** - Access static Mapbox reference documentation and schemas. This tool provides essential reference information that helps AI assistants understand Mapbox concepts and build correct styles and tokens.

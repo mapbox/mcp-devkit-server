@@ -168,6 +168,11 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
     "toolName": "style_comparison_tool",
   },
   {
+    "className": "TestApiRequestTool",
+    "description": "Execute actual Mapbox API requests and generate code examples. Makes real HTTP calls to test endpoints and returns actual responses, with optional code generation for curl, JavaScript, and Python showing how to replicate the call.",
+    "toolName": "test_api_request_tool",
+  },
+  {
     "className": "TilequeryTool",
     "description": "Query vector and raster data from Mapbox tilesets at geographic coordinates",
     "toolName": "tilequery_tool",

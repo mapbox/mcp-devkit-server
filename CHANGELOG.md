@@ -2,6 +2,15 @@
 
 ### Features Added
 
+- **Test API Request Tool**: New `test_api_request_tool` executes actual Mapbox API requests and generates code examples (#72)
+  - Makes real HTTP calls to Mapbox APIs and returns actual responses
+  - Generates copy-paste ready code snippets in curl, JavaScript, and Python
+  - Shows execution timing and rate limit information
+  - Masks access tokens in generated code for security
+  - Supports all HTTP methods (GET, POST, PUT, PATCH, DELETE)
+  - Handles path, query, and body parameters
+  - Complements `explore_mapbox_api_tool` and `validate_api_request_tool` for complete API workflow (explore → validate → test)
+
 - **API Endpoint Explorer Tool**: New `explore_mapbox_api_tool` provides structured, queryable information about Mapbox APIs (#71)
   - List all available Mapbox APIs with descriptions and operation counts
   - View detailed operations for specific APIs (geocoding, styles, tokens, static-images, directions, tilequery, feedback)
