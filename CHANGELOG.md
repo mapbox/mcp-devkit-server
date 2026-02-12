@@ -1,5 +1,18 @@
 ## Unreleased
 
+### Features Added
+
+- **Granular Documentation Resources**: Split monolithic documentation resource into focused, category-specific resources (#69)
+  - New `resource://mapbox-api-reference` - REST API documentation only
+  - New `resource://mapbox-sdk-docs` - SDK and client library documentation
+  - New `resource://mapbox-guides` - Tutorials, how-tos, and guides
+  - New `resource://mapbox-examples` - Code examples and API playgrounds
+  - New `resource://mapbox-reference` - Reference materials (tilesets, data products, etc.)
+  - Improved performance by allowing clients to fetch only relevant documentation
+  - Better organization for AI assistants to find the right information
+  - Original `resource://mapbox-documentation` kept for backward compatibility with deprecation notice
+  - Added shared `docParser` utility for parsing and categorizing documentation sections
+
 ### Documentation
 
 - **PR Guidelines**: Added CHANGELOG requirement to CLAUDE.md (#67)

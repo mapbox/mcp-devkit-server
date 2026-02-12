@@ -6,6 +6,11 @@ import { MapboxStreetsV8FieldsResource } from './mapbox-streets-v8-fields-resour
 import { MapboxTokenScopesResource } from './mapbox-token-scopes-resource/MapboxTokenScopesResource.js';
 import { MapboxLayerTypeMappingResource } from './mapbox-layer-type-mapping-resource/MapboxLayerTypeMappingResource.js';
 import { MapboxDocumentationResource } from './mapbox-documentation-resource/MapboxDocumentationResource.js';
+import { MapboxApiReferenceResource } from './mapbox-api-reference-resource/MapboxApiReferenceResource.js';
+import { MapboxSdkDocsResource } from './mapbox-sdk-docs-resource/MapboxSdkDocsResource.js';
+import { MapboxGuidesResource } from './mapbox-guides-resource/MapboxGuidesResource.js';
+import { MapboxExamplesResource } from './mapbox-examples-resource/MapboxExamplesResource.js';
+import { MapboxReferenceResource } from './mapbox-reference-resource/MapboxReferenceResource.js';
 import { httpRequest } from '../utils/httpPipeline.js';
 
 // Central registry of all resources
@@ -14,7 +19,13 @@ export const ALL_RESOURCES = [
   new MapboxStreetsV8FieldsResource(),
   new MapboxTokenScopesResource(),
   new MapboxLayerTypeMappingResource(),
-  new MapboxDocumentationResource({ httpRequest })
+  new MapboxDocumentationResource({ httpRequest }), // Kept for backward compatibility
+  // New granular documentation resources
+  new MapboxApiReferenceResource({ httpRequest }),
+  new MapboxSdkDocsResource({ httpRequest }),
+  new MapboxGuidesResource({ httpRequest }),
+  new MapboxExamplesResource({ httpRequest }),
+  new MapboxReferenceResource({ httpRequest })
 ] as const;
 
 export type ResourceInstance = (typeof ALL_RESOURCES)[number];
