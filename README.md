@@ -148,6 +148,24 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 - "What scopes do I need for the Styles API?"
 - "How do I use the directions API? Show me examples"
 
+**validate_api_request_tool** - Validate Mapbox API requests before sending them. Checks that requests have all required parameters, correct types, valid enum values, and required token scopes. Returns detailed validation results to help catch errors early.
+
+**Features:**
+
+- Validates required vs optional parameters
+- Checks parameter types (string, number, boolean, array, object)
+- Validates enum constraints (e.g., routing profiles must be "driving", "walking", etc.)
+- Verifies token has required scopes
+- Detects unknown/extra parameters with warnings
+- Provides specific error messages for each issue
+
+**Example prompts:**
+
+- "Validate this geocoding request: {parameters}"
+- "Check if my token has the right scopes for creating a style"
+- "Is this directions API request valid?"
+- "What's wrong with this API request?"
+
 ### Reference Tools
 
 **get_reference_tool** - Access static Mapbox reference documentation and schemas. This tool provides essential reference information that helps AI assistants understand Mapbox concepts and build correct styles and tokens.

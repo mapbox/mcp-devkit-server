@@ -24,6 +24,7 @@ import { StyleBuilderTool } from './style-builder-tool/StyleBuilderTool.js';
 import { StyleComparisonTool } from './style-comparison-tool/StyleComparisonTool.js';
 import { TilequeryTool } from './tilequery-tool/TilequeryTool.js';
 import { UpdateStyleTool } from './update-style-tool/UpdateStyleTool.js';
+import { ValidateApiRequestTool } from './validate-api-request-tool/ValidateApiRequestTool.js';
 import { ValidateExpressionTool } from './validate-expression-tool/ValidateExpressionTool.js';
 import { ValidateGeojsonTool } from './validate-geojson-tool/ValidateGeojsonTool.js';
 import { ValidateStyleTool } from './validate-style-tool/ValidateStyleTool.js';
@@ -55,6 +56,7 @@ export const CORE_TOOLS = [
   new GetFeedbackTool({ httpRequest }),
   new ListFeedbackTool({ httpRequest }),
   new TilequeryTool({ httpRequest }),
+  new ValidateApiRequestTool(),
   new ValidateExpressionTool(),
   new ValidateGeojsonTool(),
   new ValidateStyleTool()
