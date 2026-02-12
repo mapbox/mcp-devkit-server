@@ -22,6 +22,7 @@ import { PreviewStyleTool } from './preview-style-tool/PreviewStyleTool.js';
 import { RetrieveStyleTool } from './retrieve-style-tool/RetrieveStyleTool.js';
 import { StyleBuilderTool } from './style-builder-tool/StyleBuilderTool.js';
 import { StyleComparisonTool } from './style-comparison-tool/StyleComparisonTool.js';
+import { TestApiRequestTool } from './test-api-request-tool/TestApiRequestTool.js';
 import { TilequeryTool } from './tilequery-tool/TilequeryTool.js';
 import { UpdateStyleTool } from './update-style-tool/UpdateStyleTool.js';
 import { ValidateExpressionTool } from './validate-expression-tool/ValidateExpressionTool.js';
@@ -52,6 +53,7 @@ export const CORE_TOOLS = [
   new CountryBoundingBoxTool(),
   new CoordinateConversionTool(),
   new ExploreMapboxApiTool(),
+  new TestApiRequestTool({ httpRequest }),
   new GetFeedbackTool({ httpRequest }),
   new ListFeedbackTool({ httpRequest }),
   new TilequeryTool({ httpRequest }),
