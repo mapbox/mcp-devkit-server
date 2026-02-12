@@ -131,6 +131,23 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 
 📖 **[See more examples and interactive demo →](./docs/mapbox-docs-tool-demo.md)**
 
+**explore_mapbox_api_tool** - Explore Mapbox API endpoints with structured, queryable information. Get details about available APIs, their operations, required parameters, authentication scopes, and rate limits. This tool provides structured API reference data complementing the prose documentation from `get_latest_mapbox_docs_tool`.
+
+**Features:**
+
+- List all available Mapbox APIs (geocoding, styles, tokens, static-images, directions, tilequery, feedback)
+- View operations for a specific API
+- Get detailed endpoint information including HTTP methods, parameters, and examples
+- See required token scopes and rate limits for each operation
+
+**Example prompts:**
+
+- "What Mapbox APIs are available?"
+- "Show me the geocoding API operations"
+- "What parameters does the forward geocoding endpoint accept?"
+- "What scopes do I need for the Styles API?"
+- "How do I use the directions API? Show me examples"
+
 ### Reference Tools
 
 **get_reference_tool** - Access static Mapbox reference documentation and schemas. This tool provides essential reference information that helps AI assistants understand Mapbox concepts and build correct styles and tokens.

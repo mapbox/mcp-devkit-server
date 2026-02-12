@@ -43,6 +43,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "delete_style_tool",
   },
   {
+    "className": "ExploreMapboxApiTool",
+    "description": "Explore Mapbox API endpoints, operations, parameters, and authentication requirements. Get structured information about available APIs, their operations, required parameters, token scopes, and rate limits. Use without parameters to list all APIs, with api parameter to list operations, or with api + operation to get full endpoint details.",
+    "toolName": "explore_mapbox_api_tool",
+  },
+  {
     "className": "GeojsonPreviewTool",
     "description": "Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.",
     "toolName": "geojson_preview_tool",
