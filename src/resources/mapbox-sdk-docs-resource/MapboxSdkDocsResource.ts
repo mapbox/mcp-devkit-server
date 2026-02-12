@@ -9,25 +9,20 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
 import { BaseResource } from '../BaseResource.js';
+import {
+  parseDocSections,
+  filterSectionsByCategory,
+  sectionsToMarkdown
+} from '../utils/docParser.js';
 
 /**
- * Resource providing the latest official Mapbox documentation
- * fetched from docs.mapbox.com/llms.txt
- *
- * @deprecated Use the granular resources instead for better performance and organization:
- * - resource://mapbox-api-reference (REST API docs)
- * - resource://mapbox-sdk-docs (SDK documentation)
- * - resource://mapbox-guides (Tutorials and how-tos)
- * - resource://mapbox-examples (Code examples and playgrounds)
- * - resource://mapbox-reference (Tilesets, data products, etc.)
- *
- * This resource is kept for backward compatibility.
+ * Resource providing Mapbox SDK documentation
  */
-export class MapboxDocumentationResource extends BaseResource {
-  readonly name = 'Mapbox Documentation';
-  readonly uri = 'resource://mapbox-documentation';
+export class MapboxSdkDocsResource extends BaseResource {
+  readonly name = 'Mapbox SDK Documentation';
+  readonly uri = 'resource://mapbox-sdk-docs';
   readonly description =
-    '[DEPRECATED: Use granular resources like resource://mapbox-api-reference instead] Latest official Mapbox documentation, APIs, SDKs, and developer resources. Always up-to-date comprehensive coverage of all current Mapbox services.';
+    'Mapbox SDK and client library documentation for mobile (iOS, Android, Flutter) and web (Mapbox GL JS, Search JS) platforms';
   readonly mimeType = 'text/markdown';
 
   private httpRequest: HttpRequest;
@@ -59,19 +54,24 @@ export class MapboxDocumentationResource extends BaseResource {
 
       const content = await response.text();
 
+      // Parse and filter for SDK sections only
+      const allSections = parseDocSections(content);
+      const sdkSections = filterSectionsByCategory(allSections, 'sdks');
+      const sdkContent = sectionsToMarkdown(sdkSections);
+
       return {
         contents: [
           {
             uri: uri.href,
             mimeType: this.mimeType,
-            text: content
+            text: `# Mapbox SDK Documentation\n\n${sdkContent}`
           }
         ]
       };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
-      throw new Error(`Failed to fetch Mapbox documentation: ${errorMessage}`);
+      throw new Error(`Failed to fetch Mapbox SDK docs: ${errorMessage}`);
     }
   }
 }
