@@ -93,6 +93,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "retrieve_style_tool",
   },
   {
+    "className": "SearchMapboxDocsTool",
+    "description": "Search Mapbox documentation for specific topics. Returns ranked, relevant documentation sections instead of the entire corpus. Use this to find targeted information about Mapbox APIs, SDKs, guides, and examples. Supports filtering by category (apis, sdks, guides, examples) and limiting results.",
+    "toolName": "search_mapbox_docs_tool",
+  },
+  {
     "className": "StyleBuilderTool",
     "description": "Generate Mapbox style JSON for creating new styles or updating existing ones.
 
