@@ -21,8 +21,13 @@ import {
  * - Token scope verification
  * - Missing/extra parameter detection
  *
- * Uses the curated endpoint definitions from mapboxApiEndpoints.ts to ensure
- * requests conform to API specifications before making actual calls.
+ * Uses a curated list of endpoint definitions from mapboxApiEndpoints.ts to validate
+ * requests before making actual API calls.
+ *
+ * Note: This tool validates against known APIs in our curated list. New Mapbox APIs
+ * may not be included until the endpoint definitions are updated. If you encounter
+ * a "not found" error for a valid API, please refer to the official Mapbox API docs
+ * or open an issue to request adding the new API to our definitions.
  */
 export class ValidateApiRequestTool extends BaseTool<
   typeof ValidateApiRequestInputSchema,
@@ -30,7 +35,7 @@ export class ValidateApiRequestTool extends BaseTool<
 > {
   readonly name = 'validate_api_request_tool';
   readonly description =
-    'Validate Mapbox API requests against endpoint definitions. Checks required parameters, types, enum constraints, and token scopes. Returns detailed validation results with specific error messages for each issue found.';
+    'Validate Mapbox API requests against known endpoint definitions. Checks required parameters, types, enum constraints, and token scopes for APIs in our curated list. Returns detailed validation results with specific error messages for each issue found. Note: Only validates against known APIs - newer APIs may not be included yet.';
   readonly annotations = {
     title: 'Validate API Request',
     readOnlyHint: true,
@@ -60,7 +65,13 @@ export class ValidateApiRequestTool extends BaseTool<
           content: [
             {
               type: 'text',
-              text: `❌ API "${input.api}" not found. Use explore_mapbox_api_tool to see available APIs.`
+              text:
+                `❌ API "${input.api}" not found in our curated endpoint definitions.\n\n` +
+                `**Available options:**\n` +
+                `1. Use explore_mapbox_api_tool to see all known APIs in our list\n` +
+                `2. Check the official Mapbox API docs: https://docs.mapbox.com/api/\n` +
+                `3. If this is a newer API not yet in our list, validation can't be performed yet\n\n` +
+                `💡 Tip: You can still make API requests without validation using other tools.`
             }
           ],
           isError: true
