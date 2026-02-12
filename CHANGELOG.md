@@ -1,5 +1,15 @@
 ## Unreleased
 
+### Features Added
+
+- **Documentation Search Tool**: Added AI-powered search for Mapbox documentation (#68)
+  - New `search_mapbox_docs_tool` enables targeted documentation queries
+  - Returns ranked, relevant documentation sections instead of entire corpus
+  - Supports filtering by category (apis, sdks, guides, examples)
+  - Implements caching (1 hour TTL) for performance
+  - Follows Google Developer Knowledge API pattern for better AI assistance
+  - Includes comprehensive test suite (12 tests)
+
 ### Documentation
 
 - **PR Guidelines**: Added CHANGELOG requirement to CLAUDE.md (#67)

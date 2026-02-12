@@ -15,6 +15,7 @@ import { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js
 import { GetMapboxDocSourceTool } from './get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
 import { GetReferenceTool } from './get-reference-tool/GetReferenceTool.js';
 import { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
+import { SearchMapboxDocsTool } from './search-mapbox-docs-tool/SearchMapboxDocsTool.js';
 import { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
 import { OptimizeStyleTool } from './optimize-style-tool/OptimizeStyleTool.js';
 import { PreviewStyleTool } from './preview-style-tool/PreviewStyleTool.js';
@@ -55,7 +56,8 @@ export const CORE_TOOLS = [
   new TilequeryTool({ httpRequest }),
   new ValidateExpressionTool(),
   new ValidateGeojsonTool(),
-  new ValidateStyleTool()
+  new ValidateStyleTool(),
+  new SearchMapboxDocsTool({ httpRequest })
 ] as const;
 
 /**
