@@ -9,6 +9,14 @@
   - Optional detailed mode includes example requests and responses
   - Complements `get_latest_mapbox_docs_tool` by providing structured API reference data
   - No API access required - works with curated endpoint definitions
+- **API Request Validator Tool**: New `validate_api_request_tool` validates API requests before sending them
+  - Validates required parameters are present
+  - Checks parameter types (string, number, boolean, array, object)
+  - Validates enum constraints for parameters with allowed values
+  - Verifies token has required scopes for operations
+  - Detects extra/unknown parameters with warnings
+  - Returns detailed validation results with specific error messages
+  - Helps prevent failed API calls by catching issues early
 
 ### Documentation
 

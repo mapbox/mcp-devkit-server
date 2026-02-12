@@ -178,6 +178,11 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
     "toolName": "update_style_tool",
   },
   {
+    "className": "ValidateApiRequestTool",
+    "description": "Validate Mapbox API requests against endpoint definitions. Checks required parameters, types, enum constraints, and token scopes. Returns detailed validation results with specific error messages for each issue found.",
+    "toolName": "validate_api_request_tool",
+  },
+  {
     "className": "ValidateExpressionTool",
     "description": "Validates Mapbox style expressions for syntax, operators, and argument correctness",
     "toolName": "validate_expression_tool",
