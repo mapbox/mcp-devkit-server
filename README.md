@@ -131,6 +131,25 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 
 📖 **[See more examples and interactive demo →](./docs/mapbox-docs-tool-demo.md)**
 
+**get_contextual_docs_tool** - Retrieve relevant Mapbox documentation based on your current context. This smart tool analyzes what you're working on, code snippets, and error messages to provide targeted, actionable documentation.
+
+**Features:**
+
+- Context-aware keyword extraction from descriptions, code, and errors
+- Intelligent relevance scoring with match explanations
+- Troubleshooting tips for error messages
+- Technology-specific filtering (mapbox-gl-js, iOS SDK, Android SDK)
+- Suggested related topics to explore
+- Ranked results with excerpts and direct links
+
+**Example prompts:**
+
+- "I'm trying to add custom markers with popups, here's my code: [snippet]"
+- "Getting this error: 'Style is not done loading' - what does it mean?"
+- "Working with mapbox-gl-js to show user location on a map"
+- "How do I handle rate limiting errors in the geocoding API?"
+- "Building a store locator with search functionality"
+
 ### Reference Tools
 
 **get_reference_tool** - Access static Mapbox reference documentation and schemas. This tool provides essential reference information that helps AI assistants understand Mapbox concepts and build correct styles and tokens.

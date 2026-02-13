@@ -1,5 +1,17 @@
 ## Unreleased
 
+### Features Added
+
+- **Contextual Documentation Tool**: New `get_contextual_docs_tool` provides intelligent documentation retrieval based on context (#70)
+  - Analyzes what you're working on, code snippets, and error messages
+  - Extracts keywords automatically from context, code, and errors
+  - Returns ranked, relevant documentation with explanations
+  - Provides troubleshooting tips for error messages
+  - Suggests related topics to explore
+  - Smarter than simple search - understands full context
+  - Technology-specific filtering (mapbox-gl-js, iOS SDK, Android SDK)
+  - 1-hour caching for performance
+
 ### Documentation
 
 - **PR Guidelines**: Added CHANGELOG requirement to CLAUDE.md (#67)

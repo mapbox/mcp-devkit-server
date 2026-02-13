@@ -48,6 +48,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "geojson_preview_tool",
   },
   {
+    "className": "GetContextualDocsTool",
+    "description": "Retrieve relevant Mapbox documentation based on current context. Analyzes what you're working on, code snippets, and error messages to provide targeted documentation. Smarter than simple search - understands context and provides actionable guidance.",
+    "toolName": "get_contextual_docs_tool",
+  },
+  {
     "className": "GetFeedbackTool",
     "description": "Get a single user feedback item from the Mapbox Feedback API by its unique ID. Use this tool to retrieve detailed information about a specific user-reported issue, suggestion, or feedback about map data, routing, or POI details. Requires user-feedback:read scope on the access token.",
     "toolName": "get_feedback_tool",
