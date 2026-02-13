@@ -7,6 +7,7 @@ import {
   GetContextualDocsOutputSchema,
   type GetContextualDocsOutput
 } from './GetContextualDocsTool.output.schema.js';
+import { parseHTML } from 'linkedom';
 
 /**
  * GetContextualDocsTool - Retrieve relevant Mapbox documentation based on context
@@ -54,7 +55,108 @@ export class GetContextualDocsTool extends BaseTool<
     content: string;
     timestamp: number;
   } | null = null;
+  private htmlPagesCache: Map<string, { content: string; timestamp: number }> =
+    new Map();
   private readonly CACHE_TTL = 60 * 60 * 1000; // 1 hour
+  private readonly MAX_PAGES_TO_FETCH = 2; // Fetch top 2 pages from index
+  private readonly MAX_LINKED_PAGES = 3; // Fetch top 3 linked pages from those
+
+  /**
+   * Curated high-value documentation pages organized by topic
+   * These are frequently needed pages that may not be easily discoverable through crawling
+   */
+  private readonly CURATED_PAGES: Record<string, string[]> = {
+    // Markers and Popups
+    marker: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/add-a-marker/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/custom-marker-icons/',
+      'https://docs.mapbox.com/mapbox-gl-js/api/markers/#marker'
+    ],
+    popup: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/popup/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/popup-on-click/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/popup-on-hover/',
+      'https://docs.mapbox.com/mapbox-gl-js/api/markers/#popup'
+    ],
+
+    // Layers and Styling
+    layer: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/geojson-layer/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/data-driven-circle-colors/',
+      'https://docs.mapbox.com/mapbox-gl-js/api/map/#map#addlayer',
+      'https://docs.mapbox.com/style-spec/reference/layers/'
+    ],
+    style: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/setstyle/',
+      'https://docs.mapbox.com/mapbox-gl-js/style-spec/',
+      'https://docs.mapbox.com/mapbox-gl-js/api/map/#map#setstyle'
+    ],
+
+    // Data Sources
+    source: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/geojson-line/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/live-update-feature/',
+      'https://docs.mapbox.com/mapbox-gl-js/api/sources/'
+    ],
+
+    // Events and Interaction
+    click: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/popup-on-click/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/queryrenderedfeatures/',
+      'https://docs.mapbox.com/mapbox-gl-js/api/map/#map.event:click'
+    ],
+    hover: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/hover-styles/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/popup-on-hover/'
+    ],
+
+    // Geocoding and Search
+    geocoding: [
+      'https://docs.mapbox.com/api/search/geocoding/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/mapbox-gl-geocoder/',
+      'https://docs.mapbox.com/playground/geocoding/'
+    ],
+    search: [
+      'https://docs.mapbox.com/api/search/search-box/',
+      'https://docs.mapbox.com/playground/search-box/'
+    ],
+
+    // Navigation and Directions
+    directions: [
+      'https://docs.mapbox.com/api/navigation/directions/',
+      'https://docs.mapbox.com/playground/directions/'
+    ],
+    navigation: [
+      'https://docs.mapbox.com/ios/navigation/',
+      'https://docs.mapbox.com/android/navigation/guides/'
+    ],
+
+    // Controls
+    control: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/navigation/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/locate-user/',
+      'https://docs.mapbox.com/mapbox-gl-js/api/markers/#navigationcontrol'
+    ],
+
+    // Camera and Animation
+    camera: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/flyto/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/fitbounds/',
+      'https://docs.mapbox.com/mapbox-gl-js/api/map/#map#flyto'
+    ],
+
+    // 3D and Terrain
+    terrain: [
+      'https://docs.mapbox.com/mapbox-gl-js/example/add-terrain/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/3d-buildings/'
+    ],
+
+    // Expressions
+    expression: [
+      'https://docs.mapbox.com/style-spec/reference/expressions/',
+      'https://docs.mapbox.com/mapbox-gl-js/example/data-driven-circle-colors/'
+    ]
+  };
 
   constructor(deps: { httpRequest: HttpRequest }) {
     super({
@@ -71,11 +173,113 @@ export class GetContextualDocsTool extends BaseTool<
       // Extract keywords from all provided context
       const extractedKeywords = this.extractKeywords(input);
 
-      // Fetch documentation
-      const docs = await this.fetchDocumentation();
+      // Get curated pages based on keywords (high priority)
+      const curatedUrls = this.getCuratedPages(extractedKeywords);
+
+      // Stage 1: Fetch documentation index
+      const docsIndex = await this.fetchDocumentation();
+
+      // Stage 2: Extract and score relevant URLs from index
+      const relevantUrls = this.extractRelevantUrls(
+        docsIndex,
+        extractedKeywords
+      );
+
+      // Combine curated URLs (high priority) with discovered URLs
+      const allUrlsToConsider = [
+        ...curatedUrls.map((url) => ({ url, score: 1.0 })), // Curated pages get max score
+        ...relevantUrls
+      ];
+
+      // Remove duplicates, keeping the highest score
+      const uniqueUrls = new Map<string, number>();
+      allUrlsToConsider.forEach(({ url, score }) => {
+        const existing = uniqueUrls.get(url);
+        if (!existing || score > existing) {
+          uniqueUrls.set(url, score);
+        }
+      });
+
+      // Stage 3: Fetch curated pages first
+      const allLinks: Array<{ url: string; score: number }> = [];
+      const allSections: Array<{
+        title: string;
+        content: string;
+        url: string;
+      }> = [];
+
+      // Fetch curated pages (always fetch these if matched)
+      for (const url of curatedUrls) {
+        try {
+          const html = await this.fetchHtmlPage(url);
+          const sections = this.extractHtmlContent(html, url);
+          allSections.push(...sections);
+        } catch (error) {
+          this.log('warning', `Failed to fetch curated page ${url}: ${error}`);
+          // Continue with other pages
+        }
+      }
+
+      // Stage 4: Fetch top N pages from index (supplement curated pages)
+      const indexPagesToFetch = relevantUrls
+        .filter((p) => !curatedUrls.includes(p.url))
+        .slice(0, this.MAX_PAGES_TO_FETCH);
+
+      for (const { url } of indexPagesToFetch) {
+        try {
+          const html = await this.fetchHtmlPage(url);
+
+          // Extract sections from this page
+          const sections = this.extractHtmlContent(html, url);
+          allSections.push(...sections);
+
+          // Extract links from this page for further crawling
+          const links = this.extractLinksFromHtml(html, url, extractedKeywords);
+          allLinks.push(...links);
+        } catch (error) {
+          this.log('warning', `Failed to fetch ${url}: ${error}`);
+          // Continue with other pages
+        }
+      }
+
+      // Stage 5: Fetch most relevant linked pages (if we still need more content)
+      const alreadyFetched = new Set([
+        ...curatedUrls,
+        ...indexPagesToFetch.map((p) => p.url)
+      ]);
+      const linkedPagesToFetch = allLinks
+        .filter((link) => !alreadyFetched.has(link.url))
+        .slice(0, this.MAX_LINKED_PAGES);
+
+      for (const { url } of linkedPagesToFetch) {
+        try {
+          const html = await this.fetchHtmlPage(url);
+          const sections = this.extractHtmlContent(html, url);
+          allSections.push(...sections);
+        } catch (error) {
+          this.log('warning', `Failed to fetch linked page ${url}: ${error}`);
+          // Continue with other pages
+        }
+      }
+
+      // If no HTML content was extracted, fall back to index content
+      if (allSections.length === 0) {
+        const indexSections = this.parseSections(docsIndex);
+        allSections.push(
+          ...indexSections.map((s) => ({
+            title: s.title,
+            content: s.content,
+            url: s.url
+          }))
+        );
+      }
 
       // Parse and score documentation sections
-      const results = this.findRelevantDocs(docs, input, extractedKeywords);
+      const results = this.findRelevantDocs(
+        allSections,
+        input,
+        extractedKeywords
+      );
 
       // Generate suggestions
       const suggestedTopics = this.generateSuggestions(
@@ -278,10 +482,271 @@ export class GetContextualDocsTool extends BaseTool<
   }
 
   /**
+   * Get curated pages relevant to the keywords
+   */
+  private getCuratedPages(keywords: string[]): string[] {
+    const curatedUrls = new Set<string>();
+
+    keywords.forEach((keyword) => {
+      const keywordLower = keyword.toLowerCase();
+
+      // Try exact match first
+      let pages = this.CURATED_PAGES[keywordLower];
+
+      // Try singular form if plural (remove trailing 's')
+      if (!pages && keywordLower.endsWith('s')) {
+        const singular = keywordLower.slice(0, -1);
+        pages = this.CURATED_PAGES[singular];
+      }
+
+      // Try plural form if singular (add 's')
+      if (!pages && !keywordLower.endsWith('s')) {
+        const plural = keywordLower + 's';
+        pages = this.CURATED_PAGES[plural];
+      }
+
+      if (pages) {
+        pages.forEach((url) => curatedUrls.add(url));
+      }
+    });
+
+    return Array.from(curatedUrls);
+  }
+
+  /**
+   * Extract and score URLs from llms.txt index
+   */
+  private extractRelevantUrls(
+    docs: string,
+    keywords: string[]
+  ): Array<{ url: string; score: number; context: string }> {
+    const lines = docs.split('\n');
+    const urls: Array<{ url: string; score: number; context: string }> = [];
+
+    let currentSection = '';
+    for (const line of lines) {
+      // Track section headers for context
+      if (line.startsWith('##')) {
+        currentSection = line.replace(/^##\s+/, '').trim();
+      }
+
+      // Extract URLs from markdown links
+      const urlMatch = line.match(/\[([^\]]+)\]\((https:\/\/[^)]+)\)/);
+      if (urlMatch) {
+        const [, linkText, url] = urlMatch;
+        const context = `${currentSection} - ${linkText}`;
+
+        // Score URL based on keywords in context and URL
+        let score = 0;
+        const contextLower = context.toLowerCase();
+        const urlLower = url.toLowerCase();
+
+        keywords.forEach((keyword) => {
+          if (contextLower.includes(keyword)) {
+            score += 0.3;
+          }
+          if (urlLower.includes(keyword)) {
+            score += 0.2;
+          }
+        });
+
+        // Boost for API reference and guide pages
+        if (url.includes('/api/') || url.includes('/guides/')) {
+          score += 0.1;
+        }
+
+        if (score > 0) {
+          urls.push({ url, score, context });
+        }
+      }
+    }
+
+    // Sort by score and return top results
+    return urls.sort((a, b) => b.score - a.score);
+  }
+
+  /**
+   * Fetch and parse HTML documentation page
+   */
+  private async fetchHtmlPage(url: string): Promise<string> {
+    // Check cache
+    const cached = this.htmlPagesCache.get(url);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return cached.content;
+    }
+
+    // Fetch page
+    const response = await this.httpRequest(url, { method: 'GET' });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ${url}: ${response.status}`);
+    }
+
+    const content = await response.text();
+
+    // Update cache
+    this.htmlPagesCache.set(url, {
+      content,
+      timestamp: Date.now()
+    });
+
+    return content;
+  }
+
+  /**
+   * Extract and score links from HTML page
+   */
+  private extractLinksFromHtml(
+    html: string,
+    baseUrl: string,
+    keywords: string[]
+  ): Array<{ url: string; score: number; text: string }> {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { document } = parseHTML(html) as any;
+      const links: Array<{ url: string; score: number; text: string }> = [];
+      const seenUrls = new Set<string>();
+
+      // Find all links
+      const anchors = document.querySelectorAll('a[href]');
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const anchor of Array.from(anchors) as any[]) {
+        const href = anchor.getAttribute('href');
+        if (!href) continue;
+
+        // Resolve relative URLs
+        let url: string;
+        try {
+          url = new URL(href, baseUrl).href;
+        } catch {
+          continue;
+        }
+
+        // Skip if already seen or not a docs.mapbox.com URL
+        if (seenUrls.has(url) || !url.startsWith('https://docs.mapbox.com/')) {
+          continue;
+        }
+        seenUrls.add(url);
+
+        const linkText = anchor.textContent?.trim() || '';
+        const urlLower = url.toLowerCase();
+        const textLower = linkText.toLowerCase();
+
+        let score = 0;
+
+        // Score based on keywords
+        keywords.forEach((keyword) => {
+          if (urlLower.includes(keyword)) {
+            score += 0.4;
+          }
+          if (textLower.includes(keyword)) {
+            score += 0.3;
+          }
+        });
+
+        // Boost for examples and API reference pages
+        if (url.includes('/example/')) {
+          score += 0.3;
+        }
+        if (url.includes('/api/')) {
+          score += 0.2;
+        }
+        if (url.includes('/guides/')) {
+          score += 0.2;
+        }
+
+        // Skip low-scoring links
+        if (score > 0.2) {
+          links.push({ url, score, text: linkText });
+        }
+      }
+
+      // Sort by score
+      return links.sort((a, b) => b.score - a.score);
+    } catch (error) {
+      this.log('warning', `Failed to extract links from ${baseUrl}: ${error}`);
+      return [];
+    }
+  }
+
+  /**
+   * Extract meaningful content from HTML page
+   */
+  private extractHtmlContent(
+    html: string,
+    url: string
+  ): Array<{
+    title: string;
+    content: string;
+    url: string;
+  }> {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { document } = parseHTML(html) as any;
+      const sections: Array<{ title: string; content: string; url: string }> =
+        [];
+
+      // Try to find main content area
+      const mainContent =
+        document.querySelector('main') ||
+        document.querySelector('article') ||
+        document.querySelector('.content') ||
+        document.querySelector('#content') ||
+        document.body;
+
+      if (!mainContent) {
+        return [];
+      }
+
+      // Extract sections based on headings
+      const headings = mainContent.querySelectorAll('h1, h2, h3');
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      for (const heading of Array.from(headings) as any[]) {
+        const title = heading.textContent?.trim() || '';
+        if (!title) continue;
+
+        // Get content until next heading
+        let content = '';
+        let currentElement = heading.nextElementSibling;
+
+        while (
+          currentElement &&
+          !['H1', 'H2', 'H3'].includes(currentElement.tagName)
+        ) {
+          const text = currentElement.textContent?.trim();
+          if (text) {
+            content += text + '\n\n';
+          }
+          currentElement = currentElement.nextElementSibling;
+        }
+
+        if (content.trim()) {
+          sections.push({
+            title,
+            content: content.trim(),
+            url
+          });
+        }
+      }
+
+      return sections;
+    } catch (error) {
+      this.log('warning', `Failed to parse HTML from ${url}: ${error}`);
+      return [];
+    }
+  }
+
+  /**
    * Find relevant documentation sections
    */
   private findRelevantDocs(
-    docs: string,
+    sections: Array<{
+      title: string;
+      content: string;
+      url: string;
+    }>,
     input: z.infer<typeof GetContextualDocsInputSchema>,
     keywords: string[]
   ): Array<{
@@ -292,13 +757,23 @@ export class GetContextualDocsTool extends BaseTool<
     relevanceScore: number;
     matchReason?: string;
   }> {
-    const sections = this.parseSections(docs);
     const scoredSections = sections
       .map((section) => {
-        const score = this.calculateRelevance(section, keywords, input);
+        const score = this.calculateRelevance(
+          {
+            title: section.title,
+            content: section.content,
+            category: this.categorizeSection(section.title, section.content)
+          },
+          keywords,
+          input
+        );
         const reason = this.explainMatch(section, keywords, input);
         return {
-          ...section,
+          title: section.title,
+          excerpt: this.extractExcerpt(section.content),
+          category: this.categorizeSection(section.title, section.content),
+          url: section.url,
           relevanceScore: score,
           matchReason: reason
         };
