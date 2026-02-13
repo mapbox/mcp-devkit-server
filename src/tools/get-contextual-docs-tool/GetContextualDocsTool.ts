@@ -687,45 +687,100 @@ export class GetContextualDocsTool extends BaseTool<
       const sections: Array<{ title: string; content: string; url: string }> =
         [];
 
-      // Try to find main content area
+      // Extract meta description as fallback
+      const metaDescription =
+        document
+          .querySelector('meta[name="description"]')
+          ?.getAttribute('content') || '';
+      const pageTitle =
+        document.querySelector('title')?.textContent?.trim() ||
+        url.split('/').pop() ||
+        'Documentation';
+
+      // Try to find main content area (Docusaurus-specific selectors first)
       const mainContent =
-        document.querySelector('main') ||
         document.querySelector('article') ||
+        document.querySelector('[id*="docs-content"]') ||
+        document.querySelector('.markdown') ||
+        document.querySelector('main') ||
         document.querySelector('.content') ||
         document.querySelector('#content') ||
         document.body;
 
       if (!mainContent) {
+        // Return meta description as fallback
+        if (metaDescription) {
+          return [
+            {
+              title: pageTitle,
+              content: metaDescription,
+              url
+            }
+          ];
+        }
         return [];
       }
 
       // Extract sections based on headings
-      const headings = mainContent.querySelectorAll('h1, h2, h3');
+      const headings = mainContent.querySelectorAll('h1, h2, h3, h4');
+      const headingArray = Array.from(headings) as any[]; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      for (const heading of Array.from(headings) as any[]) {
-        const title = heading.textContent?.trim() || '';
-        if (!title) continue;
+      if (headingArray.length > 0) {
+        // Extract content by heading sections
+        for (const heading of headingArray) {
+          const title = heading.textContent?.trim() || '';
+          if (!title) continue;
 
-        // Get content until next heading
-        let content = '';
-        let currentElement = heading.nextElementSibling;
+          // Get content until next heading
+          let content = '';
+          let currentElement = heading.nextElementSibling;
 
-        while (
-          currentElement &&
-          !['H1', 'H2', 'H3'].includes(currentElement.tagName)
-        ) {
-          const text = currentElement.textContent?.trim();
-          if (text) {
-            content += text + '\n\n';
+          while (
+            currentElement &&
+            !['H1', 'H2', 'H3', 'H4'].includes(currentElement.tagName)
+          ) {
+            const text = currentElement.textContent?.trim();
+            if (text) {
+              content += text + '\n\n';
+            }
+            currentElement = currentElement.nextElementSibling;
           }
-          currentElement = currentElement.nextElementSibling;
+
+          if (content.trim()) {
+            sections.push({
+              title,
+              content: content.trim(),
+              url
+            });
+          }
+        }
+      }
+
+      // If no heading-based sections found, extract all paragraphs and create one section
+      if (sections.length === 0) {
+        const paragraphs = mainContent.querySelectorAll('p, li, code, pre');
+        let allContent = '';
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        for (const para of Array.from(paragraphs) as any[]) {
+          const text = para.textContent?.trim();
+          if (text && text.length > 20) {
+            // Skip very short snippets
+            allContent += text + '\n\n';
+          }
         }
 
-        if (content.trim()) {
+        if (allContent.trim()) {
           sections.push({
-            title,
-            content: content.trim(),
+            title: pageTitle,
+            content: allContent.trim().substring(0, 2000), // Limit to 2000 chars
+            url
+          });
+        } else if (metaDescription) {
+          // Final fallback to meta description
+          sections.push({
+            title: pageTitle,
+            content: metaDescription,
             url
           });
         }
