@@ -212,7 +212,11 @@ export class GeojsonPreviewUIResource extends BaseResource {
           _meta: {
             ui: {
               csp: {
-                frameDomains: ['https://geojson.io']
+                frameDomains: ['https://geojson.io'],
+                resourceDomains: [
+                  'https://fonts.gstatic.com',
+                  'https://fonts.googleapis.com'
+                ]
               },
               preferredSize: {
                 width: 1200,
