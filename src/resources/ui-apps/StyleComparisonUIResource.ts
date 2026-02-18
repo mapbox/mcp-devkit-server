@@ -167,12 +167,16 @@ export class StyleComparisonUIResource extends BaseResource {
       }
     });
 
-    // Signal readiness to hosts that require initialization handshake (e.g. Goose).
-    // Non-blocking: errors silently ignored for hosts that don't support it (e.g. Claude Desktop).
+    // Full MCP Apps handshake: send ui/initialize, then send ui/notifications/initialized
+    // after the host responds. Per spec, the host MUST NOT send tool-input or tool-result
+    // until it receives ui/notifications/initialized.
+    // Errors are silently ignored for hosts that don't use this handshake (e.g. Claude Desktop).
     sendRequest('ui/initialize', {
       protocolVersion: '2026-01-26',
       appCapabilities: {},
-      appInfo: { name: 'Mapbox Style Comparison', version: '1.0.0' }
+      clientInfo: { name: 'Mapbox Style Comparison', version: '1.0.0' }
+    }).then(() => {
+      sendNotification('ui/notifications/initialized', {});
     }).catch(() => {});
 
     function handleToolResult(result) {
