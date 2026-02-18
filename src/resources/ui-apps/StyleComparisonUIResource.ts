@@ -32,37 +32,54 @@ export class StyleComparisonUIResource extends BaseResource {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mapbox Style Comparison</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      overflow: hidden;
+      background: #1a1a2e;
     }
+    #toolbar {
+      display: none;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.7);
+      gap: 8px;
+    }
+    #toolbar.visible { display: flex; }
+    #fullscreen-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    #fullscreen-btn:hover { background: rgba(255, 255, 255, 0.25); }
     #comparison-iframe {
       width: 100%;
-      height: 100vh;
+      height: calc(100vh - 0px);
       border: none;
       display: none;
     }
+    #comparison-iframe.with-toolbar { height: calc(100vh - 36px); }
     #loading {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      padding: 40px;
+      color: #aaa;
       text-align: center;
-      color: #666;
+      font-size: 16px;
     }
     #error {
       padding: 20px;
-      color: #cc0000;
+      color: #ff6b6b;
       text-align: center;
     }
   </style>
 </head>
 <body>
+  <div id="toolbar">
+    <button id="fullscreen-btn">⛶ Fullscreen</button>
+  </div>
   <div id="loading">Loading style comparison...</div>
   <iframe id="comparison-iframe"></iframe>
   <div id="error" style="display:none"></div>
@@ -71,61 +88,96 @@ export class StyleComparisonUIResource extends BaseResource {
     const iframe = document.getElementById('comparison-iframe');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
+    const toolbar = document.getElementById('toolbar');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+    let currentDisplayMode = 'inline';
+    let canFullscreen = false;
 
     let messageId = 0;
     const pendingRequests = new Map();
 
     function sendRequest(method, params = {}) {
       const id = ++messageId;
-      const message = { jsonrpc: '2.0', id, method, params };
-      window.parent.postMessage(message, '*');
+      window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
       return new Promise((resolve, reject) => {
         pendingRequests.set(id, { resolve, reject });
       });
     }
 
     function sendNotification(method, params = {}) {
-      const message = { jsonrpc: '2.0', method, params };
-      window.parent.postMessage(message, '*');
+      window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
     }
+
+    function requestSizeToFit() {
+      if (currentDisplayMode !== 'inline') return;
+      const toolbarHeight = canFullscreen ? toolbar.offsetHeight : 0;
+      sendNotification('ui/notifications/size-changed', { height: 700 + toolbarHeight });
+    }
+
+    function updateFullscreenButton() {
+      fullscreenBtn.textContent =
+        currentDisplayMode === 'fullscreen' ? '⊟ Exit Fullscreen' : '⛶ Fullscreen';
+    }
+
+    async function toggleFullscreen() {
+      const newMode = currentDisplayMode === 'fullscreen' ? 'inline' : 'fullscreen';
+      try {
+        const result = await sendRequest('ui/request-display-mode', { mode: newMode });
+        currentDisplayMode = result?.mode ?? newMode;
+        updateFullscreenButton();
+        if (currentDisplayMode === 'inline') requestSizeToFit();
+      } catch (e) {
+        // Host may not support fullscreen; ignore
+      }
+    }
+
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
 
     window.addEventListener('message', (event) => {
       const message = event.data;
       if (!message || typeof message !== 'object') return;
 
-      console.log('Received message:', JSON.stringify(message, null, 2));
-
-      if (message.id && pendingRequests.has(message.id)) {
+      if (message.id !== undefined && pendingRequests.has(message.id)) {
         const { resolve, reject } = pendingRequests.get(message.id);
         pendingRequests.delete(message.id);
-        if (message.error) {
-          reject(new Error(message.error.message));
-        } else {
-          resolve(message.result);
-        }
+        if (message.error) reject(new Error(message.error.message));
+        else resolve(message.result);
         return;
       }
 
       if (message.method === 'ui/notifications/tool-result') {
-        if (message.params) {
-          handleToolResult(message.params);
+        if (message.params) handleToolResult(message.params);
+      }
+
+      if (message.method === 'ui/notifications/host-context-changed') {
+        const ctx = message.params;
+        if (ctx?.displayMode) {
+          currentDisplayMode = ctx.displayMode;
+          updateFullscreenButton();
+          if (currentDisplayMode === 'inline' && iframe.style.display !== 'none') {
+            requestSizeToFit();
+          }
+        }
+        if (ctx?.capabilities?.supportedDisplayModes?.includes('fullscreen')) {
+          canFullscreen = true;
+          toolbar.classList.add('visible');
+          iframe.classList.add('with-toolbar');
         }
       }
     });
 
-    async function handleToolResult(result) {
-      console.log('Tool result received:', result);
-
+    function handleToolResult(result) {
       const textContent = result.content?.find(c => c.type === 'text');
 
-      if (textContent && textContent.text) {
+      if (textContent?.text) {
         const url = textContent.text;
-        console.log('Received comparison URL:', url);
 
         if (url.includes('agent.mapbox.com/tools/style-compare')) {
           iframe.src = url;
           iframe.style.display = 'block';
           loading.style.display = 'none';
+          iframe.addEventListener('load', requestSizeToFit, { once: true });
         } else {
           loading.style.display = 'none';
           errorDiv.textContent = 'Invalid comparison URL format';
@@ -137,31 +189,6 @@ export class StyleComparisonUIResource extends BaseResource {
         errorDiv.style.display = 'block';
       }
     }
-
-    async function init() {
-      try {
-        console.log('Connecting to MCP host...');
-
-        const result = await sendRequest('ui/initialize', {
-          protocolVersion: '2026-01-26',
-          appCapabilities: {},
-          appInfo: {
-            name: 'Mapbox Style Comparison',
-            version: '1.0.0'
-          }
-        });
-
-        console.log('Initialize result:', result);
-        sendNotification('ui/notifications/initialized', {});
-        console.log('Connected to MCP host');
-      } catch (error) {
-        console.error('Failed to connect:', error);
-        loading.textContent = 'Failed to connect to MCP host: ' + error.message;
-        loading.style.color = '#cc0000';
-      }
-    }
-
-    init();
   </script>
 </body>
 </html>`;

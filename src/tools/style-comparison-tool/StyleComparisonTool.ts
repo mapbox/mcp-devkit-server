@@ -1,6 +1,7 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
+import { randomUUID } from 'node:crypto';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createUIResource } from '@mcp-ui/server';
 import { BaseTool } from '../BaseTool.js';
@@ -135,7 +136,10 @@ export class StyleComparisonTool extends BaseTool<
 
     return {
       content,
-      isError: false
+      isError: false,
+      _meta: {
+        viewUUID: randomUUID()
+      }
     };
   }
 }

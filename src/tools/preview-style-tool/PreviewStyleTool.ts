@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createUIResource } from '@mcp-ui/server';
 import { BaseTool } from '../BaseTool.js';
@@ -99,7 +100,10 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
 
     return {
       content,
-      isError: false
+      isError: false,
+      _meta: {
+        viewUUID: randomUUID()
+      }
     };
   }
 }

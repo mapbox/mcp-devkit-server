@@ -3,7 +3,7 @@
 
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createUIResource } from '@mcp-ui/server';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { GeoJSON } from 'geojson';
 import { BaseTool } from '../BaseTool.js';
 import {
@@ -119,7 +119,10 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
 
       return {
         content,
-        isError: false
+        isError: false,
+        _meta: {
+          viewUUID: randomUUID()
+        }
       };
     } catch (error) {
       const errorMessage =

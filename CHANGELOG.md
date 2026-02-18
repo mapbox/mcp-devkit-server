@@ -1,3 +1,21 @@
+## Unreleased
+
+### Features Added
+
+- **MCP Apps support for preview_style_tool, style_comparison_tool, geojson_preview_tool** (#62)
+  - Added fullscreen toggle button and `ui/request-display-mode` support
+  - Added `ui/notifications/host-context-changed` handler for returning from fullscreen
+  - Added `ui/notifications/size-changed` notifications to fit panel height on load
+  - Added `viewUUID` to tool response `_meta` so host routes result to correct UI panel
+  - Removed outdated `ui/initialize` handshake (ext-apps 0.2.x pattern, not needed in 1.0.x)
+  - Removed debug `console.log` statements from all UI resource HTML
+  - Compatible with Claude Desktop, VS Code, and Goose
+
+### Dependencies
+
+- Updated `@modelcontextprotocol/sdk` from 1.25.3 to 1.26.0
+- Updated patch file for SDK 1.26.0
+
 ## 0.4.7
 
 ### Security

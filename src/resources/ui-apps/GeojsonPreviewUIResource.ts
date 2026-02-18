@@ -25,7 +25,6 @@ export class GeojsonPreviewUIResource extends BaseResource {
     _uri: URL,
     _extra: RequestHandlerExtra<ServerRequest, ServerNotification>
   ): Promise<ReadResourceResult> {
-    // Generate HTML with embedded iframe for GeoJSON visualization using geojson.io/next
     const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -33,33 +32,41 @@ export class GeojsonPreviewUIResource extends BaseResource {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GeoJSON Preview</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      overflow: hidden;
       background: #f5f5f5;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
     }
+    #toolbar {
+      display: none;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 6px 10px;
+      background: rgba(0, 0, 0, 0.7);
+      gap: 8px;
+    }
+    #toolbar.visible { display: flex; }
+    #fullscreen-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    #fullscreen-btn:hover { background: rgba(255, 255, 255, 0.25); }
     #preview-iframe {
-      flex: 1;
       width: 100%;
-      height: 100%;
+      height: calc(100vh - 0px);
       border: none;
       display: none;
     }
+    #preview-iframe.with-toolbar { height: calc(100vh - 36px); }
     #loading {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      padding: 40px;
+      color: #666;
       text-align: center;
-      color: #333;
       font-size: 16px;
     }
     #error {
@@ -71,151 +78,127 @@ export class GeojsonPreviewUIResource extends BaseResource {
       max-width: 600px;
       margin: 20px auto;
     }
+    #error a {
+      display: block;
+      margin-top: 10px;
+      color: #1976d2;
+      word-break: break-all;
+    }
   </style>
 </head>
 <body>
+  <div id="toolbar">
+    <button id="fullscreen-btn">⛶ Fullscreen</button>
+  </div>
   <div id="loading">Loading GeoJSON preview...</div>
   <iframe id="preview-iframe" allow="geolocation"></iframe>
   <div id="error" style="display:none"></div>
 
   <script type="module">
-    // Minimal MCP Apps client implementation (inlined to avoid CSP issues)
     const iframe = document.getElementById('preview-iframe');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
+    const toolbar = document.getElementById('toolbar');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+
+    let currentDisplayMode = 'inline';
+    let canFullscreen = false;
 
     let messageId = 0;
     const pendingRequests = new Map();
 
-    // Send JSON-RPC request to host (expects response)
     function sendRequest(method, params = {}) {
       const id = ++messageId;
-      const message = { jsonrpc: '2.0', id, method, params };
-      window.parent.postMessage(message, '*');
+      window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
       return new Promise((resolve, reject) => {
         pendingRequests.set(id, { resolve, reject });
       });
     }
 
-    // Send JSON-RPC notification to host (no response expected)
     function sendNotification(method, params = {}) {
-      const message = { jsonrpc: '2.0', method, params };
-      window.parent.postMessage(message, '*');
+      window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
     }
 
-    // Handle messages from host
+    function requestSizeToFit() {
+      if (currentDisplayMode !== 'inline') return;
+      const toolbarHeight = canFullscreen ? toolbar.offsetHeight : 0;
+      sendNotification('ui/notifications/size-changed', { height: 700 + toolbarHeight });
+    }
+
+    function updateFullscreenButton() {
+      fullscreenBtn.textContent =
+        currentDisplayMode === 'fullscreen' ? '⊟ Exit Fullscreen' : '⛶ Fullscreen';
+    }
+
+    async function toggleFullscreen() {
+      const newMode = currentDisplayMode === 'fullscreen' ? 'inline' : 'fullscreen';
+      try {
+        const result = await sendRequest('ui/request-display-mode', { mode: newMode });
+        currentDisplayMode = result?.mode ?? newMode;
+        updateFullscreenButton();
+        if (currentDisplayMode === 'inline') requestSizeToFit();
+      } catch (e) {
+        // Host may not support fullscreen; ignore
+      }
+    }
+
+    fullscreenBtn.addEventListener('click', toggleFullscreen);
+
     window.addEventListener('message', (event) => {
       const message = event.data;
       if (!message || typeof message !== 'object') return;
 
-      console.log('Received message:', JSON.stringify(message, null, 2));
-
-      // Handle JSON-RPC responses
-      if (message.id && pendingRequests.has(message.id)) {
+      if (message.id !== undefined && pendingRequests.has(message.id)) {
         const { resolve, reject } = pendingRequests.get(message.id);
         pendingRequests.delete(message.id);
-        if (message.error) {
-          reject(new Error(message.error.message));
-        } else {
-          resolve(message.result);
-        }
+        if (message.error) reject(new Error(message.error.message));
+        else resolve(message.result);
         return;
       }
 
-      // Handle notifications (tool results)
       if (message.method === 'ui/notifications/tool-result') {
-        if (message.params) {
-          handleToolResult(message.params);
+        if (message.params) handleToolResult(message.params);
+      }
+
+      if (message.method === 'ui/notifications/host-context-changed') {
+        const ctx = message.params;
+        if (ctx?.displayMode) {
+          currentDisplayMode = ctx.displayMode;
+          updateFullscreenButton();
+          if (currentDisplayMode === 'inline' && iframe.style.display !== 'none') {
+            requestSizeToFit();
+          }
+        }
+        if (ctx?.capabilities?.supportedDisplayModes?.includes('fullscreen')) {
+          canFullscreen = true;
+          toolbar.classList.add('visible');
+          iframe.classList.add('with-toolbar');
         }
       }
     });
 
-    async function handleToolResult(result) {
-      console.log('Tool result received:', result);
-
-      // Find the text content which contains the preview URL
+    function handleToolResult(result) {
       const textContent = result.content?.find(c => c.type === 'text');
 
-      if (textContent && textContent.text) {
+      if (textContent?.text) {
         const url = textContent.text;
-        console.log('Received URL:', url);
 
-        // Check if it's a geojson.io/next URL
         if (url.includes('geojson.io/next')) {
-          // Display geojson.io/next in iframe
           iframe.src = url;
           iframe.style.display = 'block';
           loading.style.display = 'none';
-
-          // Handle iframe load errors
-          iframe.addEventListener('error', () => {
-            loading.style.display = 'none';
-            errorDiv.textContent = 'Failed to load geojson.io/next. Try opening the URL directly:';
-            errorDiv.style.display = 'block';
-
-            const link = document.createElement('a');
-            link.href = url;
-            link.target = '_blank';
-            link.textContent = url;
-            link.style.display = 'block';
-            link.style.marginTop = '10px';
-            link.style.color = '#1976d2';
-            link.style.wordBreak = 'break-all';
-            errorDiv.appendChild(link);
-          });
+          iframe.addEventListener('load', requestSizeToFit, { once: true });
         } else {
-          // Unknown URL format or old geojson.io URL
           loading.style.display = 'none';
-          errorDiv.textContent = 'Unsupported URL format. Expected geojson.io/next URL. URL:';
+          errorDiv.innerHTML = 'Unsupported URL format. <a href="' + url + '" target="_blank">' + url + '</a>';
           errorDiv.style.display = 'block';
-
-          const link = document.createElement('a');
-          link.href = url;
-          link.target = '_blank';
-          link.textContent = url;
-          link.style.display = 'block';
-          link.style.marginTop = '10px';
-          link.style.color = '#1976d2';
-          link.style.wordBreak = 'break-all';
-          errorDiv.appendChild(link);
         }
       } else {
-        console.log('No text content found in tool result');
         loading.style.display = 'none';
         errorDiv.textContent = 'No URL found in tool result';
         errorDiv.style.display = 'block';
       }
     }
-
-    // Initialize connection
-    async function init() {
-      try {
-        console.log('Connecting to MCP host...');
-
-        // Send initialize request according to MCP Apps protocol
-        const result = await sendRequest('ui/initialize', {
-          protocolVersion: '2026-01-26',
-          appCapabilities: {},
-          appInfo: {
-            name: 'GeoJSON Preview',
-            version: '1.0.0'
-          }
-        });
-
-        console.log('Initialize result:', result);
-
-        // Send initialized notification
-        sendNotification('ui/notifications/initialized', {});
-
-        console.log('Connected to MCP host');
-      } catch (error) {
-        console.error('Failed to connect:', error);
-        loading.textContent = 'Failed to connect to MCP host: ' + error.message;
-        loading.style.color = '#cc0000';
-      }
-    }
-
-    init();
   </script>
 </body>
 </html>`;
@@ -233,7 +216,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
               },
               preferredSize: {
                 width: 1200,
-                height: 900
+                height: 700
               }
             }
           }
