@@ -187,7 +187,10 @@ export class GeojsonPreviewUIResource extends BaseResource {
       clientInfo: { name: 'GeoJSON Preview', version: '1.0.0' }
     }).then(function() {
       sendNotification('ui/notifications/initialized', {});
-    }).catch(function() {});
+    }, function() {
+      // ui/initialize may be rejected by the host but we still signal readiness
+      sendNotification('ui/notifications/initialized', {});
+    });
 
     function handleToolResult(result) {
       const textContent = result.content?.find(c => c.type === 'text');
