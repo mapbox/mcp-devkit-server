@@ -95,6 +95,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
   <div id="error" style="display:none"></div>
 
   <script type="module">
+    console.log('[mcpapp] script started');
     const iframe = document.getElementById('preview-iframe');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
@@ -109,6 +110,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
 
     function sendRequest(method, params = {}) {
       const id = ++messageId;
+      console.log('[mcpapp] sendRequest', method, params);
       window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
       return new Promise((resolve, reject) => {
         pendingRequests.set(id, { resolve, reject });
@@ -116,6 +118,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
     }
 
     function sendNotification(method, params = {}) {
+      console.log('[mcpapp] sendNotification', method);
       window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
     }
 
@@ -147,6 +150,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
     window.addEventListener('message', (event) => {
       const message = event.data;
       if (!message || typeof message !== 'object') return;
+      console.log('[mcpapp] received message', JSON.stringify(message).substring(0, 200));
 
       if (message.id !== undefined && pendingRequests.has(message.id)) {
         const { resolve, reject } = pendingRequests.get(message.id);
@@ -185,9 +189,12 @@ export class GeojsonPreviewUIResource extends BaseResource {
       protocolVersion: '2026-01-26',
       appCapabilities: {},
       clientInfo: { name: 'GeoJSON Preview', version: '1.0.0' }
-    }).then(() => {
+    }).then((result) => {
+      console.log('[mcpapp] ui/initialize response received', JSON.stringify(result).substring(0, 200));
       sendNotification('ui/notifications/initialized', {});
-    }).catch(() => {});
+    }).catch((err) => {
+      console.log('[mcpapp] ui/initialize error (expected on some hosts):', err?.message);
+    });
 
     function handleToolResult(result) {
       const textContent = result.content?.find(c => c.type === 'text');
