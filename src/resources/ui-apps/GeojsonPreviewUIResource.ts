@@ -84,6 +84,16 @@ export class GeojsonPreviewUIResource extends BaseResource {
       color: #1976d2;
       word-break: break-all;
     }
+    #debug {
+      padding: 10px 20px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #555;
+      background: #f0f0f0;
+      border-top: 1px solid #ddd;
+      max-height: 200px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
@@ -93,14 +103,22 @@ export class GeojsonPreviewUIResource extends BaseResource {
   <div id="loading">Loading GeoJSON preview...</div>
   <iframe id="preview-iframe" allow="geolocation"></iframe>
   <div id="error" style="display:none"></div>
+  <div id="debug"></div>
 
   <script type="module">
-    console.log('[mcpapp] script started');
     const iframe = document.getElementById('preview-iframe');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
     const toolbar = document.getElementById('toolbar');
     const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const debugDiv = document.getElementById('debug');
+
+    function dbg(msg) {
+      const line = document.createElement('div');
+      line.textContent = new Date().toISOString().slice(11,23) + ' ' + msg;
+      debugDiv.appendChild(line);
+    }
+    dbg('script started');
 
     let currentDisplayMode = 'inline';
     let canFullscreen = false;
@@ -110,7 +128,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
 
     function sendRequest(method, params = {}) {
       const id = ++messageId;
-      console.log('[mcpapp] sendRequest', method, params);
+      dbg('→ ' + method);
       window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
       return new Promise((resolve, reject) => {
         pendingRequests.set(id, { resolve, reject });
@@ -118,7 +136,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
     }
 
     function sendNotification(method, params = {}) {
-      console.log('[mcpapp] sendNotification', method);
+      dbg('→ ' + method);
       window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
     }
 
@@ -150,7 +168,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
     window.addEventListener('message', (event) => {
       const message = event.data;
       if (!message || typeof message !== 'object') return;
-      console.log('[mcpapp] received message', JSON.stringify(message).substring(0, 200));
+      dbg('← ' + (message.method || ('id:' + message.id)));
 
       if (message.id !== undefined && pendingRequests.has(message.id)) {
         const { resolve, reject } = pendingRequests.get(message.id);
@@ -189,11 +207,11 @@ export class GeojsonPreviewUIResource extends BaseResource {
       protocolVersion: '2026-01-26',
       appCapabilities: {},
       clientInfo: { name: 'GeoJSON Preview', version: '1.0.0' }
-    }).then((result) => {
-      console.log('[mcpapp] ui/initialize response received', JSON.stringify(result).substring(0, 200));
+    }).then(() => {
+      dbg('init-ok → sending initialized');
       sendNotification('ui/notifications/initialized', {});
     }).catch((err) => {
-      console.log('[mcpapp] ui/initialize error (expected on some hosts):', err?.message);
+      dbg('init-err: ' + (err?.message || 'no response'));
     });
 
     function handleToolResult(result) {
