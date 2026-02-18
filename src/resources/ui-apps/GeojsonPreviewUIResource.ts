@@ -105,7 +105,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
   <div id="error" style="display:none"></div>
   <div id="debug"></div>
 
-  <script type="module">
+  <script>
     const iframe = document.getElementById('preview-iframe');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');

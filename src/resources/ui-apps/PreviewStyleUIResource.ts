@@ -84,7 +84,7 @@ export class PreviewStyleUIResource extends BaseResource {
   <iframe id="preview-iframe"></iframe>
   <div id="error" style="display:none"></div>
 
-  <script type="module">
+  <script>
     const iframe = document.getElementById('preview-iframe');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');

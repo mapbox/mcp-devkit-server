@@ -84,7 +84,7 @@ export class StyleComparisonUIResource extends BaseResource {
   <iframe id="comparison-iframe"></iframe>
   <div id="error" style="display:none"></div>
 
-  <script type="module">
+  <script>
     const iframe = document.getElementById('comparison-iframe');
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
