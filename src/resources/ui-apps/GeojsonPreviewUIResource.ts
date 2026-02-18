@@ -84,16 +84,6 @@ export class GeojsonPreviewUIResource extends BaseResource {
       color: #1976d2;
       word-break: break-all;
     }
-    #debug {
-      padding: 10px 20px;
-      font-family: monospace;
-      font-size: 11px;
-      color: #555;
-      background: #f0f0f0;
-      border-top: 1px solid #ddd;
-      max-height: 200px;
-      overflow-y: auto;
-    }
   </style>
 </head>
 <body>
@@ -103,46 +93,35 @@ export class GeojsonPreviewUIResource extends BaseResource {
   <div id="loading">Loading GeoJSON preview...</div>
   <iframe id="preview-iframe" allow="geolocation"></iframe>
   <div id="error" style="display:none"></div>
-  <div id="debug"></div>
 
   <script>
-    const iframe = document.getElementById('preview-iframe');
-    const loading = document.getElementById('loading');
-    const errorDiv = document.getElementById('error');
-    const toolbar = document.getElementById('toolbar');
-    const fullscreenBtn = document.getElementById('fullscreen-btn');
-    const debugDiv = document.getElementById('debug');
+    var iframe = document.getElementById('preview-iframe');
+    var loading = document.getElementById('loading');
+    var errorDiv = document.getElementById('error');
+    var toolbar = document.getElementById('toolbar');
+    var fullscreenBtn = document.getElementById('fullscreen-btn');
 
-    function dbg(msg) {
-      const line = document.createElement('div');
-      line.textContent = new Date().toISOString().slice(11,23) + ' ' + msg;
-      debugDiv.appendChild(line);
-    }
-    dbg('script started');
+    var currentDisplayMode = 'inline';
+    var canFullscreen = false;
 
-    let currentDisplayMode = 'inline';
-    let canFullscreen = false;
+    var messageId = 0;
+    var pendingRequests = new Map();
 
-    let messageId = 0;
-    const pendingRequests = new Map();
-
-    function sendRequest(method, params = {}) {
-      const id = ++messageId;
-      dbg('→ ' + method);
-      window.parent.postMessage({ jsonrpc: '2.0', id, method, params }, '*');
-      return new Promise((resolve, reject) => {
-        pendingRequests.set(id, { resolve, reject });
+    function sendRequest(method, params) {
+      var id = ++messageId;
+      window.parent.postMessage({ jsonrpc: '2.0', id: id, method: method, params: params || {} }, '*');
+      return new Promise(function(resolve, reject) {
+        pendingRequests.set(id, { resolve: resolve, reject: reject });
       });
     }
 
-    function sendNotification(method, params = {}) {
-      dbg('→ ' + method);
-      window.parent.postMessage({ jsonrpc: '2.0', method, params }, '*');
+    function sendNotification(method, params) {
+      window.parent.postMessage({ jsonrpc: '2.0', method: method, params: params || {} }, '*');
     }
 
     function requestSizeToFit() {
       if (currentDisplayMode !== 'inline') return;
-      const toolbarHeight = canFullscreen ? toolbar.offsetHeight : 0;
+      var toolbarHeight = canFullscreen ? toolbar.offsetHeight : 0;
       sendNotification('ui/notifications/size-changed', { height: 700 + toolbarHeight });
     }
 
@@ -151,30 +130,28 @@ export class GeojsonPreviewUIResource extends BaseResource {
         currentDisplayMode === 'fullscreen' ? '⊟ Exit Fullscreen' : '⛶ Fullscreen';
     }
 
-    async function toggleFullscreen() {
-      const newMode = currentDisplayMode === 'fullscreen' ? 'inline' : 'fullscreen';
-      try {
-        const result = await sendRequest('ui/request-display-mode', { mode: newMode });
-        currentDisplayMode = result?.mode ?? newMode;
+    function toggleFullscreen() {
+      var newMode = currentDisplayMode === 'fullscreen' ? 'inline' : 'fullscreen';
+      sendRequest('ui/request-display-mode', { mode: newMode }).then(function(result) {
+        currentDisplayMode = (result && result.mode) ? result.mode : newMode;
         updateFullscreenButton();
         if (currentDisplayMode === 'inline') requestSizeToFit();
-      } catch (e) {
+      }).catch(function() {
         // Host may not support fullscreen; ignore
-      }
+      });
     }
 
     fullscreenBtn.addEventListener('click', toggleFullscreen);
 
-    window.addEventListener('message', (event) => {
-      const message = event.data;
+    window.addEventListener('message', function(event) {
+      var message = event.data;
       if (!message || typeof message !== 'object') return;
-      dbg('← ' + (message.method || ('id:' + message.id)));
 
       if (message.id !== undefined && pendingRequests.has(message.id)) {
-        const { resolve, reject } = pendingRequests.get(message.id);
+        var handlers = pendingRequests.get(message.id);
         pendingRequests.delete(message.id);
-        if (message.error) reject(new Error(message.error.message));
-        else resolve(message.result);
+        if (message.error) handlers.reject(new Error(message.error.message));
+        else handlers.resolve(message.result);
         return;
       }
 
@@ -183,15 +160,16 @@ export class GeojsonPreviewUIResource extends BaseResource {
       }
 
       if (message.method === 'ui/notifications/host-context-changed') {
-        const ctx = message.params;
-        if (ctx?.displayMode) {
+        var ctx = message.params;
+        if (ctx && ctx.displayMode) {
           currentDisplayMode = ctx.displayMode;
           updateFullscreenButton();
           if (currentDisplayMode === 'inline' && iframe.style.display !== 'none') {
             requestSizeToFit();
           }
         }
-        if (ctx?.capabilities?.supportedDisplayModes?.includes('fullscreen')) {
+        if (ctx && ctx.capabilities && ctx.capabilities.supportedDisplayModes &&
+            ctx.capabilities.supportedDisplayModes.indexOf('fullscreen') !== -1) {
           canFullscreen = true;
           toolbar.classList.add('visible');
           iframe.classList.add('with-toolbar');
@@ -207,12 +185,9 @@ export class GeojsonPreviewUIResource extends BaseResource {
       protocolVersion: '2026-01-26',
       appCapabilities: {},
       clientInfo: { name: 'GeoJSON Preview', version: '1.0.0' }
-    }).then(() => {
-      dbg('init-ok → sending initialized');
+    }).then(function() {
       sendNotification('ui/notifications/initialized', {});
-    }).catch((err) => {
-      dbg('init-err: ' + (err?.message || 'no response'));
-    });
+    }).catch(function() {});
 
     function handleToolResult(result) {
       const textContent = result.content?.find(c => c.type === 'text');
