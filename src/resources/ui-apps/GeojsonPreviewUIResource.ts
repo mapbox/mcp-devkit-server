@@ -177,6 +177,14 @@ export class GeojsonPreviewUIResource extends BaseResource {
       }
     });
 
+    // Signal readiness to hosts that require initialization handshake (e.g. Goose).
+    // Non-blocking: errors silently ignored for hosts that don't support it (e.g. Claude Desktop).
+    sendRequest('ui/initialize', {
+      protocolVersion: '2026-01-26',
+      appCapabilities: {},
+      appInfo: { name: 'GeoJSON Preview', version: '1.0.0' }
+    }).catch(() => {});
+
     function handleToolResult(result) {
       const textContent = result.content?.find(c => c.type === 'text');
 

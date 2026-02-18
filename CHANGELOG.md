@@ -7,7 +7,8 @@
   - Added `ui/notifications/host-context-changed` handler for returning from fullscreen
   - Added `ui/notifications/size-changed` notifications to fit panel height on load
   - Added `viewUUID` to tool response `_meta` so host routes result to correct UI panel
-  - Removed outdated `ui/initialize` handshake (ext-apps 0.2.x pattern, not needed in 1.0.x)
+  - Re-added `ui/initialize` as non-blocking fire-and-forget (fixes Goose which requires readiness signal before sending `tool-result`; errors silently ignored for hosts like Claude Desktop that reject it)
+  - Added Google Fonts (`fonts.gstatic.com`, `fonts.googleapis.com`) to GeoJSON Preview CSP `resourceDomains`
   - Removed debug `console.log` statements from all UI resource HTML
   - Compatible with Claude Desktop, VS Code, and Goose
 
