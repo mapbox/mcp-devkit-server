@@ -12,3 +12,6 @@ dist/
 
 # Test results
 test-results.xml
+
+# Build artifacts
+*.tsbuildinfo

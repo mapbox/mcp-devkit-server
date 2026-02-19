@@ -12,8 +12,9 @@
   "scripts": {
     "postinstall": "patch-package || true",
     "build": "npm run prepare && tshy && npm run generate-version && node scripts/add-shebang.cjs",
-    "format": "prettier --check \"./src/**/*.{ts,tsx,js,json,md}\" \"./test/**/*.{ts,tsx,js,json,md}\" \"./examples/**/*.{ts,tsx,js,json,md}\"",
-    "format:fix": "prettier --write \"./src/**/*.{ts,tsx,js,json,md}\" \"./test/**/*.{ts,tsx,js,json,md}\" \"./examples/**/*.{ts,tsx,js,json,md}\"",
+    "changelog:prepare-release": "node scripts/prepare-changelog-release.cjs",
+    "format": "prettier --check \"./src/**/*.{ts,tsx,js,json,md}\" \"./test/**/*.{ts,tsx,js,json,md}\"",
+    "format:fix": "prettier --write \"./src/**/*.{ts,tsx,js,json,md}\" \"./test/**/*.{ts,tsx,js,json,md}\"",
     "generate-version": "node scripts/build-helpers.cjs generate-version",
     "inspect:build": "npm run build && npx @modelcontextprotocol/inspector -e MAPBOX_ACCESS_TOKEN=\"$MAPBOX_ACCESS_TOKEN\" node dist/esm/index.js",
     "inspect:dev": "npx @modelcontextprotocol/inspector -e MAPBOX_ACCESS_TOKEN=\"$MAPBOX_ACCESS_TOKEN\" npx -y tsx src/index.ts",

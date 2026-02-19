@@ -17,6 +17,21 @@
 - Updated `@modelcontextprotocol/sdk` from 1.25.3 to 1.26.0
 - Updated patch file for SDK 1.26.0
 
+### Documentation
+
+- **PR Guidelines**: Added CHANGELOG requirement to CLAUDE.md (#67)
+  - All pull requests must now update CHANGELOG.md
+  - Document what changed, why, and any breaking changes
+  - Add entry under "Unreleased" section with PR number
+
+### Developer Experience
+
+- **Release Process**: Added automated CHANGELOG preparation script (#67)
+  - New `npm run changelog:prepare-release <version>` command
+  - Automatically replaces "Unreleased" with version and date
+  - Adds new empty "Unreleased" section for next changes
+  - Includes validation for version format and CHANGELOG structure
+
 ## 0.4.7
 
 ### Security
