@@ -1,5 +1,11 @@
 ## Unreleased
 
+### Dependencies
+
+- Updated `@modelcontextprotocol/sdk` from `^1.25.3` to `^1.26.0`
+- Regenerated SDK patch file for 1.26.0 (same patch content — softens output schema validation errors to warnings)
+- Removed old `@modelcontextprotocol+sdk+1.25.3.patch`
+
 ### Documentation
 
 - **PR Guidelines**: Added CHANGELOG requirement to CLAUDE.md (#67)
