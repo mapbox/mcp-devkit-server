@@ -279,16 +279,19 @@ export class GeojsonPreviewUIResource extends BaseResource {
 
       map.addLayer({
         id: 'geojson-fill', type: 'fill', source: 'geojson',
+        slot: 'top',
         filter: ['==', '$type', 'Polygon'],
         paint: { 'fill-color': '#3fb1ce', 'fill-opacity': 0.35 }
       });
       map.addLayer({
         id: 'geojson-line', type: 'line', source: 'geojson',
+        slot: 'top',
         filter: ['any', ['==', '$type', 'LineString'], ['==', '$type', 'Polygon']],
         paint: { 'line-color': '#3fb1ce', 'line-width': 2 }
       });
       map.addLayer({
         id: 'geojson-points', type: 'circle', source: 'geojson',
+        slot: 'top',
         filter: ['==', '$type', 'Point'],
         paint: { 'circle-color': '#3fb1ce', 'circle-radius': 6,
                  'circle-stroke-width': 2, 'circle-stroke-color': '#fff' }
@@ -308,7 +311,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
       mapboxgl.accessToken = TOKEN;
       map = new mapboxgl.Map({
         container: 'map',
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/standard',
         center: [0, 20],
         zoom: 1.5
       });
