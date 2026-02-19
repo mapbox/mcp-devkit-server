@@ -10,15 +10,20 @@ import type {
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { BaseResource } from '../BaseResource.js';
 
+const MAPBOX_GL_VERSION = '3.12.0';
+const COMPARE_VERSION = '0.4.0';
+
 /**
- * Serves UI App HTML for Mapbox Style Comparison
- * Implements MCP Apps pattern with ui:// scheme
+ * Serves UI App HTML for Mapbox Style Comparison using mapbox-gl-compare.
+ * Renders two synced GL maps with a draggable reveal slider inline —
+ * no inner iframe needed, so frame-src CSP is not an issue.
+ * Implements MCP Apps pattern with ui:// scheme.
  */
 export class StyleComparisonUIResource extends BaseResource {
   readonly name = 'Mapbox Style Comparison UI';
   readonly uri = 'ui://mapbox/style-comparison/index.html';
   readonly description =
-    'Interactive UI for comparing Mapbox styles side-by-side (MCP Apps)';
+    'Interactive UI for comparing two Mapbox styles with a draggable slider (MCP Apps)';
   readonly mimeType = RESOURCE_MIME_TYPE;
 
   public async readCallback(
@@ -31,68 +36,82 @@ export class StyleComparisonUIResource extends BaseResource {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mapbox Style Comparison</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.css" rel="stylesheet">
+  <link href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v${COMPARE_VERSION}/mapbox-gl-compare.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v${COMPARE_VERSION}/mapbox-gl-compare.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #1a1a2e;
-    }
-    #toolbar {
-      display: none;
-      align-items: center;
-      justify-content: flex-end;
-      padding: 6px 10px;
-      background: rgba(0, 0, 0, 0.7);
-      gap: 8px;
-    }
-    #toolbar.visible { display: flex; }
-    #fullscreen-btn {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #fff;
-      padding: 4px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    #fullscreen-btn:hover { background: rgba(255, 255, 255, 0.25); }
-    #comparison-iframe {
-      width: 100%;
-      height: calc(100vh - 0px);
-      border: none;
-      display: none;
-    }
-    #comparison-iframe.with-toolbar { height: calc(100vh - 36px); }
+    html, body { width: 100%; height: 100%; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #comparison-container { position: relative; width: 100%; height: 100%; }
+    .map { position: absolute; top: 0; bottom: 0; width: 100%; }
     #loading {
-      padding: 40px;
-      color: #aaa;
-      text-align: center;
-      font-size: 16px;
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #aaa; font-size: 16px; z-index: 10; pointer-events: none;
     }
     #error {
-      padding: 20px;
-      color: #ff6b6b;
-      text-align: center;
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #ff6b6b; background: rgba(0,0,0,0.7); border-radius: 8px;
+      padding: 20px; max-width: 400px; text-align: center; z-index: 10;
     }
+    .style-label {
+      position: absolute; bottom: 30px; z-index: 10;
+      background: rgba(0,0,0,0.55); color: #fff;
+      padding: 5px 14px; border-radius: 12px;
+      font-size: 13px; font-weight: 500;
+      max-width: 35%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      display: none;
+    }
+    #before-label { left: 12px; }
+    #after-label { right: 12px; }
+    #open-btn {
+      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 10; display: none;
+      color: #fff; background: rgba(0,0,0,0.6);
+      font-size: 13px; padding: 5px 12px;
+      border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;
+      cursor: pointer; font-family: inherit;
+    }
+    #open-btn:hover { background: rgba(0,0,0,0.8); }
+    #fullscreen-btn {
+      position: absolute; top: 10px; right: 10px; z-index: 10;
+      display: none;
+      width: 36px; height: 36px; border: none; border-radius: 8px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      cursor: pointer; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    #fullscreen-btn.visible { display: flex; }
+    #fullscreen-btn:hover { background: rgba(240,240,240,0.95); }
   </style>
 </head>
 <body>
-  <div id="toolbar">
-    <button id="fullscreen-btn">⛶ Fullscreen</button>
+  <div id="comparison-container">
+    <div id="before" class="map"></div>
+    <div id="after" class="map"></div>
   </div>
   <div id="loading">Loading style comparison...</div>
-  <iframe id="comparison-iframe"></iframe>
   <div id="error" style="display:none"></div>
+  <div id="before-label" class="style-label"></div>
+  <div id="after-label" class="style-label"></div>
+  <button id="open-btn">↗ Open in browser</button>
+  <button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
 
   <script>
-    var iframe = document.getElementById('comparison-iframe');
-    var loading = document.getElementById('loading');
-    var errorDiv = document.getElementById('error');
-    var toolbar = document.getElementById('toolbar');
-    var fullscreenBtn = document.getElementById('fullscreen-btn');
-
+    var beforeMap = null;
+    var afterMap = null;
+    var compare = null;
+    var currentPreviewUrl = '';
     var currentDisplayMode = 'inline';
-    var canFullscreen = false;
+
+    var loadingEl = document.getElementById('loading');
+    var errorEl = document.getElementById('error');
+    var beforeLabel = document.getElementById('before-label');
+    var afterLabel = document.getElementById('after-label');
+    var openBtn = document.getElementById('open-btn');
+    var fullscreenBtn = document.getElementById('fullscreen-btn');
 
     var messageId = 0;
     var pendingRequests = new Map();
@@ -111,27 +130,35 @@ export class StyleComparisonUIResource extends BaseResource {
 
     function requestSizeToFit() {
       if (currentDisplayMode !== 'inline') return;
-      var toolbarHeight = canFullscreen ? toolbar.offsetHeight : 0;
-      sendNotification('ui/notifications/size-changed', { height: 700 + toolbarHeight });
+      sendNotification('ui/notifications/size-changed', { height: 600 });
     }
 
-    function updateFullscreenButton() {
-      fullscreenBtn.textContent =
-        currentDisplayMode === 'fullscreen' ? '⊟ Exit Fullscreen' : '⛶ Fullscreen';
-    }
-
-    function toggleFullscreen() {
+    fullscreenBtn.addEventListener('click', function() {
       var newMode = currentDisplayMode === 'fullscreen' ? 'inline' : 'fullscreen';
       sendRequest('ui/request-display-mode', { mode: newMode }).then(function(result) {
         currentDisplayMode = (result && result.mode) ? result.mode : newMode;
-        updateFullscreenButton();
+        fullscreenBtn.textContent = currentDisplayMode === 'fullscreen' ? '⊟' : '⛶';
+        if (beforeMap) setTimeout(function() { beforeMap.resize(); afterMap.resize(); }, 100);
         if (currentDisplayMode === 'inline') requestSizeToFit();
-      }).catch(function() {
-        // Host may not support fullscreen; ignore
-      });
-    }
+      }).catch(function() {});
+    });
 
-    fullscreenBtn.addEventListener('click', toggleFullscreen);
+    openBtn.addEventListener('click', function() {
+      if (!currentPreviewUrl) return;
+      sendRequest('ui/open-link', { url: currentPreviewUrl }).catch(function() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = currentPreviewUrl;
+          ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          openBtn.textContent = '✓ URL copied';
+          setTimeout(function() { openBtn.textContent = '↗ Open in browser'; }, 2000);
+        } catch (err) {}
+      });
+    });
 
     window.addEventListener('message', function(event) {
       var message = event.data;
@@ -153,24 +180,16 @@ export class StyleComparisonUIResource extends BaseResource {
         var ctx = message.params;
         if (ctx && ctx.displayMode) {
           currentDisplayMode = ctx.displayMode;
-          updateFullscreenButton();
-          if (currentDisplayMode === 'inline' && iframe.style.display !== 'none') {
-            requestSizeToFit();
-          }
+          fullscreenBtn.textContent = currentDisplayMode === 'fullscreen' ? '⊟' : '⛶';
+          if (beforeMap) setTimeout(function() { beforeMap.resize(); afterMap.resize(); }, 100);
         }
         if (ctx && ctx.capabilities && ctx.capabilities.supportedDisplayModes &&
             ctx.capabilities.supportedDisplayModes.indexOf('fullscreen') !== -1) {
-          canFullscreen = true;
-          toolbar.classList.add('visible');
-          iframe.classList.add('with-toolbar');
+          fullscreenBtn.classList.add('visible');
         }
       }
     });
 
-    // Full MCP Apps handshake: send ui/initialize, then send ui/notifications/initialized
-    // after the host responds. Per spec, the host MUST NOT send tool-input or tool-result
-    // until it receives ui/notifications/initialized.
-    // Errors are silently ignored for hosts that don't use this handshake (e.g. Claude Desktop).
     sendRequest('ui/initialize', {
       protocolVersion: '2026-01-26',
       appCapabilities: {},
@@ -178,30 +197,84 @@ export class StyleComparisonUIResource extends BaseResource {
     }).then(function() {
       sendNotification('ui/notifications/initialized', {});
     }, function() {
-      // ui/initialize may be rejected by the host but we still signal readiness
       sendNotification('ui/notifications/initialized', {});
     });
 
     function handleToolResult(result) {
       const textContent = result.content?.find(c => c.type === 'text');
+      if (!textContent?.text) {
+        loadingEl.style.display = 'none';
+        errorEl.textContent = 'No URL found in tool result';
+        errorEl.style.display = 'block';
+        return;
+      }
 
-      if (textContent?.text) {
-        const url = textContent.text;
+      const url = textContent.text;
+      currentPreviewUrl = url;
+      openBtn.style.display = 'block';
 
-        if (url.includes('agent.mapbox.com/tools/style-compare')) {
-          iframe.src = url;
-          iframe.style.display = 'block';
-          loading.style.display = 'none';
-          iframe.addEventListener('load', requestSizeToFit, { once: true });
-        } else {
-          loading.style.display = 'none';
-          errorDiv.textContent = 'Invalid comparison URL format';
-          errorDiv.style.display = 'block';
+      if (typeof mapboxgl === 'undefined') {
+        loadingEl.style.display = 'none';
+        return;
+      }
+
+      try {
+        const parsed = new URL(url);
+        const token = parsed.searchParams.get('access_token');
+        const before = parsed.searchParams.get('before');
+        const after = parsed.searchParams.get('after');
+        if (!token || !before || !after) throw new Error('Missing required params');
+
+        // Parse optional initial position from hash (#zoom/lat/lng)
+        var center = [0, 20];
+        var zoom = 1.5;
+        if (parsed.hash) {
+          var parts = parsed.hash.replace('#', '').split('/');
+          if (parts.length >= 3) {
+            zoom = parseFloat(parts[0]) || 1.5;
+            center = [parseFloat(parts[2]) || 0, parseFloat(parts[1]) || 20];
+          }
         }
-      } else {
-        loading.style.display = 'none';
-        errorDiv.textContent = 'No URL found in tool result';
-        errorDiv.style.display = 'block';
+
+        mapboxgl.accessToken = token;
+
+        beforeMap = new mapboxgl.Map({
+          container: 'before',
+          style: 'mapbox://styles/' + before,
+          center: center,
+          zoom: zoom
+        });
+
+        afterMap = new mapboxgl.Map({
+          container: 'after',
+          style: 'mapbox://styles/' + after,
+          center: center,
+          zoom: zoom
+        });
+
+        // Show style names once both styles have loaded
+        var loadedCount = 0;
+        function onStyleLoad(map, labelEl) {
+          var style = map.getStyle();
+          if (style && style.name) {
+            labelEl.textContent = style.name;
+            labelEl.style.display = 'block';
+          }
+          loadedCount++;
+          if (loadedCount === 2) {
+            loadingEl.style.display = 'none';
+            compare = new mapboxgl.Compare(beforeMap, afterMap, '#comparison-container', {});
+            requestSizeToFit();
+          }
+        }
+
+        beforeMap.on('style.load', function() { onStyleLoad(beforeMap, beforeLabel); });
+        afterMap.on('style.load', function() { onStyleLoad(afterMap, afterLabel); });
+
+      } catch (e) {
+        loadingEl.style.display = 'none';
+        errorEl.textContent = 'Could not load style comparison';
+        errorEl.style.display = 'block';
       }
     }
   </script>
@@ -218,8 +291,12 @@ export class StyleComparisonUIResource extends BaseResource {
             ui: {
               csp: {
                 connectDomains: ['https://*.mapbox.com'],
-                resourceDomains: ['https://*.mapbox.com'],
-                frameDomains: ['https://agent.mapbox.com']
+                resourceDomains: ['https://api.mapbox.com'],
+                workerDomains: ['blob:']
+              },
+              preferredSize: {
+                width: 1000,
+                height: 600
               }
             }
           }

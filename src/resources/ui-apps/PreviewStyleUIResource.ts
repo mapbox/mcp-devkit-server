@@ -10,15 +10,19 @@ import type {
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { BaseResource } from '../BaseResource.js';
 
+const MAPBOX_GL_VERSION = '3.12.0';
+
 /**
- * Serves UI App HTML for Mapbox Style Preview
- * Implements MCP Apps pattern with ui:// scheme
+ * Serves UI App HTML for Mapbox Style Preview using Mapbox GL JS directly.
+ * Renders the style inline — no inner iframe needed, so frame-src CSP is not an issue.
+ * The pk.* token is parsed from the tool result URL (supplied by the user to the tool).
+ * Implements MCP Apps pattern with ui:// scheme.
  */
 export class PreviewStyleUIResource extends BaseResource {
   readonly name = 'Mapbox Style Preview UI';
   readonly uri = 'ui://mapbox/preview-style/index.html';
   readonly description =
-    'Interactive UI for previewing Mapbox styles (MCP Apps)';
+    'Interactive UI for previewing Mapbox styles rendered inline with Mapbox GL JS (MCP Apps)';
   readonly mimeType = RESOURCE_MIME_TYPE;
 
   public async readCallback(
@@ -31,68 +35,70 @@ export class PreviewStyleUIResource extends BaseResource {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mapbox Style Preview</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.css" rel="stylesheet">
+  <script src="https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #1a1a2e;
-    }
-    #toolbar {
-      display: none;
-      align-items: center;
-      justify-content: flex-end;
-      padding: 6px 10px;
-      background: rgba(0, 0, 0, 0.7);
-      gap: 8px;
-    }
-    #toolbar.visible { display: flex; }
-    #fullscreen-btn {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #fff;
-      padding: 4px 12px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
-    }
-    #fullscreen-btn:hover { background: rgba(255, 255, 255, 0.25); }
-    #preview-iframe {
-      width: 100%;
-      height: calc(100vh - 0px);
-      border: none;
-      display: none;
-    }
-    #preview-iframe.with-toolbar { height: calc(100vh - 36px); }
+    html, body { width: 100%; height: 100%; overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
     #loading {
-      padding: 40px;
-      color: #aaa;
-      text-align: center;
-      font-size: 16px;
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #aaa; font-size: 16px; z-index: 10; pointer-events: none;
     }
     #error {
-      padding: 20px;
-      color: #ff6b6b;
-      text-align: center;
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      color: #ff6b6b; background: rgba(0,0,0,0.7); border-radius: 8px;
+      padding: 20px; max-width: 400px; text-align: center; z-index: 10;
     }
+    #style-name {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.55); color: #fff;
+      padding: 5px 14px; border-radius: 12px;
+      font-size: 13px; font-weight: 500;
+      display: none; z-index: 10;
+      white-space: nowrap; max-width: 70%; overflow: hidden; text-overflow: ellipsis;
+    }
+    #open-btn {
+      position: absolute; bottom: 12px; right: 12px; z-index: 10;
+      display: none;
+      color: #fff; background: rgba(0,0,0,0.6);
+      font-size: 13px; padding: 5px 12px;
+      border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;
+      cursor: pointer; font-family: inherit;
+    }
+    #open-btn:hover { background: rgba(0,0,0,0.8); }
+    #fullscreen-btn {
+      position: absolute; top: 10px; right: 10px; z-index: 10;
+      display: none;
+      width: 36px; height: 36px; border: none; border-radius: 8px;
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      cursor: pointer; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    #fullscreen-btn.visible { display: flex; }
+    #fullscreen-btn:hover { background: rgba(240,240,240,0.95); }
   </style>
 </head>
 <body>
-  <div id="toolbar">
-    <button id="fullscreen-btn">⛶ Fullscreen</button>
-  </div>
+  <div id="map"></div>
   <div id="loading">Loading style preview...</div>
-  <iframe id="preview-iframe"></iframe>
   <div id="error" style="display:none"></div>
+  <div id="style-name"></div>
+  <button id="open-btn">↗ Open in browser</button>
+  <button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
 
   <script>
-    var iframe = document.getElementById('preview-iframe');
-    var loading = document.getElementById('loading');
-    var errorDiv = document.getElementById('error');
-    var toolbar = document.getElementById('toolbar');
-    var fullscreenBtn = document.getElementById('fullscreen-btn');
-
+    var map = null;
+    var currentPreviewUrl = '';
     var currentDisplayMode = 'inline';
-    var canFullscreen = false;
+
+    var loadingEl = document.getElementById('loading');
+    var errorEl = document.getElementById('error');
+    var styleNameEl = document.getElementById('style-name');
+    var openBtn = document.getElementById('open-btn');
+    var fullscreenBtn = document.getElementById('fullscreen-btn');
 
     var messageId = 0;
     var pendingRequests = new Map();
@@ -111,27 +117,35 @@ export class PreviewStyleUIResource extends BaseResource {
 
     function requestSizeToFit() {
       if (currentDisplayMode !== 'inline') return;
-      var toolbarHeight = canFullscreen ? toolbar.offsetHeight : 0;
-      sendNotification('ui/notifications/size-changed', { height: 700 + toolbarHeight });
+      sendNotification('ui/notifications/size-changed', { height: 600 });
     }
 
-    function updateFullscreenButton() {
-      fullscreenBtn.textContent =
-        currentDisplayMode === 'fullscreen' ? '⊟ Exit Fullscreen' : '⛶ Fullscreen';
-    }
-
-    function toggleFullscreen() {
+    fullscreenBtn.addEventListener('click', function() {
       var newMode = currentDisplayMode === 'fullscreen' ? 'inline' : 'fullscreen';
       sendRequest('ui/request-display-mode', { mode: newMode }).then(function(result) {
         currentDisplayMode = (result && result.mode) ? result.mode : newMode;
-        updateFullscreenButton();
+        fullscreenBtn.textContent = currentDisplayMode === 'fullscreen' ? '⊟' : '⛶';
+        if (map) setTimeout(function() { map.resize(); }, 100);
         if (currentDisplayMode === 'inline') requestSizeToFit();
-      }).catch(function() {
-        // Host may not support fullscreen; ignore
-      });
-    }
+      }).catch(function() {});
+    });
 
-    fullscreenBtn.addEventListener('click', toggleFullscreen);
+    openBtn.addEventListener('click', function() {
+      if (!currentPreviewUrl) return;
+      sendRequest('ui/open-link', { url: currentPreviewUrl }).catch(function() {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = currentPreviewUrl;
+          ta.style.cssText = 'position:fixed;opacity:0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          openBtn.textContent = '✓ URL copied';
+          setTimeout(function() { openBtn.textContent = '↗ Open in browser'; }, 2000);
+        } catch (err) {}
+      });
+    });
 
     window.addEventListener('message', function(event) {
       var message = event.data;
@@ -153,24 +167,16 @@ export class PreviewStyleUIResource extends BaseResource {
         var ctx = message.params;
         if (ctx && ctx.displayMode) {
           currentDisplayMode = ctx.displayMode;
-          updateFullscreenButton();
-          if (currentDisplayMode === 'inline' && iframe.style.display !== 'none') {
-            requestSizeToFit();
-          }
+          fullscreenBtn.textContent = currentDisplayMode === 'fullscreen' ? '⊟' : '⛶';
+          if (map) setTimeout(function() { map.resize(); }, 100);
         }
         if (ctx && ctx.capabilities && ctx.capabilities.supportedDisplayModes &&
             ctx.capabilities.supportedDisplayModes.indexOf('fullscreen') !== -1) {
-          canFullscreen = true;
-          toolbar.classList.add('visible');
-          iframe.classList.add('with-toolbar');
+          fullscreenBtn.classList.add('visible');
         }
       }
     });
 
-    // Full MCP Apps handshake: send ui/initialize, then send ui/notifications/initialized
-    // after the host responds. Per spec, the host MUST NOT send tool-input or tool-result
-    // until it receives ui/notifications/initialized.
-    // Errors are silently ignored for hosts that don't use this handshake (e.g. Claude Desktop).
     sendRequest('ui/initialize', {
       protocolVersion: '2026-01-26',
       appCapabilities: {},
@@ -178,30 +184,58 @@ export class PreviewStyleUIResource extends BaseResource {
     }).then(function() {
       sendNotification('ui/notifications/initialized', {});
     }, function() {
-      // ui/initialize may be rejected by the host but we still signal readiness
       sendNotification('ui/notifications/initialized', {});
     });
 
     function handleToolResult(result) {
       const textContent = result.content?.find(c => c.type === 'text');
+      if (!textContent?.text) {
+        loadingEl.style.display = 'none';
+        errorEl.textContent = 'No URL found in tool result';
+        errorEl.style.display = 'block';
+        return;
+      }
 
-      if (textContent?.text) {
-        const url = textContent.text;
+      const url = textContent.text;
+      currentPreviewUrl = url;
+      openBtn.style.display = 'block';
 
-        if (url.includes('api.mapbox.com/styles/') && url.includes('.html')) {
-          iframe.src = url;
-          iframe.style.display = 'block';
-          loading.style.display = 'none';
-          iframe.addEventListener('load', requestSizeToFit, { once: true });
-        } else {
-          loading.style.display = 'none';
-          errorDiv.textContent = 'Invalid preview URL format';
-          errorDiv.style.display = 'block';
-        }
-      } else {
-        loading.style.display = 'none';
-        errorDiv.textContent = 'No URL found in tool result';
-        errorDiv.style.display = 'block';
+      if (typeof mapboxgl === 'undefined') {
+        loadingEl.style.display = 'none';
+        return;
+      }
+
+      try {
+        const parsed = new URL(url);
+        const token = parsed.searchParams.get('access_token');
+        const match = parsed.pathname.match(/\\/styles\\/v1\\/([^\\/]+)\\/([^.]+)\\.html/);
+        if (!match || !token) throw new Error('Could not parse style URL');
+
+        const username = match[1];
+        const styleId = match[2];
+
+        mapboxgl.accessToken = token;
+        map = new mapboxgl.Map({
+          container: 'map',
+          style: 'mapbox://styles/' + username + '/' + styleId,
+          center: [0, 20],
+          zoom: 1.5
+        });
+        map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+
+        map.on('style.load', function() {
+          loadingEl.style.display = 'none';
+          var style = map.getStyle();
+          if (style && style.name) {
+            styleNameEl.textContent = style.name;
+            styleNameEl.style.display = 'block';
+          }
+          requestSizeToFit();
+        });
+      } catch (e) {
+        loadingEl.style.display = 'none';
+        errorEl.textContent = 'Could not load style';
+        errorEl.style.display = 'block';
       }
     }
   </script>
@@ -218,8 +252,12 @@ export class PreviewStyleUIResource extends BaseResource {
             ui: {
               csp: {
                 connectDomains: ['https://*.mapbox.com'],
-                resourceDomains: ['https://*.mapbox.com'],
-                frameDomains: ['https://api.mapbox.com']
+                resourceDomains: ['https://api.mapbox.com'],
+                workerDomains: ['blob:']
+              },
+              preferredSize: {
+                width: 1000,
+                height: 600
               }
             }
           }

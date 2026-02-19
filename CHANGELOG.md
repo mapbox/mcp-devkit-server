@@ -3,13 +3,13 @@
 ### Features Added
 
 - **MCP Apps support for preview_style_tool, style_comparison_tool, geojson_preview_tool** (#62)
-  - Added fullscreen toggle button and `ui/request-display-mode` support
-  - Added `ui/notifications/host-context-changed` handler for returning from fullscreen
-  - Added `ui/notifications/size-changed` notifications to fit panel height on load
-  - Added `viewUUID` to tool response `_meta` so host routes result to correct UI panel
-  - Re-added `ui/initialize` as non-blocking fire-and-forget (fixes Goose which requires readiness signal before sending `tool-result`; errors silently ignored for hosts like Claude Desktop that reject it)
-  - Added Google Fonts (`fonts.gstatic.com`, `fonts.googleapis.com`) to GeoJSON Preview CSP `resourceDomains`
-  - Removed debug `console.log` statements from all UI resource HTML
+  - All three panels now render inline with **Mapbox GL JS** — no inner iframes, works in Claude Desktop regardless of `frame-src` CSP restrictions
+  - **GeoJSON Preview**: renders GeoJSON (points, lines, polygons) on a GL map with auto-fit bounds. Auto-generates a short-lived scoped `pk.*` token on the customer's Mapbox account via the Token API (scopes: `styles:tiles`, `styles:read`, `fonts:read`); cached for 1 hour
+  - **Style Preview**: renders the user's style directly via `mapbox://styles/...`; shows the human-readable style name as a pill overlay (from `map.getStyle().name`)
+  - **Style Comparison**: two synced GL maps with a draggable reveal slider using `mapbox-gl-compare`; shows both style names as pills; respects initial map position from tool result hash fragment
+  - Full MCP Apps handshake: `ui/initialize` → response → `ui/notifications/initialized`; errors silently ignored for hosts that don't implement the handshake
+  - Added `↗ Open in browser` button (`ui/open-link`) to all three panels as fallback
+  - Fullscreen toggle on all panels; `map.resize()` called on display mode change
   - Compatible with Claude Desktop, VS Code, and Goose
 
 ### Dependencies
