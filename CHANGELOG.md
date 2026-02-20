@@ -12,6 +12,10 @@
   - Fullscreen toggle on all panels; `map.resize()` called on display mode change
   - Compatible with Claude Desktop, VS Code, and Goose
 
+### Configuration
+
+- **Hosted MCP Server**: Added remote entry in `server.json` for the hosted DevKit MCP server at `https://mcp-devkit.mapbox.com/mcp` using streamable-http transport
+
 ### Dependencies
 
 - Updated `@modelcontextprotocol/sdk` from 1.25.3 to 1.26.0
