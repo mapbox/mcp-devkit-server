@@ -1,8 +1,25 @@
 ## Unreleased
 
+### Features Added
+
+- **MCP Apps support for preview_style_tool, style_comparison_tool, geojson_preview_tool** (#62)
+  - All three panels now render inline with **Mapbox GL JS** — no inner iframes, works in Claude Desktop regardless of `frame-src` CSP restrictions
+  - **GeoJSON Preview**: renders GeoJSON (points, lines, polygons) on a GL map with auto-fit bounds. Auto-generates a short-lived scoped `pk.*` token on the customer's Mapbox account via the Token API (scopes: `styles:tiles`, `styles:read`, `fonts:read`); cached for 1 hour
+  - **Style Preview**: renders the user's style directly via `mapbox://styles/...`; shows the human-readable style name as a pill overlay (from `map.getStyle().name`)
+  - **Style Comparison**: two synced GL maps with a draggable reveal slider using `mapbox-gl-compare`; shows both style names as pills; respects initial map position from tool result hash fragment
+  - Full MCP Apps handshake: `ui/initialize` → response → `ui/notifications/initialized`; errors silently ignored for hosts that don't implement the handshake
+  - Added `↗ Open in browser` button (`ui/open-link`) to all three panels as fallback
+  - Fullscreen toggle on all panels; `map.resize()` called on display mode change
+  - Compatible with Claude Desktop, VS Code, and Goose
+
 ### Configuration
 
 - **Hosted MCP Server**: Added remote entry in `server.json` for the hosted DevKit MCP server at `https://mcp-devkit.mapbox.com/mcp` using streamable-http transport
+
+### Dependencies
+
+- Updated `@modelcontextprotocol/sdk` from 1.25.3 to 1.26.0
+- Updated patch file for SDK 1.26.0
 
 ### Documentation
 

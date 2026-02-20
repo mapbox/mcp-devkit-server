@@ -44,7 +44,7 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
   },
   {
     "className": "GeojsonPreviewTool",
-    "description": "Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.",
+    "description": "Generate a geojson.io/next URL to visualize GeoJSON data. Returns only the URL link.",
     "toolName": "geojson_preview_tool",
   },
   {
