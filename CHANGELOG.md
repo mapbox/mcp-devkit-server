@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Configuration
+
+- **Hosted MCP Server**: Added remote entry in `server.json` for the hosted DevKit MCP server at `https://mcp-devkit.mapbox.com/mcp` using streamable-http transport
+
 ### Documentation
 
 - **PR Guidelines**: Added CHANGELOG requirement to CLAUDE.md (#67)
