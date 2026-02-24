@@ -45,6 +45,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Environment Variables](#environment-variables-1)
       - [VERBOSE_ERRORS](#verbose_errors)
   - [Troubleshooting](#troubleshooting)
+  - [Release Process](#release-process)
   - [Contributing](#contributing)
 
 ## Quick Start
@@ -1336,6 +1337,64 @@ export CLIENT_NEEDS_RESOURCE_FALLBACK=true
 **Issue:** Large GeoJSON files cause slow performance
 
 **Solution:** The GeoJSON preview tool may be slow with very large files. Consider simplifying geometries or using smaller datasets for preview purposes.
+
+## Release Process
+
+Follow these steps to publish a new release:
+
+1. **Bump the version in `package.json`** to the target version (e.g., `1.0.0`).
+
+2. **Sync versions** across `manifest.json` and `server.json`:
+
+   ```bash
+   node scripts/sync-manifest-version.cjs
+   ```
+
+   This reads the version from `package.json` and updates `manifest.json` and `server.json` (including `packages[0].version`) to match.
+
+3. **Prepare the changelog** — this replaces the "Unreleased" heading with the version and date:
+
+   ```bash
+   npm run changelog:prepare-release 1.0.0
+   ```
+
+4. **Commit, tag, and push:**
+
+   ```bash
+   git add package.json manifest.json server.json CHANGELOG.md
+   git commit -m "Release v1.0.0"
+   git tag v1.0.0
+   git push && git push --tags
+   ```
+
+5. **Publish via the [mcp-server-publisher](https://github.com/mapbox/mcp-server-publisher) workflow:**
+   - Go to the Actions tab in the `mcp-server-publisher` repo
+   - Select "Manual Release MCP Server to NPM and MCP Registry"
+   - Choose `mcp-devkit-server` from the repository dropdown
+   - Enter the version — it **must exactly match** the `package.json` version
+   - Leave the branch field empty for stable releases (or specify a branch for dev releases)
+   - The workflow will: build, test, publish to NPM (`@mapbox/mcp-devkit-server`), publish to the MCP Registry, create a DXT package, and create a GitHub Release
+
+### Version Files
+
+The following files must have matching versions before publishing:
+
+| File            | Fields                           |
+| --------------- | -------------------------------- |
+| `package.json`  | `version` (source of truth)      |
+| `manifest.json` | `version`                        |
+| `server.json`   | `version`, `packages[0].version` |
+
+The `sync-manifest-version.cjs` script handles syncing these automatically from `package.json`.
+
+### Dev Releases
+
+To publish a pre-release from a feature branch:
+
+1. Set the version in `package.json` with a pre-release suffix (e.g., `1.0.0-dev` or `1.0.0-beta`)
+2. Run `node scripts/sync-manifest-version.cjs`
+3. In the publisher workflow, enter the version and specify the branch name
+4. The package will be published to NPM under the `dev` tag (won't affect `latest`)
 
 ## Contributing
 
