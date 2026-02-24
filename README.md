@@ -1271,25 +1271,31 @@ By default, the server returns generic error messages. With verbose errors enabl
 
 #### ENABLE_MCP_UI
 
-**MCP-UI Support (Enabled by Default)**
+**Interactive Previews: MCP Apps (primary) & MCP-UI (compatibility)**
 
-MCP-UI allows tools that return URLs to also return interactive iframe resources that can be embedded directly in supporting MCP clients. **This is enabled by default** and is fully backwards compatible with all MCP clients.
+This server actively invests in **MCP Apps** as its primary interactive preview protocol, delivering self-contained HTML app panels directly inside the chat. MCP Apps is supported by Claude Desktop, VS Code with GitHub Copilot, and Claude Code — no configuration needed.
+
+**MCP-UI** (`@mcp-ui/server`) is also maintained for backwards compatibility with clients like Goose. It is not being removed, but new interactive preview development is focused on MCP Apps.
 
 **Supported Tools:**
 
-- `preview_style_tool` - Embeds Mapbox style previews
-- `geojson_preview_tool` - Embeds geojson.io visualizations
-- `style_comparison_tool` - Embeds side-by-side style comparisons
+- `preview_style_tool` - Interactive Mapbox style preview panel
+- `geojson_preview_tool` - Interactive GeoJSON visualization panel
+- `style_comparison_tool` - Side-by-side style comparison panel
 
-**How it Works:**
+**Client support:**
 
-- Tools return **both** a text URL (always works) and a UIResource for iframe embedding
-- Clients that don't support MCP-UI (like Claude Desktop) simply ignore the UIResource and use the text URL
-- Clients that support MCP-UI (like Goose) can render the iframe for a richer experience
+| Client                      | MCP Apps | MCP-UI |
+| --------------------------- | -------- | ------ |
+| Claude Desktop              | ✅       |        |
+| VS Code with GitHub Copilot | ✅       |        |
+| Claude Code                 | ✅       |        |
+| Goose                       | ✅       | ✅     |
+| Other clients               |          |        |
 
 **Disabling MCP-UI (Optional):**
 
-If you want to disable MCP-UI support:
+MCP Apps support is always active. If you want to disable the MCP-UI UIResource (used by Goose):
 
 Via environment variable:
 
@@ -1303,7 +1309,7 @@ Or via command-line flag:
 node dist/esm/index.js --disable-mcp-ui
 ```
 
-**Note:** You typically don't need to disable this. The implementation is fully backwards compatible and doesn't affect clients that don't support MCP-UI. See [mcpui.dev](https://mcpui.dev) for compatible clients.
+**Note:** You typically don't need to disable this. All clients receive a usable text URL regardless; interactive previews are a progressive enhancement on top.
 
 #### CLIENT_NEEDS_RESOURCE_FALLBACK
 
