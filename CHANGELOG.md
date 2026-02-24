@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.5.0 - 2026-02-24
+
 ### Features Added
 
 - **MCP Apps support for preview_style_tool, style_comparison_tool, geojson_preview_tool** (#62)
