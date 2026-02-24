@@ -1285,13 +1285,13 @@ This server actively invests in **MCP Apps** as its primary interactive preview 
 
 **Client support:**
 
-| Client                      | Protocol    | Experience              |
-| --------------------------- | ----------- | ----------------------- |
-| Claude Desktop              | MCP Apps ✅ | Interactive HTML panel  |
-| VS Code with GitHub Copilot | MCP Apps ✅ | Interactive HTML panel  |
-| Claude Code                 | MCP Apps ✅ | Interactive HTML panel  |
-| Goose                       | MCP-UI ✅   | Embedded iframe preview |
-| Other clients               | —           | Text URL                |
+| Client                      | MCP Apps | MCP-UI |
+| --------------------------- | -------- | ------ |
+| Claude Desktop              | ✅       |        |
+| VS Code with GitHub Copilot | ✅       |        |
+| Claude Code                 | ✅       |        |
+| Goose                       | ✅       | ✅     |
+| Other clients               |          |        |
 
 **Disabling MCP-UI (Optional):**
 
