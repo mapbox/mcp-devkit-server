@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Dependencies
+
+- Upgrade `@modelcontextprotocol/ext-apps` from `^1.0.1` to `^1.1.1`
+
 ## 0.5.0 - 2026-02-24
 
 ### Features Added
