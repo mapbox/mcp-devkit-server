@@ -42,5 +42,9 @@ export {
   type HttpPolicy
 } from './httpPipeline.js';
 
+// Export version utilities
+export { getVersionInfo } from './versionUtils.js';
+export type { VersionInfo } from './versionUtils.js';
+
 // Export types
 export type { HttpRequest } from './types.js';
