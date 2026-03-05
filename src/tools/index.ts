@@ -162,6 +162,7 @@ export const validateStyle = new ValidateStyleTool();
 
 // Export registry functions for batch access
 export {
+  getAllTools,
   getCoreTools,
   getElicitationTools,
   getResourceFallbackTools,
