@@ -1,5 +1,12 @@
 ## Unreleased
 
+## 0.5.1 - 2026-03-04
+
+### Dependencies
+
+- Upgrade `@mcp-ui/server` from `^5.13.1` to `^6.1.0` (security advisory); update tests for mimeType change (`text/uri-list` → `text/html;profile=mcp-app`)
+- Upgrade `@modelcontextprotocol/sdk` from `^1.26.0` to `^1.27.1` (security advisory); regenerated output-validation patch for new version
+
 ## 0.5.0 - 2026-02-24
 
 ### Features Added

@@ -49,7 +49,7 @@ describe('GeojsonPreviewTool', () => {
       type: 'resource',
       resource: {
         uri: expect.stringMatching(/^ui:\/\/mapbox\/geojson-preview\//),
-        mimeType: 'text/uri-list',
+        mimeType: 'text/html;profile=mcp-app',
         text: expect.stringMatching(/^https:\/\//)
       }
     });

@@ -164,7 +164,7 @@ describe('PreviewStyleTool', () => {
       type: 'resource',
       resource: {
         uri: expect.stringMatching(/^ui:\/\/mapbox\/preview-style\//),
-        mimeType: 'text/uri-list',
+        mimeType: 'text/html;profile=mcp-app',
         text: expect.stringContaining(
           'https://api.mapbox.com/styles/v1/test-user/test-style.html?access_token=pk.'
         )
