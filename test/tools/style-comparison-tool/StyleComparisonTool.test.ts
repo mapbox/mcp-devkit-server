@@ -42,7 +42,7 @@ describe('StyleComparisonTool', () => {
           uri: expect.stringMatching(
             /^ui:\/\/mapbox\/style-comparison\/mapbox\/streets-v12\/mapbox\/outdoors-v12$/
           ),
-          mimeType: 'text/uri-list',
+          mimeType: 'text/html;profile=mcp-app',
           text: expect.stringContaining(
             'https://agent.mapbox.com/tools/style-compare'
           )
