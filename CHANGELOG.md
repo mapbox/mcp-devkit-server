@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.5.2-dev - 2026-03-13
+
 ### Public API
 
 - **Add `getAllTools` and `getVersionInfo` to public exports** — `getAllTools` is now re-exported from `@mapbox/mcp-devkit-server/tools` and `getVersionInfo` (plus `VersionInfo` type) from `@mapbox/mcp-devkit-server/utils`. These are needed by `hosted-mcp-server` to import server functionality via npm packages instead of submodule filesystem paths.
