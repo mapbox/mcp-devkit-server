@@ -1,8 +1,26 @@
-diff --git a/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js b/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
-index 23639ce..7b8a325 100644
+--- a/node_modules/@modelcontextprotocol/sdk/dist/cjs/server/mcp.js
++++ b/node_modules/@modelcontextprotocol/sdk/dist/cjs/server/mcp.js
+@@ -197,7 +197,7 @@
+             return;
+         }
+         if (!result.structuredContent) {
+-            throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Output validation error: Tool ${toolName} has an output schema but no structured content was provided`);
++            console.warn(`[MCP SDK Patch] Output validation warning: Tool ${toolName} has an output schema but no structured content was provided`);
+         }
+         // if the tool has an output schema, validate structured content
+         const outputObj = (0, zod_compat_js_1.normalizeObjectSchema)(tool.outputSchema);
+@@ -205,7 +205,7 @@
+         if (!parseResult.success) {
+             const error = 'error' in parseResult ? parseResult.error : 'Unknown error';
+             const errorMessage = (0, zod_compat_js_1.getParseErrorMessage)(error);
+-            throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, `Output validation error: Invalid structured content for tool ${toolName}: ${errorMessage}`);
++            console.warn(`[MCP SDK Patch] Output validation warning: Invalid structured content for tool ${toolName}: ${errorMessage}`);
+         }
+     }
+     /**
 --- a/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
 +++ b/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
-@@ -194,15 +194,20 @@ export class McpServer {
+@@ -194,15 +194,20 @@
              return;
          }
          if (!result.structuredContent) {
