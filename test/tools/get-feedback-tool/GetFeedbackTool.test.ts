@@ -256,7 +256,7 @@ describe('GetFeedbackTool', () => {
 
     // Should fail validation
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Required');
+    expect(result.content[0].text).toContain('invalid_type');
     expect(result.content[0].text).toContain('feedback_id');
   });
 });

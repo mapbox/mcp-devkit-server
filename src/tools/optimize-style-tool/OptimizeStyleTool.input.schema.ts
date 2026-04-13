@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export const OptimizeStyleInputSchema = z.object({
   style: z
-    .union([z.string(), z.record(z.unknown())])
+    .union([z.string(), z.record(z.string(), z.unknown())])
     .describe('Mapbox style to optimize (JSON string or style object)'),
   optimizations: z
     .array(

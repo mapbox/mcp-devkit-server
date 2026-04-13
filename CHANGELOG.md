@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Dependencies
+
+- **Upgrade `zod` from `^3.25.42` to `^4.3.6`** — migrated all `z.record()` calls to require explicit key schema (`z.string()`), updated test assertions for changed error message format
+
 ## 0.6.0 - 2026-04-01
 
 ### Security

@@ -62,7 +62,7 @@ describe('StyleComparisonTool', () => {
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('Required');
+      ).toContain('invalid_type');
     });
 
     it('should handle full style URLs', async () => {
