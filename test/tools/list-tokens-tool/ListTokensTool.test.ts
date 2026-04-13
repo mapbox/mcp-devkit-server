@@ -59,7 +59,7 @@ describe('ListTokensTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const errorText = (result.content[0] as TextContent).text;
-      expect(errorText).toContain('Number must be less than or equal to 100');
+      expect(errorText).toContain('<=100');
     });
 
     it('validates sortby enum values', async () => {
