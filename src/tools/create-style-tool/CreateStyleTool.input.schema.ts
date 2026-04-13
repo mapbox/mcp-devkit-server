@@ -9,7 +9,7 @@ import { z } from 'zod';
 export const CreateStyleInputSchema = z.object({
   name: z.string().describe('Human-readable name for the style'),
   style: z
-    .record(z.any())
+    .record(z.string(), z.any())
     .describe(
       'Complete Mapbox Style Specification object. Must include: version (8), sources, layers. Optional: sprite, glyphs, center, zoom, bearing, pitch, metadata, etc. See https://docs.mapbox.com/mapbox-gl-js/style-spec/'
     )

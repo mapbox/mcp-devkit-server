@@ -9,7 +9,7 @@ import { z } from 'zod';
  */
 export const ValidateStyleInputSchema = z.object({
   style: z
-    .union([z.string(), z.record(z.unknown())])
+    .union([z.string(), z.record(z.string(), z.unknown())])
     .describe(
       'Mapbox style JSON object or JSON string to validate against the Mapbox Style Specification'
     )

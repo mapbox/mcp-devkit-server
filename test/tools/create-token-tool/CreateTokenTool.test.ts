@@ -60,7 +60,7 @@ describe('CreateTokenTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const errorText = (result.content[0] as TextContent).text;
-      expect(errorText).toContain('Required');
+      expect(errorText).toContain('invalid_type');
     });
 
     it('validates allowedUrls array length', async () => {
@@ -93,7 +93,7 @@ describe('CreateTokenTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const errorText = (result.content[0] as TextContent).text;
-      expect(errorText).toContain('Invalid enum value');
+      expect(errorText).toContain('invalid_value');
     });
 
     it('throws error when unable to extract username from token', async () => {

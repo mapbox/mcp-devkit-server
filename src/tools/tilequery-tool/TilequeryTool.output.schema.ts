@@ -32,7 +32,7 @@ const VectorTilequeryFeatureSchema = z.object({
           .describe('The vector tile layer of the feature result')
       })
     })
-    .and(z.record(z.any())) // Allow additional properties from the original feature
+    .and(z.record(z.string(), z.any())) // Allow additional properties from the original feature
 });
 
 // Rasterarray Tileset Feature Schema
