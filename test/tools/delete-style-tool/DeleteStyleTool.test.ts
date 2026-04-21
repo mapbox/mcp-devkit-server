@@ -29,9 +29,8 @@ describe('DeleteStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { DeleteStyleSchema } = await import(
-        '../../../src/tools/delete-style-tool/DeleteStyleTool.input.schema.js'
-      );
+      const { DeleteStyleSchema } =
+        await import('../../../src/tools/delete-style-tool/DeleteStyleTool.input.schema.js');
       expect(DeleteStyleSchema).toBeDefined();
     });
   });

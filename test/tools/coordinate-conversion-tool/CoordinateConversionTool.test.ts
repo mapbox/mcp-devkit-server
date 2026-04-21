@@ -20,9 +20,8 @@ describe('CoordinateConversionTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { CoordinateConversionSchema } = await import(
-        '../../../src/tools/coordinate-conversion-tool/CoordinateConversionTool.input.schema.js'
-      );
+      const { CoordinateConversionSchema } =
+        await import('../../../src/tools/coordinate-conversion-tool/CoordinateConversionTool.input.schema.js');
       expect(CoordinateConversionSchema).toBeDefined();
     });
   });

@@ -43,9 +43,8 @@ describe('ListTokensTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { ListTokensSchema } = await import(
-        '../../../src/tools/list-tokens-tool/ListTokensTool.input.schema.js'
-      );
+      const { ListTokensSchema } =
+        await import('../../../src/tools/list-tokens-tool/ListTokensTool.input.schema.js');
       expect(ListTokensSchema).toBeDefined();
     });
   });
