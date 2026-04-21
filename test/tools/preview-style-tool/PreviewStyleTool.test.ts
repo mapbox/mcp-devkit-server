@@ -21,9 +21,8 @@ describe('PreviewStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { PreviewStyleSchema } = await import(
-        '../../../src/tools/preview-style-tool/PreviewStyleTool.input.schema.js'
-      );
+      const { PreviewStyleSchema } =
+        await import('../../../src/tools/preview-style-tool/PreviewStyleTool.input.schema.js');
       expect(PreviewStyleSchema).toBeDefined();
     });
   });

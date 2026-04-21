@@ -29,9 +29,8 @@ describe('RetrieveStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { RetrieveStyleSchema } = await import(
-        '../../../src/tools/retrieve-style-tool/RetrieveStyleTool.input.schema.js'
-      );
+      const { RetrieveStyleSchema } =
+        await import('../../../src/tools/retrieve-style-tool/RetrieveStyleTool.input.schema.js');
       expect(RetrieveStyleSchema).toBeDefined();
     });
   });

@@ -19,9 +19,8 @@ describe('GeojsonPreviewTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { GeojsonPreviewSchema } = await import(
-        '../../../src/tools/geojson-preview-tool/GeojsonPreviewTool.input.schema.js'
-      );
+      const { GeojsonPreviewSchema } =
+        await import('../../../src/tools/geojson-preview-tool/GeojsonPreviewTool.input.schema.js');
       expect(GeojsonPreviewSchema).toBeDefined();
     });
   });
