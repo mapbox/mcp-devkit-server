@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Removed
+
+- **`get_latest_mapbox_docs_tool` and `get_reference_tool` removed** — documentation fetching has moved to [mcp-docs-server](https://github.com/mapbox/mcp-docs-server). Use mcp-docs-server alongside this server for Mapbox documentation access. Static reference data (style layers, Streets v8 fields, token scopes, layer type mapping) remains available as MCP Resources.
+- Removed `CLIENT_NEEDS_RESOURCE_FALLBACK` environment variable and resource fallback tool pattern
+
 ### Dependencies
 
 - **Upgrade `zod` from `^3.25.42` to `^4.3.6`** — migrated all `z.record()` calls to require explicit key schema (`z.string()`), updated test assertions for changed error message format

@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server that provides AI assistants with direct access to Mapbox developer APIs. This server enables AI models to interact with Mapbox services, helping developers build Mapbox applications more efficiently.
 
+> **Looking for Mapbox documentation access?** Use [mcp-docs-server](https://github.com/mapbox/mcp-docs-server) alongside this server — it provides AI assistants with access to Mapbox documentation, guides, and API references from docs.mapbox.com.
+
 https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
 
 ## Table of Contents
