@@ -12,8 +12,6 @@ import { DeleteStyleTool } from './delete-style-tool/DeleteStyleTool.js';
 import { GetFeedbackTool } from './get-feedback-tool/GetFeedbackTool.js';
 import { ListFeedbackTool } from './list-feedback-tool/ListFeedbackTool.js';
 import { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js';
-import { GetMapboxDocSourceTool } from './get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
-import { GetReferenceTool } from './get-reference-tool/GetReferenceTool.js';
 import { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
 import { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
 import { OptimizeStyleTool } from './optimize-style-tool/OptimizeStyleTool.js';
@@ -69,40 +67,15 @@ export const CORE_TOOLS = [
 export const ELICITATION_TOOLS = [] as const;
 
 /**
- * Tools that serve as bridges for clients without resource support
- * These tools are only registered if CLIENT_NEEDS_RESOURCE_FALLBACK env var is set to "true"
- *
- * Context: Most MCP clients support resources (Claude Desktop, VS Code, Inspector, etc.).
- * However, some clients (like smolagents) don't support resources at all.
- * These tools provide the same content as resources but via tool calls instead.
- *
- * Configuration:
- * - Leave unset (default) = Skip these tools (assumes client supports resources)
- * - Set CLIENT_NEEDS_RESOURCE_FALLBACK=true = Include these tools (for smolagents, etc.)
- *
- * Tools:
- * - GetReferenceTool: Provides access to reference resources (style layers, Streets v8 fields, token scopes, layer type mapping)
- * - GetMapboxDocSourceTool: Provides access to Mapbox documentation (resource://mapbox-documentation)
- */
-export const RESOURCE_FALLBACK_TOOLS = [
-  new GetReferenceTool(),
-  new GetMapboxDocSourceTool({ httpRequest })
-] as const;
-
-/**
  * All tools combined (for backward compatibility and testing)
  */
-export const ALL_TOOLS = [
-  ...CORE_TOOLS,
-  ...ELICITATION_TOOLS,
-  ...RESOURCE_FALLBACK_TOOLS
-] as const;
+export const ALL_TOOLS = [...CORE_TOOLS, ...ELICITATION_TOOLS] as const;
 
 export type ToolInstance = (typeof ALL_TOOLS)[number];
 
 /**
  * Get all tools (for backward compatibility)
- * @deprecated Use getCoreTools(), getElicitationTools(), etc. instead for capability-aware registration
+ * @deprecated Use getCoreTools(), getElicitationTools() instead for capability-aware registration
  */
 export function getAllTools(): readonly ToolInstance[] {
   return ALL_TOOLS;
@@ -120,13 +93,6 @@ export function getCoreTools(): readonly ToolInstance[] {
  */
 export function getElicitationTools(): readonly ToolInstance[] {
   return ELICITATION_TOOLS;
-}
-
-/**
- * Get tools that serve as fallbacks when client doesn't support resources
- */
-export function getResourceFallbackTools(): readonly ToolInstance[] {
-  return RESOURCE_FALLBACK_TOOLS;
 }
 
 export function getToolByName(name: string): ToolInstance | undefined {

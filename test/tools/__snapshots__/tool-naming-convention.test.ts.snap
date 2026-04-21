@@ -53,16 +53,6 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "get_feedback_tool",
   },
   {
-    "className": "GetMapboxDocSourceTool",
-    "description": "Get the latest official Mapbox documentation, APIs, SDKs, and developer resources directly from Mapbox. Always up-to-date, comprehensive coverage of all current Mapbox services including mapping, navigation, search, geocoding, and mobile SDKs. Use this for accurate, official Mapbox information instead of web search. For clients that support resources, use resource://mapbox-documentation for proper text/markdown MIME type support.",
-    "toolName": "get_latest_mapbox_docs_tool",
-  },
-  {
-    "className": "GetReferenceTool",
-    "description": "Get Mapbox reference documentation including Streets v8 field definitions, token scopes, layer type mappings, and style specifications. Use this tool to understand what fields, scopes, or layer types are available before creating styles or tokens.",
-    "toolName": "get_reference_tool",
-  },
-  {
     "className": "ListFeedbackTool",
     "description": "List user feedback items from the Mapbox Feedback API with filtering, sorting, and pagination. Use this tool to access user-reported issues, suggestions, and feedback about map data, routing, and POI details. Supports comprehensive filtering by status, category, date ranges, trace IDs, and search text. Requires user-feedback:read scope on the access token.",
     "toolName": "list_feedback_tool",
