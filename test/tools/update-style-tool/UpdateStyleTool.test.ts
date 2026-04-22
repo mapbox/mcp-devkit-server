@@ -29,9 +29,8 @@ describe('UpdateStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { UpdateStyleInputSchema } = await import(
-        '../../../src/tools/update-style-tool/UpdateStyleTool.input.schema.js'
-      );
+      const { UpdateStyleInputSchema } =
+        await import('../../../src/tools/update-style-tool/UpdateStyleTool.input.schema.js');
       expect(UpdateStyleInputSchema).toBeDefined();
     });
   });

@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server that provides AI assistants with direct access to Mapbox developer APIs. This server enables AI models to interact with Mapbox services, helping developers build Mapbox applications more efficiently.
 
+> **Looking for Mapbox documentation access?** Use [mcp-docs-server](https://github.com/mapbox/mcp-docs-server) alongside this server — it provides AI assistants with access to Mapbox documentation, guides, and API references from docs.mapbox.com.
+
 https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
 
 ## Table of Contents
@@ -15,7 +17,6 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Hosted MCP Endpoint](#hosted-mcp-endpoint)
     - [Getting Your Mapbox Access Token](#getting-your-mapbox-access-token)
   - [Tools](#tools)
-    - [Documentation Tools](#documentation-tools)
     - [Reference Tools](#reference-tools)
     - [Style Management Tools](#style-management-tools)
     - [Token Management Tools](#token-management-tools)
@@ -116,27 +117,9 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 
 ## Tools
 
-### Documentation Tools
-
-**get_latest_mapbox_docs_tool** - Access the latest official Mapbox documentation directly from the source. This tool fetches comprehensive, up-to-date information about all Mapbox APIs, SDKs, and developer resources from docs.mapbox.com/llms.txt.
-
-**Example prompts:**
-
-- "What are the latest Mapbox APIs available for developers?"
-- "Show me all current Mapbox services and SDKs"
-- "I need up-to-date Mapbox documentation for my project"
-- "What mapping solutions does Mapbox offer for my tech stack?"
-- "Give me an overview of Mapbox's navigation and routing capabilities"
-- "Compare Mapbox web SDKs versus mobile SDKs"
-- "What's new in the Mapbox ecosystem?"
-
-📖 **[See more examples and interactive demo →](./docs/mapbox-docs-tool-demo.md)**
-
 ### Reference Tools
 
-**get_reference_tool** - Access static Mapbox reference documentation and schemas. This tool provides essential reference information that helps AI assistants understand Mapbox concepts and build correct styles and tokens.
-
-> **Note:** This tool exists as a workaround for Claude Desktop's current limitation with MCP resources. Claude Desktop can see resources (via `resources/list`) but doesn't automatically call `resources/read` to fetch their content. This tool provides the same reference data through the tool interface, which Claude Desktop does support. Other MCP clients that fully support the resources protocol can access this data directly as MCP Resources (see [Resources](#resources) section below).
+Reference data is exposed as MCP Resources (see [Resources](#resources) section). MCP clients that support the resources protocol can access them directly.
 
 **Available References:**
 
@@ -1053,7 +1036,7 @@ See the [mapbox-style-quality skill](skills/mapbox-style-quality/SKILL.md) for d
 
 ## Resources
 
-This server exposes static reference documentation as MCP Resources. While these are primarily accessed through the `get_reference_tool`, MCP clients that fully support the resources protocol can access them directly.
+This server exposes static reference documentation as MCP Resources. MCP clients that support the resources protocol can access them directly.
 
 **Available Resources:**
 
@@ -1079,11 +1062,6 @@ This server exposes static reference documentation as MCP Resources. While these
    - Organized by geometry type (polygon, line, point)
    - Includes common usage patterns and examples
    - Helps avoid incompatible layer type/source layer combinations
-
-**Accessing Resources:**
-
-- **Claude Desktop & Most MCP Clients**: Use the `get_reference_tool` to access these references
-- **Future MCP Clients**: May support direct resource access via the MCP resources protocol
 
 **Note:** Resources provide static reference data that doesn't change frequently, while tools provide dynamic, user-specific data (like listing your styles or tokens) and perform actions (like creating styles or tokens).
 
@@ -1310,29 +1288,6 @@ node dist/esm/index.js --disable-mcp-ui
 ```
 
 **Note:** You typically don't need to disable this. All clients receive a usable text URL regardless; interactive previews are a progressive enhancement on top.
-
-#### CLIENT_NEEDS_RESOURCE_FALLBACK
-
-**Resource Fallback Tools (Opt-In for Non-Compliant Clients)**
-
-Resources are a core MCP feature supported by most clients (Claude Desktop, VS Code, MCP Inspector, etc.). However, some clients (like smolagents) don't support resources at all. For these clients, the server can provide "resource fallback tools" that deliver the same content as resources but via tool calls.
-
-**Fallback Tools:**
-
-- `get_reference_tool` - Access to style layers, Streets v8 fields, token scopes, layer type mapping
-- `get_latest_mapbox_docs_tool` - Access to Mapbox documentation
-
-**By default, these tools are NOT included** (assumes your client supports resources). If your client doesn't support resources, enable the fallback tools:
-
-```bash
-export CLIENT_NEEDS_RESOURCE_FALLBACK=true
-```
-
-**When to set this:**
-
-- ✅ Set to `true` if using smolagents or other clients without resource support
-- ❌ Leave unset (default) if using Claude Desktop, VS Code, MCP Inspector, or any resource-capable client
-- ❌ Leave unset if unsure (most clients support resources)
 
 ## Troubleshooting
 

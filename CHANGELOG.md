@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Removed
+
+- **`get_latest_mapbox_docs_tool` and `get_reference_tool` removed** — documentation fetching has moved to [mcp-docs-server](https://github.com/mapbox/mcp-docs-server). Use mcp-docs-server alongside this server for Mapbox documentation access. Static reference data (style layers, Streets v8 fields, token scopes, layer type mapping) remains available as MCP Resources.
+- Removed `CLIENT_NEEDS_RESOURCE_FALLBACK` environment variable and resource fallback tool pattern
+
 ### Dependencies
 
 - **Upgrade `tshy` to `^4.1.1`, `vitest`/`@vitest/coverage-istanbul` to `^4.1.4`, `typescript` to `^6.0.2`** — removed deprecated `baseUrl` from `tsconfig.base.json` (TS6)
