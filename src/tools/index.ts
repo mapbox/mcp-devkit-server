@@ -40,8 +40,6 @@ export { DeleteStyleTool } from './delete-style-tool/DeleteStyleTool.js';
 export { GetFeedbackTool } from './get-feedback-tool/GetFeedbackTool.js';
 export { ListFeedbackTool } from './list-feedback-tool/ListFeedbackTool.js';
 export { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js';
-export { GetMapboxDocSourceTool } from './get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
-export { GetReferenceTool } from './get-reference-tool/GetReferenceTool.js';
 export { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
 export { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
 export { OptimizeStyleTool } from './optimize-style-tool/OptimizeStyleTool.js';
@@ -67,8 +65,6 @@ import { DeleteStyleTool } from './delete-style-tool/DeleteStyleTool.js';
 import { GetFeedbackTool } from './get-feedback-tool/GetFeedbackTool.js';
 import { ListFeedbackTool } from './list-feedback-tool/ListFeedbackTool.js';
 import { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js';
-import { GetMapboxDocSourceTool } from './get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
-import { GetReferenceTool } from './get-reference-tool/GetReferenceTool.js';
 import { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
 import { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
 import { OptimizeStyleTool } from './optimize-style-tool/OptimizeStyleTool.js';
@@ -118,12 +114,6 @@ export const listFeedback = new ListFeedbackTool({ httpRequest });
 /** Preview GeoJSON on a map */
 export const geojsonPreview = new GeojsonPreviewTool();
 
-/** Get Mapbox documentation source */
-export const getMapboxDocSource = new GetMapboxDocSourceTool({ httpRequest });
-
-/** Get reference documentation */
-export const getReference = new GetReferenceTool();
-
 /** List Mapbox styles */
 export const listStyles = new ListStylesTool({ httpRequest });
 
@@ -165,7 +155,6 @@ export {
   getAllTools,
   getCoreTools,
   getElicitationTools,
-  getResourceFallbackTools,
   getToolByName,
   type ToolInstance
 } from './toolRegistry.js';
