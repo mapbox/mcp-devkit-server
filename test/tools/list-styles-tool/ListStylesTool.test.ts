@@ -30,8 +30,9 @@ describe('ListStylesTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { ListStylesSchema } =
-        await import('../../../src/tools/list-styles-tool/ListStylesTool.input.schema.js');
+      const { ListStylesSchema } = await import(
+        '../../../src/tools/list-styles-tool/ListStylesTool.input.schema.js'
+      );
       expect(ListStylesSchema).toBeDefined();
     });
   });
@@ -284,29 +285,12 @@ describe('ListStylesTool', () => {
     });
 
     const tool = new ListStylesTool({ httpRequest });
-    const logSpy = vi.spyOn(tool as any, 'log');
 
     const result = await tool.run({});
 
-    // Should not error - graceful fallback to raw data
-    expect(result.isError).toBe(false);
-    expect(result.content).toHaveLength(1);
+    // Schema validation failure now returns an error response
+    expect(result.isError).toBe(true);
     expect(result.content[0].type).toBe('text');
-
-    // Should log a warning about validation failure
-    expect(logSpy).toHaveBeenCalledWith(
-      'warning',
-      expect.stringContaining('ListStylesTool: Output schema validation failed')
-    );
-
-    // Should return the raw data despite validation failure
-    const content = result.content[0];
-    if (content.type === 'text') {
-      const parsedResponse = JSON.parse(content.text);
-      expect(parsedResponse).toHaveProperty('styles');
-      expect(parsedResponse.styles).toEqual(invalidMockStyles);
-      expect(parsedResponse.styles[0]).toHaveProperty('customField');
-    }
 
     assertHeadersSent(mockHttpRequest);
   });

@@ -130,12 +130,20 @@ export class ListTokensTool extends MapboxApiBasedTool<
           ? data
           : (data as { tokens?: unknown[] }).tokens || [];
 
-        // Validate tokens array against TokenObjectSchema with graceful fallback
-        const validatedTokens = this.validateOutput<unknown[]>(
-          TokenObjectSchema.array(),
-          tokens,
-          'ListTokensTool'
-        );
+        let validatedTokens;
+        try {
+          validatedTokens = TokenObjectSchema.array().parse(tokens);
+        } catch {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: 'Unexpected API response format from Mapbox API'
+              }
+            ]
+          };
+        }
 
         allTokens.push(...validatedTokens);
         this.log(

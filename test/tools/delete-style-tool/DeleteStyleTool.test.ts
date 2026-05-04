@@ -29,8 +29,9 @@ describe('DeleteStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { DeleteStyleSchema } =
-        await import('../../../src/tools/delete-style-tool/DeleteStyleTool.input.schema.js');
+      const { DeleteStyleSchema } = await import(
+        '../../../src/tools/delete-style-tool/DeleteStyleTool.input.schema.js'
+      );
       expect(DeleteStyleSchema).toBeDefined();
     });
   });
@@ -42,7 +43,7 @@ describe('DeleteStyleTool', () => {
     });
 
     const result = await new DeleteStyleTool({ httpRequest }).run({
-      styleId: 'style-123'
+      styleId: 'cmojrmkc9002t01ry96yi6h48'
     });
 
     expect(result.content[0]).toEqual({
@@ -60,7 +61,7 @@ describe('DeleteStyleTool', () => {
     });
 
     const result = await new DeleteStyleTool({ httpRequest }).run({
-      styleId: 'style-123'
+      styleId: 'cmojrmkc9002t01ry96yi6h48'
     });
     expect(result.isError).toBe(true);
     expect(result.content[0]).toMatchObject({

@@ -43,8 +43,9 @@ describe('ListTokensTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { ListTokensSchema } =
-        await import('../../../src/tools/list-tokens-tool/ListTokensTool.input.schema.js');
+      const { ListTokensSchema } = await import(
+        '../../../src/tools/list-tokens-tool/ListTokensTool.input.schema.js'
+      );
       expect(ListTokensSchema).toBeDefined();
     });
   });
@@ -583,26 +584,12 @@ describe('ListTokensTool', () => {
       } as Response);
 
       const tool = createListTokensTool(httpRequest);
-      const logSpy = vi.spyOn(tool as any, 'log');
 
       const result = await tool.run({});
 
-      // Should not error - graceful fallback to raw data
-      expect(result.isError).toBe(false);
+      // Schema validation failure now returns an error response
+      expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
-
-      // Should log a warning about validation failure
-      expect(logSpy).toHaveBeenCalledWith(
-        'warning',
-        expect.stringContaining(
-          'ListTokensTool: Output schema validation failed'
-        )
-      );
-
-      // Should return the raw data despite validation failure
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
-      expect(responseData.tokens).toEqual(invalidMockTokens);
-      expect(responseData.tokens[0]).toHaveProperty('unexpectedField');
     });
   });
 });

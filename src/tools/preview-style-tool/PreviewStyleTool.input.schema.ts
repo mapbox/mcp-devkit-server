@@ -1,7 +1,8 @@
 import { z } from 'zod';
+import { styleIdSchema } from '../shared/styleId.schema.js';
 
 export const PreviewStyleSchema = z.object({
-  styleId: z.string().describe('Style ID to preview'),
+  styleId: styleIdSchema.describe('Style ID to preview'),
   accessToken: z
     .string()
     .startsWith(

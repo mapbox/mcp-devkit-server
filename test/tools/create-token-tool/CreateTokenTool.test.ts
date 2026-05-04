@@ -44,8 +44,9 @@ describe('CreateTokenTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { CreateTokenSchema } =
-        await import('../../../src/tools/create-token-tool/CreateTokenTool.input.schema.js');
+      const { CreateTokenSchema } = await import(
+        '../../../src/tools/create-token-tool/CreateTokenTool.input.schema.js'
+      );
       expect(CreateTokenSchema).toBeDefined();
     });
   });
@@ -377,29 +378,15 @@ describe('CreateTokenTool', () => {
       } as Response);
 
       const tool = createTokenTool(httpRequest);
-      const logSpy = vi.spyOn(tool as any, 'log');
 
       const result = await tool.run({
         note: 'Test token',
         scopes: ['styles:read']
       });
 
-      // Should not error - graceful fallback to raw data
-      expect(result.isError).toBe(false);
+      // Schema validation failure now returns an error response
+      expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
-
-      // Should log a warning about validation failure
-      expect(logSpy).toHaveBeenCalledWith(
-        'warning',
-        expect.stringContaining(
-          'CreateTokenTool: Output schema validation failed'
-        )
-      );
-
-      // Should return the raw data despite validation failure
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
-      expect(responseData).toEqual(invalidMockResponse);
-      expect(responseData).toHaveProperty('unexpectedField');
     });
   });
 });

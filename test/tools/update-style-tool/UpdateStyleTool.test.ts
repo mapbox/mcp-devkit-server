@@ -29,8 +29,9 @@ describe('UpdateStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { UpdateStyleInputSchema } =
-        await import('../../../src/tools/update-style-tool/UpdateStyleTool.input.schema.js');
+      const { UpdateStyleInputSchema } = await import(
+        '../../../src/tools/update-style-tool/UpdateStyleTool.input.schema.js'
+      );
       expect(UpdateStyleInputSchema).toBeDefined();
     });
   });
@@ -38,11 +39,21 @@ describe('UpdateStyleTool', () => {
   it('sends custom header', async () => {
     const { httpRequest, mockHttpRequest } = setupHttpRequest({
       ok: true,
-      json: async () => ({ id: 'updated-style-id', name: 'Updated Style' })
+      json: async () => ({
+        id: 'cmojrmkc9002t01ry96yi6h48',
+        name: 'Updated Style',
+        owner: 'test-user',
+        version: 8,
+        created: '2020-01-01T00:00:00.000Z',
+        modified: '2020-01-01T00:00:00.000Z',
+        visibility: 'private',
+        sources: {},
+        layers: []
+      })
     });
 
     await new UpdateStyleTool({ httpRequest }).run({
-      styleId: 'style-123',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       name: 'Updated Style',
       style: { version: 8, sources: {}, layers: [] }
     });
@@ -59,7 +70,7 @@ describe('UpdateStyleTool', () => {
     let result;
     try {
       result = await new UpdateStyleTool({ httpRequest }).run({
-        styleId: 'style-123',
+        styleId: 'cmojrmkc9002t01ry96yi6h48',
         name: 'Updated Style',
         style: { version: 8, sources: {}, layers: [] }
       });
