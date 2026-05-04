@@ -13,6 +13,11 @@ import { context, trace, SpanStatusCode } from '@opentelemetry/api';
 import type { ToolExecutionContext } from '../utils/tracing.js';
 import { createToolExecutionContext } from '../utils/tracing.js';
 
+/** Remove access_token query parameter values from strings before logging or returning to callers. */
+export function redactToken(s: string): string {
+  return s.replace(/access_token=[^&\s#"']+/g, 'access_token=***');
+}
+
 /**
  * Standard error response format from Mapbox API
  */
@@ -126,8 +131,8 @@ export abstract class MapboxApiBasedTool<
       toolContext.span.end();
       return result;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const rawMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = redactToken(rawMessage);
       this.log(
         'error',
         `${this.name}: Error during execution: ${errorMessage}`

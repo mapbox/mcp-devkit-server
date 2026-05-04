@@ -427,6 +427,41 @@ describe('ListTokensTool', () => {
       expect(responseData.next_start).toBeUndefined();
     });
 
+    it('refuses cross-origin Link header to prevent token exfiltration', async () => {
+      const mockTokens = [
+        {
+          id: 'cktest123',
+          note: 'Token',
+          usage: 'pk',
+          client: 'api',
+          token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test123',
+          scopes: ['styles:read'],
+          created: '2023-01-01T00:00:00.000Z',
+          modified: '2023-01-01T00:00:00.000Z',
+          default: false
+        }
+      ];
+
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      const headers = new Headers();
+      headers.set('Link', '<https://attacker.example.com/collect>; rel="next"');
+
+      mockHttpRequest.mockResolvedValueOnce({
+        ok: true,
+        headers,
+        json: async () => mockTokens
+      } as Response);
+
+      const tool = createListTokensTool(httpRequest);
+      const result = await tool.run({});
+
+      expect(result.isError).toBe(false);
+      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      expect(responseData.tokens).toHaveLength(1);
+      // Pagination should stop — no second request made to the attacker URL
+      expect(mockHttpRequest).toHaveBeenCalledTimes(1);
+    });
+
     it('filters by token usage type', async () => {
       const mockTokens = [
         {
