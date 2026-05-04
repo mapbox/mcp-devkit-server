@@ -43,9 +43,8 @@ describe('ListTokensTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { ListTokensSchema } = await import(
-        '../../../src/tools/list-tokens-tool/ListTokensTool.input.schema.js'
-      );
+      const { ListTokensSchema } =
+        await import('../../../src/tools/list-tokens-tool/ListTokensTool.input.schema.js');
       expect(ListTokensSchema).toBeDefined();
     });
   });
@@ -59,7 +58,7 @@ describe('ListTokensTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const errorText = (result.content[0] as TextContent).text;
-      expect(errorText).toContain('<=100');
+      expect(errorText).toContain('too_big');
     });
 
     it('validates sortby enum values', async () => {

@@ -30,9 +30,8 @@ describe('ListStylesTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { ListStylesSchema } = await import(
-        '../../../src/tools/list-styles-tool/ListStylesTool.input.schema.js'
-      );
+      const { ListStylesSchema } =
+        await import('../../../src/tools/list-styles-tool/ListStylesTool.input.schema.js');
       expect(ListStylesSchema).toBeDefined();
     });
   });

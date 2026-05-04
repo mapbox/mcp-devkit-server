@@ -21,9 +21,8 @@ describe('PreviewStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { PreviewStyleSchema } = await import(
-        '../../../src/tools/preview-style-tool/PreviewStyleTool.input.schema.js'
-      );
+      const { PreviewStyleSchema } =
+        await import('../../../src/tools/preview-style-tool/PreviewStyleTool.input.schema.js');
       expect(PreviewStyleSchema).toBeDefined();
     });
   });
@@ -166,7 +165,7 @@ describe('PreviewStyleTool', () => {
       type: 'resource',
       resource: {
         uri: expect.stringMatching(/^ui:\/\/mapbox\/preview-style\//),
-        mimeType: 'text/uri-list',
+        mimeType: 'text/html;profile=mcp-app',
         text: expect.stringContaining(
           'https://api.mapbox.com/styles/v1/test-user/cmojrmkc9002t01ry96yi6h48.html?access_token=pk.'
         )

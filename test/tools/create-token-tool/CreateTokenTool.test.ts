@@ -44,9 +44,8 @@ describe('CreateTokenTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { CreateTokenSchema } = await import(
-        '../../../src/tools/create-token-tool/CreateTokenTool.input.schema.js'
-      );
+      const { CreateTokenSchema } =
+        await import('../../../src/tools/create-token-tool/CreateTokenTool.input.schema.js');
       expect(CreateTokenSchema).toBeDefined();
     });
   });
