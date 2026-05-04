@@ -624,6 +624,12 @@ describe('ListTokensTool', () => {
       // Schema validation failure now returns an error response
       expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
+      const errorText = (result.content[0] as { type: string; text: string })
+        .text;
+      expect(errorText).toMatch(
+        /Unexpected API response format from Mapbox API:/
+      );
+      expect(errorText).toContain('"code"');
     });
   });
 });
