@@ -133,16 +133,8 @@ export class ListTokensTool extends MapboxApiBasedTool<
         let validatedTokens;
         try {
           validatedTokens = TokenObjectSchema.array().parse(tokens);
-        } catch {
-          return {
-            isError: true,
-            content: [
-              {
-                type: 'text',
-                text: 'Unexpected API response format from Mapbox API'
-              }
-            ]
-          };
+        } catch (validationError) {
+          return this.handleValidationError(validationError);
         }
 
         allTokens.push(...validatedTokens);

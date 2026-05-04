@@ -73,16 +73,8 @@ export class ListStylesTool extends MapboxApiBasedTool<
     let validatedData;
     try {
       validatedData = StylesArraySchema.parse(rawData);
-    } catch {
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text: 'Unexpected API response format from Mapbox API'
-          }
-        ]
-      };
+    } catch (validationError) {
+      return this.handleValidationError(validationError);
     }
 
     this.log('info', `ListStylesTool: Successfully listed styles`);

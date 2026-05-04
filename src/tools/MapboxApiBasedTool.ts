@@ -217,6 +217,18 @@ export abstract class MapboxApiBasedTool<
     };
   }
 
+  protected handleValidationError(error: unknown): CallToolResult {
+    return {
+      isError: true,
+      content: [
+        {
+          type: 'text',
+          text: `Unexpected API response format from Mapbox API: ${error instanceof Error ? error.message : 'Unknown validation error'}`
+        }
+      ]
+    };
+  }
+
   /**
    * Tool logic to be implemented by subclasses.
    * Must return a complete OutputSchema with content and optional structured content.
