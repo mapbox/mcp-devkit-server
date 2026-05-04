@@ -101,6 +101,22 @@ describe('RetrieveStyleTool', () => {
     assertHeadersSent(mockHttpRequest);
   });
 
+  it('returns error with validation details when API response does not match schema', async () => {
+    const { httpRequest } = setupHttpRequest({
+      ok: true,
+      json: async () => ({ unexpected: 'format' })
+    });
+
+    const result = await new RetrieveStyleTool({ httpRequest }).run({
+      styleId: 'cmojrmkc9002t01ry96yi6h48'
+    });
+
+    expect(result.isError).toBe(true);
+    const text = (result.content[0] as { type: string; text: string }).text;
+    expect(text).toMatch(/Unexpected API response format from Mapbox API:/);
+    expect(text).toContain('"code"');
+  });
+
   it('handles styles with null terrain and other nullable fields', async () => {
     // Real-world API response with null values for optional fields
     const styleData = {
