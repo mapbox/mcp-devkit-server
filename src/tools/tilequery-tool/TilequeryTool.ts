@@ -44,7 +44,7 @@ export class TilequeryTool extends MapboxApiBasedTool<
   ): Promise<CallToolResult> {
     const { tilesetId, longitude, latitude, ...queryParams } = input;
     const url = new URL(
-      `${MapboxApiBasedTool.mapboxApiEndpoint}v4/${tilesetId}/tilequery/${longitude},${latitude}.json`
+      `${MapboxApiBasedTool.mapboxApiEndpoint}v4/${encodeURIComponent(tilesetId)}/tilequery/${longitude},${latitude}.json`
     );
 
     if (queryParams.radius !== undefined) {
@@ -81,17 +81,11 @@ export class TilequeryTool extends MapboxApiBasedTool<
 
     const rawData = await response.json();
 
-    // Validate response against schema with graceful fallback
     let data: TilequeryResponse;
     try {
       data = TilequeryResponseSchema.parse(rawData);
     } catch (validationError) {
-      this.log(
-        'warning',
-        `Schema validation failed for search response: ${validationError instanceof Error ? validationError.message : 'Unknown validation error'}`
-      );
-      // Graceful fallback to raw data
-      data = rawData as TilequeryResponse;
+      return this.handleValidationError(validationError);
     }
 
     this.log(

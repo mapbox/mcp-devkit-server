@@ -29,7 +29,7 @@ describe('PreviewStyleTool', () => {
 
   it('uses user-provided public token and returns preview URL', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
       zoomwheel: false
@@ -39,14 +39,14 @@ describe('PreviewStyleTool', () => {
     expect(result.content[0]).toMatchObject({
       type: 'text',
       text: expect.stringContaining(
-        '/styles/v1/test-user/test-style.html?access_token=pk.'
+        '/styles/v1/test-user/cmojrmkc9002t01ry96yi6h48.html?access_token=pk.'
       )
     });
   });
 
   it('includes styleId in URL', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'my-custom-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h49',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
       zoomwheel: false
@@ -54,13 +54,15 @@ describe('PreviewStyleTool', () => {
 
     expect(result.content[0]).toMatchObject({
       type: 'text',
-      text: expect.stringContaining('/styles/v1/test-user/my-custom-style.html')
+      text: expect.stringContaining(
+        '/styles/v1/test-user/cmojrmkc9002t01ry96yi6h49.html'
+      )
     });
   });
 
   it('includes title parameter when provided', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: true,
       zoomwheel: false
@@ -74,7 +76,7 @@ describe('PreviewStyleTool', () => {
 
   it('includes zoomwheel parameter when provided', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       zoomwheel: false,
       title: false
@@ -88,7 +90,7 @@ describe('PreviewStyleTool', () => {
 
   it('includes fresh parameter for secure access', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
       zoomwheel: false
@@ -102,7 +104,7 @@ describe('PreviewStyleTool', () => {
 
   it('rejects secret tokens', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken:
         'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.secret_token',
       title: false,
@@ -120,7 +122,7 @@ describe('PreviewStyleTool', () => {
 
   it('rejects temporary tokens', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: 'tk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.temp_token',
       title: false,
       zoomwheel: false
@@ -137,7 +139,7 @@ describe('PreviewStyleTool', () => {
 
   it('returns URL and MCP-UI resource on success (default)', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
       zoomwheel: false
@@ -148,7 +150,7 @@ describe('PreviewStyleTool', () => {
     expect(result.content[0]).toMatchObject({
       type: 'text',
       text: expect.stringContaining(
-        'https://api.mapbox.com/styles/v1/test-user/test-style.html?access_token=pk.'
+        'https://api.mapbox.com/styles/v1/test-user/cmojrmkc9002t01ry96yi6h48.html?access_token=pk.'
       )
     });
 
@@ -165,7 +167,7 @@ describe('PreviewStyleTool', () => {
         uri: expect.stringMatching(/^ui:\/\/mapbox\/preview-style\//),
         mimeType: 'text/html;profile=mcp-app',
         text: expect.stringContaining(
-          'https://api.mapbox.com/styles/v1/test-user/test-style.html?access_token=pk.'
+          'https://api.mapbox.com/styles/v1/test-user/cmojrmkc9002t01ry96yi6h48.html?access_token=pk.'
         )
       }
     });
@@ -173,7 +175,7 @@ describe('PreviewStyleTool', () => {
 
   it('returns URL and MCP-UI resource for backward compatibility', async () => {
     const result = await new PreviewStyleTool().run({
-      styleId: 'test-style',
+      styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
       zoomwheel: false
@@ -185,7 +187,7 @@ describe('PreviewStyleTool', () => {
     expect(result.content[0]).toMatchObject({
       type: 'text',
       text: expect.stringContaining(
-        'https://api.mapbox.com/styles/v1/test-user/test-style.html?access_token=pk.'
+        'https://api.mapbox.com/styles/v1/test-user/cmojrmkc9002t01ry96yi6h48.html?access_token=pk.'
       )
     });
     // Second item is MCP-UI resource

@@ -36,7 +36,17 @@ describe('RetrieveStyleTool', () => {
   });
 
   it('returns style data for successful fetch', async () => {
-    const styleData = { id: 'style-123', name: 'Test Style' };
+    const styleData = {
+      id: 'cmojrmkc9002t01ry96yi6h48',
+      name: 'Test Style',
+      owner: 'test-user',
+      version: 8,
+      created: '2020-01-01T00:00:00.000Z',
+      modified: '2020-01-01T00:00:00.000Z',
+      visibility: 'private' as const,
+      sources: {},
+      layers: []
+    };
     const { httpRequest, mockHttpRequest } = setupHttpRequest({
       ok: true,
       status: 200,
@@ -44,13 +54,21 @@ describe('RetrieveStyleTool', () => {
     });
 
     const result = await new RetrieveStyleTool({ httpRequest }).run({
-      styleId: 'style-123'
+      styleId: 'cmojrmkc9002t01ry96yi6h48'
     });
 
-    expect(result.content[0]).toMatchObject({
-      type: 'text',
-      text: JSON.stringify(styleData, null, 2)
-    });
+    expect(result.isError).toBe(false);
+    const content = result.content[0];
+    expect(content.type).toBe('text');
+    if (content.type === 'text') {
+      const parsed = JSON.parse(content.text);
+      expect(parsed).toMatchObject({
+        id: 'cmojrmkc9002t01ry96yi6h48',
+        name: 'Test Style',
+        owner: 'test-user',
+        version: 8
+      });
+    }
     assertHeadersSent(mockHttpRequest);
   });
 
@@ -64,7 +82,7 @@ describe('RetrieveStyleTool', () => {
     let result;
     try {
       result = await new RetrieveStyleTool({ httpRequest }).run({
-        styleId: 'style-456'
+        styleId: 'cmojrmkc9002t01ry96yi6h49'
       });
     } catch (e) {
       if (e instanceof Error) {
@@ -83,10 +101,26 @@ describe('RetrieveStyleTool', () => {
     assertHeadersSent(mockHttpRequest);
   });
 
+  it('returns error with validation details when API response does not match schema', async () => {
+    const { httpRequest } = setupHttpRequest({
+      ok: true,
+      json: async () => ({ unexpected: 'format' })
+    });
+
+    const result = await new RetrieveStyleTool({ httpRequest }).run({
+      styleId: 'cmojrmkc9002t01ry96yi6h48'
+    });
+
+    expect(result.isError).toBe(true);
+    const text = (result.content[0] as { type: string; text: string }).text;
+    expect(text).toMatch(/Unexpected API response format from Mapbox API:/);
+    expect(text).toContain('"code"');
+  });
+
   it('handles styles with null terrain and other nullable fields', async () => {
     // Real-world API response with null values for optional fields
     const styleData = {
-      id: 'cjxyz123',
+      id: 'cmojrmkc9002t01ry96yi6h48',
       name: 'Production Style',
       owner: 'test-user',
       version: 8,
@@ -118,7 +152,7 @@ describe('RetrieveStyleTool', () => {
     });
 
     const result = await new RetrieveStyleTool({ httpRequest }).run({
-      styleId: 'cjxyz123'
+      styleId: 'cmojrmkc9002t01ry96yi6h48'
     });
 
     expect(result.isError).toBe(false);
@@ -130,7 +164,7 @@ describe('RetrieveStyleTool', () => {
       expect(parsedResponse.terrain).toBeNull();
       expect(parsedResponse.fog).toBeNull();
       expect(parsedResponse.lights).toBeNull();
-      expect(parsedResponse.id).toBe('cjxyz123');
+      expect(parsedResponse.id).toBe('cmojrmkc9002t01ry96yi6h48');
     }
 
     assertHeadersSent(mockHttpRequest);

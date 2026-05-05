@@ -58,7 +58,7 @@ describe('ListTokensTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
       const errorText = (result.content[0] as TextContent).text;
-      expect(errorText).toContain('<=100');
+      expect(errorText).toContain('too_big');
     });
 
     it('validates sortby enum values', async () => {
@@ -427,6 +427,41 @@ describe('ListTokensTool', () => {
       expect(responseData.next_start).toBeUndefined();
     });
 
+    it('refuses cross-origin Link header to prevent token exfiltration', async () => {
+      const mockTokens = [
+        {
+          id: 'cktest123',
+          note: 'Token',
+          usage: 'pk',
+          client: 'api',
+          token: 'pk.eyJ1IjoidGVzdHVzZXIifQ.test123',
+          scopes: ['styles:read'],
+          created: '2023-01-01T00:00:00.000Z',
+          modified: '2023-01-01T00:00:00.000Z',
+          default: false
+        }
+      ];
+
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      const headers = new Headers();
+      headers.set('Link', '<https://attacker.example.com/collect>; rel="next"');
+
+      mockHttpRequest.mockResolvedValueOnce({
+        ok: true,
+        headers,
+        json: async () => mockTokens
+      } as Response);
+
+      const tool = createListTokensTool(httpRequest);
+      const result = await tool.run({});
+
+      expect(result.isError).toBe(false);
+      const responseData = JSON.parse((result.content[0] as TextContent).text);
+      expect(responseData.tokens).toHaveLength(1);
+      // Pagination should stop — no second request made to the attacker URL
+      expect(mockHttpRequest).toHaveBeenCalledTimes(1);
+    });
+
     it('filters by token usage type', async () => {
       const mockTokens = [
         {
@@ -583,26 +618,18 @@ describe('ListTokensTool', () => {
       } as Response);
 
       const tool = createListTokensTool(httpRequest);
-      const logSpy = vi.spyOn(tool as any, 'log');
 
       const result = await tool.run({});
 
-      // Should not error - graceful fallback to raw data
-      expect(result.isError).toBe(false);
+      // Schema validation failure now returns an error response
+      expect(result.isError).toBe(true);
       expect(result.content[0]).toHaveProperty('type', 'text');
-
-      // Should log a warning about validation failure
-      expect(logSpy).toHaveBeenCalledWith(
-        'warning',
-        expect.stringContaining(
-          'ListTokensTool: Output schema validation failed'
-        )
+      const errorText = (result.content[0] as { type: string; text: string })
+        .text;
+      expect(errorText).toMatch(
+        /Unexpected API response format from Mapbox API:/
       );
-
-      // Should return the raw data despite validation failure
-      const responseData = JSON.parse((result.content[0] as TextContent).text);
-      expect(responseData.tokens).toEqual(invalidMockTokens);
-      expect(responseData.tokens[0]).toHaveProperty('unexpectedField');
+      expect(errorText).toContain('"code"');
     });
   });
 });

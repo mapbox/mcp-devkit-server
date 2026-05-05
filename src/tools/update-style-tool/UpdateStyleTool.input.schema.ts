@@ -2,11 +2,12 @@
 // Licensed under the MIT License.
 
 import { z } from 'zod';
+import { styleIdSchema } from '../shared/styleId.schema.js';
 
 // INPUT Schema - Accepts a complete Mapbox Style Specification as a generic object
 // This avoids complex schemas with .passthrough() that break some MCP clients (Cursor + OpenAI)
 export const UpdateStyleInputSchema = z.object({
-  styleId: z.string().describe('Style ID to update'),
+  styleId: styleIdSchema.describe('Style ID to update'),
   name: z.string().optional().describe('New name for the style'),
   style: z
     .record(z.string(), z.any())

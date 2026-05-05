@@ -4,7 +4,7 @@
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../utils/types.js';
 import type { ToolExecutionContext } from '../../utils/tracing.js';
-import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
+import { MapboxApiBasedTool, redactToken } from '../MapboxApiBasedTool.js';
 import {
   ListTokensSchema,
   ListTokensInput
@@ -110,7 +110,7 @@ export class ListTokensTool extends MapboxApiBasedTool<
       while (url) {
         pageCount++;
         this.log('info', `ListTokensTool: Fetching page ${pageCount}`);
-        this.log('debug', `ListTokensTool: Fetching URL: ${url}`);
+        this.log('debug', `ListTokensTool: Fetching URL: ${redactToken(url)}`);
 
         const response = await this.httpRequest(url, {
           method: 'GET',
@@ -130,12 +130,12 @@ export class ListTokensTool extends MapboxApiBasedTool<
           ? data
           : (data as { tokens?: unknown[] }).tokens || [];
 
-        // Validate tokens array against TokenObjectSchema with graceful fallback
-        const validatedTokens = this.validateOutput<unknown[]>(
-          TokenObjectSchema.array(),
-          tokens,
-          'ListTokensTool'
-        );
+        let validatedTokens;
+        try {
+          validatedTokens = TokenObjectSchema.array().parse(tokens);
+        } catch (validationError) {
+          return this.handleValidationError(validationError);
+        }
 
         allTokens.push(...validatedTokens);
         this.log(
@@ -149,26 +149,34 @@ export class ListTokensTool extends MapboxApiBasedTool<
         if (linkHeader) {
           const links = this.parseLinkHeader(linkHeader);
           if (links.next) {
-            // Ensure the next URL includes the access token
             const nextUrl = new URL(links.next);
-            if (!nextUrl.searchParams.has('access_token')) {
-              nextUrl.searchParams.append('access_token', accessToken);
-            }
-            const nextUrlString = nextUrl.toString();
-
-            if (shouldAutoPaginate) {
-              url = nextUrlString;
-              this.log('info', `ListTokensTool: Next page available: ${url}`);
+            // Reject cross-origin Link headers to prevent token exfiltration
+            const apiOrigin = new URL(ListTokensTool.mapboxApiEndpoint).origin;
+            if (nextUrl.origin !== apiOrigin) {
+              this.log(
+                'warning',
+                `ListTokensTool: Refusing cross-origin Link header: ${nextUrl.origin}`
+              );
             } else {
-              // For manual pagination, extract the start parameter from the next URL
-              const nextUrl = new URL(links.next);
-              const startParam = nextUrl.searchParams.get('start');
-              if (startParam) {
-                nextPageUrl = startParam;
-                this.log(
-                  'info',
-                  `ListTokensTool: Next page start token saved for manual pagination: ${nextPageUrl}`
-                );
+              // Ensure the next URL includes the access token
+              if (!nextUrl.searchParams.has('access_token')) {
+                nextUrl.searchParams.append('access_token', accessToken);
+              }
+              const nextUrlString = nextUrl.toString();
+
+              if (shouldAutoPaginate) {
+                url = nextUrlString;
+                this.log('info', 'ListTokensTool: Next page available');
+              } else {
+                // For manual pagination, extract the start parameter from the next URL
+                const startParam = nextUrl.searchParams.get('start');
+                if (startParam) {
+                  nextPageUrl = startParam;
+                  this.log(
+                    'info',
+                    'ListTokensTool: Next page start token saved for manual pagination'
+                  );
+                }
               }
             }
           }

@@ -74,7 +74,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     const hashFragment =
       hashParams.length > 0 ? `#${hashParams.join('/')}` : '';
 
-    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${userName}/${input.styleId}.html?${params.toString()}${hashFragment}`;
+    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${encodeURIComponent(userName)}/${encodeURIComponent(input.styleId)}.html?${params.toString()}${hashFragment}`;
 
     // Build content array with URL
     const content: CallToolResult['content'] = [
@@ -86,7 +86,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
 
     // Add MCP-UI resource (for legacy MCP-UI clients)
     const uiResource = createUIResource({
-      uri: `ui://mapbox/preview-style/${userName}/${input.styleId}`,
+      uri: `ui://mapbox/preview-style/${encodeURIComponent(userName)}/${encodeURIComponent(input.styleId)}`,
       content: {
         type: 'externalUrl',
         iframeUrl: url
