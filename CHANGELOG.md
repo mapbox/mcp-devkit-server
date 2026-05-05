@@ -1,5 +1,18 @@
 ## Unreleased
 
+### Security
+
+- **Upgrade `@opentelemetry/*` packages to latest minor versions** — resolves transitive `protobufjs` CRITICAL CVE (GHSA-xq3m-2v4x-88gg) present in older OTEL exporter packages, and high-severity transitives (`flatted` GHSA-25h7-pfq9-p65f / GHSA-rf6f-7fwh-wjgh, `picomatch` GHSA-3v7f-55p6-f55p / GHSA-c2c7-rcm5-vvqj). Updated packages:
+  - `@opentelemetry/auto-instrumentations-node`: `^0.72.0` → `^0.74.0`
+  - `@opentelemetry/exporter-trace-otlp-http`: `^0.214.0` → `^0.216.0`
+  - `@opentelemetry/instrumentation`: `^0.214.0` → `^0.216.0`
+  - `@opentelemetry/resources`: `^2.6.1` → `^2.7.1`
+  - `@opentelemetry/sdk-node`: `^0.214.0` → `^0.216.0`
+  - `@opentelemetry/sdk-trace-base`: `^2.6.1` → `^2.7.1`
+- **Resolve critical `handlebars` CVE** (GHSA-3mfm-83xf-c92r et al.) — `handlebars` 4.7.8 → 4.7.9 via `npm audit fix`
+- **Resolve high-severity `hono` and `@hono/node-server` CVEs** — `hono` 4.11.7 → 4.12.17, `@hono/node-server` 1.19.9 → 1.19.14 via `npm audit fix`
+- **Resolve high-severity `express-rate-limit` CVE** (GHSA-46wh-pxpv-q5gq) — `express-rate-limit` 8.2.1 → 8.5.0 via `npm audit fix`
+
 ## 0.7.1-dev - 2026-05-05
 
 ## 0.7.1 - 2026-05-05
