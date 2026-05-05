@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.7.2 - 2026-05-05
+
 ### Security
 
 - **Upgrade `@opentelemetry/*` packages to latest minor versions** — resolves transitive `protobufjs` CRITICAL CVE (GHSA-xq3m-2v4x-88gg) present in older OTEL exporter packages, and high-severity transitives (`flatted` GHSA-25h7-pfq9-p65f / GHSA-rf6f-7fwh-wjgh, `picomatch` GHSA-3v7f-55p6-f55p / GHSA-c2c7-rcm5-vvqj). Updated packages:
