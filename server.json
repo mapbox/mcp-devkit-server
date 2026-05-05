@@ -6,13 +6,13 @@
     "url": "https://github.com/mapbox/mcp-devkit-server",
     "source": "github"
   },
-  "version": "0.7.1",
+  "version": "0.7.1-dev",
   "packages": [
     {
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "runtimeHint": "npx",
-      "version": "0.7.1",
+      "version": "0.7.1-dev",
       "identifier": "@mapbox/mcp-devkit-server",
       "transport": {
         "type": "stdio"

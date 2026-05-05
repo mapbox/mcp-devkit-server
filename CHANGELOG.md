@@ -13,6 +13,8 @@
 - **Resolve high-severity `hono` and `@hono/node-server` CVEs** — `hono` 4.11.7 → 4.12.17, `@hono/node-server` 1.19.9 → 1.19.14 via `npm audit fix`
 - **Resolve high-severity `express-rate-limit` CVE** (GHSA-46wh-pxpv-q5gq) — `express-rate-limit` 8.2.1 → 8.5.0 via `npm audit fix`
 
+## 0.7.1-dev - 2026-05-05
+
 ## 0.7.1 - 2026-05-05
 
 ## 0.7.0 - 2026-05-05
