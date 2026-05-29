@@ -259,7 +259,7 @@ Before finalizing the style, you need to know:
 - These tools will show you the data structure and property values
 
 **If using Mapbox tilesets:**
-- Use get_reference_tool with 'streets-v8-fields-reference' to see available fields
+- Read \`resource://mapbox-streets-v8-fields\` to see available fields
 - Review typical value ranges in the documentation
 
 ## Step 4: Create the Style
@@ -425,7 +425,7 @@ After creating your data-driven style, automatically run validation:
 ## Step 9: Documentation
 
 For more information on expressions:
-- Use get_reference_tool with 'style-spec-reference'
+- Read \`resource://mapbox-style-layers\` for style spec reference
 - Search for "expressions" in the Mapbox documentation
 - Review expression examples for your use case
 

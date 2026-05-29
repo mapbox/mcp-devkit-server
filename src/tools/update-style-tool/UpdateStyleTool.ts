@@ -44,7 +44,7 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
     _context: ToolExecutionContext
   ): Promise<CallToolResult> {
     const username = getUserNameFromToken(accessToken);
-    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${username}/${input.styleId}?access_token=${accessToken}`;
+    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${encodeURIComponent(username)}/${encodeURIComponent(input.styleId)}?access_token=${accessToken}`;
 
     const payload: Record<string, unknown> = {};
     if (input.name) payload.name = input.name;
@@ -68,12 +68,7 @@ export class UpdateStyleTool extends MapboxApiBasedTool<
     try {
       data = MapboxStyleOutputSchema.parse(rawData);
     } catch (validationError) {
-      this.log(
-        'warning',
-        `Schema validation failed for search response: ${validationError instanceof Error ? validationError.message : 'Unknown validation error'}`
-      );
-      // Graceful fallback to raw data
-      data = rawData as MapboxStyleOutput;
+      return this.handleValidationError(validationError);
     }
 
     this.log('info', `UpdateStyleTool: Successfully updated style ${data.id}`);

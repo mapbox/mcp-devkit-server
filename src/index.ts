@@ -17,11 +17,7 @@ import {
 } from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { parseToolConfigFromArgs, filterTools } from './config/toolConfig.js';
-import {
-  getCoreTools,
-  getElicitationTools,
-  getResourceFallbackTools
-} from './tools/toolRegistry.js';
+import { getCoreTools, getElicitationTools } from './tools/toolRegistry.js';
 import { getAllResources } from './resources/resourceRegistry.js';
 import { getAllPrompts } from './prompts/promptRegistry.js';
 import { getVersionInfo } from './utils/versionUtils.js';
@@ -65,11 +61,9 @@ const config = parseToolConfigFromArgs();
 // Split into categories for capability-aware registration
 const coreTools = getCoreTools();
 const elicitationTools = getElicitationTools();
-const resourceFallbackTools = getResourceFallbackTools();
 
 const enabledCoreTools = filterTools(coreTools, config);
 const enabledElicitationTools = filterTools(elicitationTools, config);
-const enabledResourceFallbackTools = filterTools(resourceFallbackTools, config);
 
 // Create an MCP server
 const server = new McpServer(
@@ -276,34 +270,6 @@ async function main() {
     server.server.sendLoggingMessage({
       level: 'debug',
       data: `Client does not support elicitation. Skipping ${enabledElicitationTools.length} elicitation-dependent tools`
-    });
-  }
-
-  // Register resource fallback tools for clients that don't support resources
-  // Note: Resources are a core MCP feature supported by most clients.
-  // However, some clients (like smolagents) don't support resources at all.
-  // These fallback tools provide the same content as resources but via tool calls instead.
-  //
-  // Configuration via CLIENT_NEEDS_RESOURCE_FALLBACK environment variable:
-  // - unset (default) = Skip fallback tools (assume client supports resources)
-  // - "true" = Provide fallback tools (client does NOT support resources)
-  const clientNeedsResourceFallback =
-    process.env.CLIENT_NEEDS_RESOURCE_FALLBACK?.toLowerCase() === 'true';
-
-  if (clientNeedsResourceFallback && enabledResourceFallbackTools.length > 0) {
-    server.server.sendLoggingMessage({
-      level: 'info',
-      data: `CLIENT_NEEDS_RESOURCE_FALLBACK=true. Registering ${enabledResourceFallbackTools.length} resource fallback tools`
-    });
-
-    enabledResourceFallbackTools.forEach((tool) => {
-      tool.installTo(server);
-    });
-    toolsAdded = true;
-  } else if (enabledResourceFallbackTools.length > 0) {
-    server.server.sendLoggingMessage({
-      level: 'debug',
-      data: `CLIENT_NEEDS_RESOURCE_FALLBACK not set or false. Skipping ${enabledResourceFallbackTools.length} resource fallback tools (client supports resources)`
     });
   }
 

@@ -6,6 +6,10 @@ import { z } from 'zod';
 export const TilequerySchema = z.object({
   tilesetId: z
     .string()
+    .regex(
+      /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/,
+      'Invalid tileset ID format (expected: owner.tileset-name)'
+    )
     .optional()
     .default('mapbox.mapbox-streets-v8')
     .describe('Tileset ID to query (default: mapbox.mapbox-streets-v8)'),

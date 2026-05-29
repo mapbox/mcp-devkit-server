@@ -29,9 +29,8 @@ describe('CreateStyleTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { CreateStyleInputSchema } = await import(
-        '../../../src/tools/create-style-tool/CreateStyleTool.input.schema.js'
-      );
+      const { CreateStyleInputSchema } =
+        await import('../../../src/tools/create-style-tool/CreateStyleTool.input.schema.js');
       expect(CreateStyleInputSchema).toBeDefined();
     });
   });

@@ -300,7 +300,6 @@ All developer tools are automatically traced:
 - **Style Management**: `list_styles_tool`, `create_style_tool`, `update_style_tool`, `retrieve_style_tool`, `delete_style_tool`
 - **Style Building**: `style_builder_tool`, `preview_style_tool`, `style_comparison_tool`
 - **Token Management**: `list_tokens_tool`, `create_token_tool`
-- **Documentation**: `get_latest_mapbox_docs_tool`, `get_reference_tool`
 - **Local Processing**: `geojson_preview_tool`, `coordinate_conversion_tool`, `bounding_box_tool`
 - **Tilesets**: `tilequery_tool`
 

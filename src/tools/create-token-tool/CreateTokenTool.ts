@@ -92,12 +92,12 @@ export class CreateTokenTool extends MapboxApiBasedTool<
 
     const rawData = await response.json();
 
-    // Validate response against schema with graceful fallback
-    const data = this.validateOutput<Record<string, unknown>>(
-      CreateTokenOutputSchema,
-      rawData,
-      'CreateTokenTool'
-    );
+    let data;
+    try {
+      data = CreateTokenOutputSchema.parse(rawData);
+    } catch (validationError) {
+      return this.handleValidationError(validationError);
+    }
 
     this.log('info', `CreateTokenTool: Successfully created token`);
 

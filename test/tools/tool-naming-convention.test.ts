@@ -50,7 +50,7 @@ async function discoverTools(): Promise<any[]> {
             // Fall back to no-arg constructor (for other tools)
             try {
               tools.push(new (toolClass as any)());
-            } catch (innerError) {
+            } catch {
               throw error; // Re-throw the original error
             }
           }
