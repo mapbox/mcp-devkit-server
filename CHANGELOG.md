@@ -1,5 +1,9 @@
 ## Unreleased
 
+### New Features
+
+- **MTS read-only tools (Phase 1 of #115)**: Four new tools for inspecting Mapbox tilesets — `list_tilesets_tool`, `get_tileset_tool`, `get_tileset_status_tool`, `get_tileset_recipe_tool`. All require only the `tilesets:read` scope (which devkit OAuth already grants). The write/publish/upload tools are intentionally split into a follow-on PR pending a `tilesets:write` scope expansion in `hosted-mcp-server` and a decision on how to leverage the MCP tasks extension for the long-running publish jobs.
+
 ## 0.8.0 - 2026-05-05
 
 ## 0.7.5 - 2026-05-05
