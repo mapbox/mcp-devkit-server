@@ -10,6 +10,10 @@ import { CreateStyleTool } from './create-style-tool/CreateStyleTool.js';
 import { CreateTokenTool } from './create-token-tool/CreateTokenTool.js';
 import { DeleteStyleTool } from './delete-style-tool/DeleteStyleTool.js';
 import { GetFeedbackTool } from './get-feedback-tool/GetFeedbackTool.js';
+import { GetTilesetTool } from './get-tileset-tool/GetTilesetTool.js';
+import { GetTilesetRecipeTool } from './get-tileset-recipe-tool/GetTilesetRecipeTool.js';
+import { GetTilesetStatusTool } from './get-tileset-status-tool/GetTilesetStatusTool.js';
+import { ListTilesetsTool } from './list-tilesets-tool/ListTilesetsTool.js';
 import { ListFeedbackTool } from './list-feedback-tool/ListFeedbackTool.js';
 import { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js';
 import { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
@@ -51,6 +55,10 @@ export const CORE_TOOLS = [
   new GetFeedbackTool({ httpRequest }),
   new ListFeedbackTool({ httpRequest }),
   new TilequeryTool({ httpRequest }),
+  new ListTilesetsTool({ httpRequest }),
+  new GetTilesetTool({ httpRequest }),
+  new GetTilesetStatusTool({ httpRequest }),
+  new GetTilesetRecipeTool({ httpRequest }),
   new ValidateExpressionTool(),
   new ValidateGeojsonTool(),
   new ValidateStyleTool()

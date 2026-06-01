@@ -53,6 +53,21 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "toolName": "get_feedback_tool",
   },
   {
+    "className": "GetTilesetRecipeTool",
+    "description": "Retrieve the MTS recipe JSON for a tileset. The recipe defines layers, sources, and processing steps. Useful for inspecting how a tileset was built or as a template for creating a new tileset. Requires the \`tilesets:read\` scope.",
+    "toolName": "get_tileset_recipe_tool",
+  },
+  {
+    "className": "GetTilesetStatusTool",
+    "description": "Get the publish job status for a Mapbox tileset. With just \`tileset_id\`, returns the most recent job's status summary (\`queued\` / \`processing\` / \`success\` / \`failed\`) and any errors. With \`job_id\`, returns the full detail for that specific job. Useful for polling a publish in progress. Requires the \`tilesets:read\` scope.",
+    "toolName": "get_tileset_status_tool",
+  },
+  {
+    "className": "GetTilesetTool",
+    "description": "Retrieve metadata for a single Mapbox tileset by id (\`username.id\`). Returns information like name, visibility, created/modified timestamps, and bounds. Requires the \`tilesets:read\` scope.",
+    "toolName": "get_tileset_tool",
+  },
+  {
     "className": "ListFeedbackTool",
     "description": "List user feedback items from the Mapbox Feedback API with filtering, sorting, and pagination. Use this tool to access user-reported issues, suggestions, and feedback about map data, routing, and POI details. Supports comprehensive filtering by status, category, date ranges, trace IDs, and search text. Requires user-feedback:read scope on the access token.",
     "toolName": "list_feedback_tool",
@@ -61,6 +76,11 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "className": "ListStylesTool",
     "description": "List styles for a Mapbox account. Use limit parameter to avoid large responses (recommended: limit=5-10). Use start parameter for pagination.",
     "toolName": "list_styles_tool",
+  },
+  {
+    "className": "ListTilesetsTool",
+    "description": "List Mapbox tilesets for the authenticated user. Supports filtering by type (raster/vector), visibility (public/private), sorting, and pagination. Requires the \`tilesets:list\` scope on the access token.",
+    "toolName": "list_tilesets_tool",
   },
   {
     "className": "ListTokensTool",
