@@ -16,23 +16,12 @@ import {
 
 const MAPBOX_GL_VERSION = '3.12.0';
 
-// GL JS requires a public (pk.*) token. We create a short-lived one from the
-// sk.* server token and cache it until it's close to expiry.
-interface CachedToken {
-  token: string;
-  expiresAt: number; // ms since epoch
-}
-let cachedPublicToken: CachedToken | null = null;
-
-async function getPublicToken(skToken: string): Promise<string> {
-  const now = Date.now();
-  // Re-use cached token if it has more than 5 minutes left
-  if (cachedPublicToken && cachedPublicToken.expiresAt - now > 5 * 60 * 1000) {
-    return cachedPublicToken.token;
-  }
-
+// GL JS needs a public token; mint a short-lived one per request from the
+// caller's sk.*. Do NOT cache it in module scope — on a multi-tenant server a
+// process-global cache can return one caller's token to a different caller.
+async function createPreviewToken(skToken: string): Promise<string> {
   const username = getUserNameFromToken(skToken);
-  const expires = new Date(now + 60 * 60 * 1000).toISOString(); // 1 hour
+  const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
   const url = `${mapboxApiEndpoint()}tokens/v2/${username}?access_token=${skToken}`;
 
   const response = await fetch(url, {
@@ -46,11 +35,11 @@ async function getPublicToken(skToken: string): Promise<string> {
   });
 
   if (!response.ok) {
-    throw new Error(`Token API ${response.status}: ${await response.text()}`);
+    // Do not include the response body — it may echo the token back.
+    throw new Error(`Token API ${response.status}`);
   }
 
   const data = (await response.json()) as { token: string };
-  cachedPublicToken = { token: data.token, expiresAt: now + 60 * 60 * 1000 };
   return data.token;
 }
 
@@ -80,7 +69,12 @@ export class GeojsonPreviewUIResource extends BaseResource {
     let accessToken = '';
     if (skToken.startsWith('sk.')) {
       try {
-        accessToken = await getPublicToken(skToken);
+        const minted = await createPreviewToken(skToken);
+        // Defense in depth: only embed a token minted for the caller's own
+        // account, so a token can never be served to a different caller.
+        if (getUserNameFromToken(minted) === getUserNameFromToken(skToken)) {
+          accessToken = minted;
+        }
       } catch {
         // Non-fatal — map won't render but the link button still works
       }

@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Changed
+
+- **GeoJSON Preview UI resource** now mints its short-lived Mapbox GL token per request instead of reusing a process-wide cached one, and verifies the minted token belongs to the requesting account before embedding it.
+
 ## 0.8.0 - 2026-05-05
 
 ## 0.7.5 - 2026-05-05
