@@ -14,7 +14,7 @@ import {
 export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
   name = 'geojson_preview_tool';
   description =
-    'Generate a geojson.io/next URL to visualize GeoJSON data. Returns only the URL link.';
+    'Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.';
   readonly annotations = {
     readOnlyHint: true,
     destructiveHint: false,
@@ -78,13 +78,13 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
         };
       }
 
-      // Generate geojson.io/next URL
-      // Note: geojson.io/next uses query params (?data=) not hash params (#data=)
+      // Generate geojson.io URL
+      // Note: geojson.io uses query params (?data=) not hash params (#data=)
       const geojsonString = JSON.stringify(geojsonData);
       const encodedGeoJSON = encodeURIComponent(geojsonString);
-      const geojsonIOUrl = `https://geojson.io/next/?data=data:application/json,${encodedGeoJSON}`;
+      const geojsonIOUrl = `https://geojson.io/?data=data:application/json,${encodedGeoJSON}`;
 
-      // Use geojson.io/next as the display URL
+      // Use geojson.io as the display URL
       const displayUrl = geojsonIOUrl;
 
       // Build content array with URL

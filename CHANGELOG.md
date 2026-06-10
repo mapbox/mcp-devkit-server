@@ -4,6 +4,10 @@
 
 - **GeoJSON Preview UI resource** now mints its short-lived Mapbox GL token per request instead of reusing a process-wide cached one, and verifies the minted token belongs to the requesting account before embedding it.
 
+### Fixed
+
+- **geojson_preview_tool**: Generate `https://geojson.io/?data=...` instead of `https://geojson.io/next/?data=...`. The `/next/` path now returns 404, so the previewed link no longer opened a broken page. The `?data=` query-param format is unchanged.
+
 ## 0.8.0 - 2026-05-05
 
 ## 0.7.5 - 2026-05-05
