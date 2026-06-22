@@ -130,6 +130,36 @@ describe('StyleComparisonTool', () => {
       ).toContain('Invalid token type');
     });
 
+    it('should reject style IDs with invalid characters', async () => {
+      const input = {
+        before: 'mapbox/streets-v12',
+        after: 'bad</code><img onerror=alert(1)>',
+        accessToken: 'pk.test.token'
+      };
+
+      const result = await tool.run(input);
+
+      expect(result.isError).toBe(true);
+      expect(
+        (result.content[0] as { type: 'text'; text: string }).text
+      ).toContain('Invalid style format');
+    });
+
+    it('should reject style URLs with invalid characters after stripping scheme', async () => {
+      const input = {
+        before: 'mapbox://styles/mapbox/streets-v12',
+        after: 'mapbox://styles/bad<user>/evil"style',
+        accessToken: 'pk.test.token'
+      };
+
+      const result = await tool.run(input);
+
+      expect(result.isError).toBe(true);
+      expect(
+        (result.content[0] as { type: 'text'; text: string }).text
+      ).toContain('Invalid style format');
+    });
+
     it('should return error for style ID without valid username in token', async () => {
       // Mock getUserNameFromToken to throw an error
       vi.spyOn(jwtUtils, 'getUserNameFromToken').mockImplementation(() => {
