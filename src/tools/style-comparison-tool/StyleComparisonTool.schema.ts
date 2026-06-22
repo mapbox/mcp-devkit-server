@@ -6,11 +6,19 @@ import { z } from 'zod';
 export const StyleComparisonSchema = z.object({
   before: z
     .string()
+    .regex(
+      /^(?:mapbox:\/\/styles\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)?$/,
+      'Invalid style format. Use mapbox://styles/username/styleId, username/styleId, or a styleId containing only letters, numbers, hyphens, and underscores.'
+    )
     .describe(
       'Mapbox style for the "before" side. Accepts: full style URL (mapbox://styles/username/styleId), username/styleId format, or just styleId if using your own styles'
     ),
   after: z
     .string()
+    .regex(
+      /^(?:mapbox:\/\/styles\/)?[a-zA-Z0-9_-]+(\/[a-zA-Z0-9_-]+)?$/,
+      'Invalid style format. Use mapbox://styles/username/styleId, username/styleId, or a styleId containing only letters, numbers, hyphens, and underscores.'
+    )
     .describe(
       'Mapbox style for the "after" side. Accepts: full style URL (mapbox://styles/username/styleId), username/styleId format, or just styleId if using your own styles'
     ),
