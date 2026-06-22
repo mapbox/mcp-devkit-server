@@ -1330,7 +1330,7 @@ Follow these steps to publish a new release:
 
 5. **Publish via the [mcp-server-publisher](https://github.com/mapbox/mcp-server-publisher) workflow:**
    - Go to the Actions tab in the `mcp-server-publisher` repo
-   - Select "Manual Release MCP Server to NPM and MCP Registry"
+   - Select "Release MCP Server"
    - Choose `mcp-devkit-server` from the repository dropdown
    - Enter the version — it **must exactly match** the `package.json` version
    - Leave the branch field empty for stable releases (or specify a branch for dev releases)
@@ -1352,7 +1352,7 @@ The `sync-manifest-version.cjs` script handles syncing these automatically from 
 
 To publish a pre-release from a feature branch:
 
-1. Set the version in `package.json` with a pre-release suffix (e.g., `1.0.0-dev` or `1.0.0-beta`)
+1. Set the version in `package.json` with a pre-release suffix `-dev` (e.g., `1.0.0-dev`)
 2. Run `node scripts/sync-manifest-version.cjs`
 3. In the publisher workflow, enter the version and specify the branch name
 4. The package will be published to NPM under the `dev` tag (won't affect `latest`)

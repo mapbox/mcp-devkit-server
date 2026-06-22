@@ -14,7 +14,7 @@ describe('GeojsonPreviewTool', () => {
       const tool = new GeojsonPreviewTool();
       expect(tool.name).toBe('geojson_preview_tool');
       expect(tool.description).toBe(
-        'Generate a geojson.io/next URL to visualize GeoJSON data. Returns only the URL link.'
+        'Generate a geojson.io URL to visualize GeoJSON data. Returns only the URL link.'
       );
     });
 
@@ -39,8 +39,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content[0].type).toBe('text');
     const content = result.content[0];
     if (content.type === 'text') {
-      // Should return geojson.io/next URL with query param format
-      expect(content.text).toMatch(/^https:\/\/geojson\.io\/next\/\?data=/);
+      // Should return geojson.io URL with query param format
+      expect(content.text).toMatch(/^https:\/\/geojson\.io\/\?data=/);
     }
 
     // Verify MCP-UI resource is included by default
@@ -53,9 +53,9 @@ describe('GeojsonPreviewTool', () => {
       }
     });
 
-    // Verify the iframe URL is geojson.io/next with query param
+    // Verify the iframe URL is geojson.io with query param
     const iframeUrl = (result.content[1] as any).resource.text;
-    expect(iframeUrl).toMatch(/^https:\/\/geojson\.io\/next\/\?data=/);
+    expect(iframeUrl).toMatch(/^https:\/\/geojson\.io\/\?data=/);
   });
 
   it('returns URL and MCP-UI resource for backward compatibility', async () => {
@@ -94,8 +94,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Should return geojson.io/next URL with query param
-      expect(content.text).toMatch(/^https:\/\/geojson\.io\/next\/\?data=/);
+      // Should return geojson.io URL with query param
+      expect(content.text).toMatch(/^https:\/\/geojson\.io\/\?data=/);
     }
   });
 
@@ -132,8 +132,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Should return geojson.io/next URL with query param
-      expect(content.text).toMatch(/^https:\/\/geojson\.io\/next\/\?data=/);
+      // Should return geojson.io URL with query param
+      expect(content.text).toMatch(/^https:\/\/geojson\.io\/\?data=/);
     }
   });
 
@@ -185,8 +185,8 @@ describe('GeojsonPreviewTool', () => {
     expect(result.content).toHaveLength(2);
     const content = result.content[0];
     if (content.type === 'text') {
-      // Should return geojson.io/next URL with query param
-      expect(content.text).toMatch(/^https:\/\/geojson\.io\/next\/\?data=/);
+      // Should return geojson.io URL with query param
+      expect(content.text).toMatch(/^https:\/\/geojson\.io\/\?data=/);
     }
   });
 });
