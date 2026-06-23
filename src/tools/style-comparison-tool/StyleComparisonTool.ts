@@ -41,32 +41,48 @@ export class StyleComparisonTool extends BaseTool<
   }
 
   /**
+   * Validates that a resolved username/styleId contains only safe characters.
+   * Style IDs must be alphanumeric with hyphens and underscores only.
+   */
+  private validateStyleId(resolved: string): void {
+    if (!/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/.test(resolved)) {
+      throw new Error(
+        `Invalid style ID format: "${resolved}". ` +
+          `Style IDs must be in username/styleId format using only letters, numbers, hyphens, and underscores.`
+      );
+    }
+  }
+
+  /**
    * Processes style input to extract username/styleId format
    */
   private processStyleId(style: string, accessToken: string): string {
+    let resolved: string;
+
     // If it's a full URL, extract the username/styleId part
     if (style.startsWith('mapbox://styles/')) {
-      return style.replace('mapbox://styles/', '');
+      resolved = style.replace('mapbox://styles/', '');
+    } else if (style.includes('/')) {
+      // If it contains a slash, assume it's already username/styleId format
+      resolved = style;
+    } else {
+      // If it's just a style ID, try to get username from the token
+      try {
+        const username = getUserNameFromToken(accessToken);
+        resolved = `${username}/${style}`;
+      } catch (error) {
+        throw new Error(
+          `Could not determine username for style ID "${style}". ${error instanceof Error ? error.message : ''}\n` +
+            `Please provide either:\n` +
+            `1. Full style URL: mapbox://styles/username/${style}\n` +
+            `2. Username/styleId format: username/${style}\n` +
+            `3. Just the style ID with a valid Mapbox token that contains username information`
+        );
+      }
     }
 
-    // If it contains a slash, assume it's already username/styleId format
-    if (style.includes('/')) {
-      return style;
-    }
-
-    // If it's just a style ID, try to get username from the token
-    try {
-      const username = getUserNameFromToken(accessToken);
-      return `${username}/${style}`;
-    } catch (error) {
-      throw new Error(
-        `Could not determine username for style ID "${style}". ${error instanceof Error ? error.message : ''}\n` +
-          `Please provide either:\n` +
-          `1. Full style URL: mapbox://styles/username/${style}\n` +
-          `2. Username/styleId format: username/${style}\n` +
-          `3. Just the style ID with a valid Mapbox token that contains username information`
-      );
-    }
+    this.validateStyleId(resolved);
+    return resolved;
   }
 
   protected async execute(
