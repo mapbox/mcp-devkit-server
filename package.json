@@ -1,6 +1,6 @@
 {
   "name": "@mapbox/mcp-devkit-server",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "Mapbox MCP devkit server",
   "mcpName": "io.github.mapbox/mcp-devkit-server",
   "main": "./dist/commonjs/index.js",
@@ -157,5 +157,8 @@
       }
     }
   },
-  "types": "./dist/commonjs/index.d.ts"
+  "types": "./dist/commonjs/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  }
 }
