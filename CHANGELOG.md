@@ -4,6 +4,10 @@
 
 - **Style ID validation for `style_comparison_tool`**: `before` and `after` inputs are now validated to contain only alphanumeric characters, hyphens, and underscores (after stripping the optional `mapbox://styles/` prefix). Validation is enforced at both the Zod schema layer and inside `processStyleId()`. Malformed style IDs are rejected with a descriptive error before any URL is constructed.
 
+### Documentation
+
+- **Engineering standards**: Note that unsolicited third-party directory/discovery listing PRs are out of scope and will be closed without review.
+
 ## 0.8.1 - 2026-06-11
 
 ### Changed
