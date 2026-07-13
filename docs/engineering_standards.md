@@ -97,6 +97,10 @@ Changes flow through pull requests requiring approval from core maintainers:
 - Run tests and linting before pushing: `npm test && npm run lint`
 - Build must succeed: `npm run build`
 
+**Out of Scope:**
+
+We do not accept PRs that add listings, badges, or manifest files for third-party directories, registries, or "discovery" services (e.g. unsolicited `README.md` badges linking to an external site, or manifest files with no functional purpose in this project). These will be closed without review.
+
 ## Security and DevOps
 
 **Environment Variables:**
