@@ -1,5 +1,11 @@
 ## Unreleased
 
+### Fixed
+
+- **`validate_expression_tool` / `validate_style_tool`**: Both tools now delegate expression and style validation to the official `@mapbox/mapbox-gl-style-spec` package (the same logic mapbox-gl-js runs at runtime) instead of a hand-rolled reimplementation. Fixes two disagreements with real mapbox-gl-js behavior around the `["zoom"]` expression placement rule (#123):
+  - `validate_expression_tool` no longer false-positives on ordinary zoom-based `interpolate`/`step` expressions (it previously misidentified the interpolation-type argument, e.g. `["linear"]`, as an unknown operator).
+  - `validate_style_tool` now correctly flags `["zoom"]` expressions nested inside e.g. a `case` (invalid per spec — zoom may only be used as the top-level input to `step`/`interpolate`), which it previously missed entirely.
+
 ### New Features
 
 - **Style ID validation for `style_comparison_tool`**: `before` and `after` inputs are now validated to contain only alphanumeric characters, hyphens, and underscores (after stripping the optional `mapbox://styles/` prefix). Validation is enforced at both the Zod schema layer and inside `processStyleId()`. Malformed style IDs are rejected with a descriptive error before any URL is constructed.

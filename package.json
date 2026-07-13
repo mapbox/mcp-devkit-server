@@ -49,6 +49,7 @@
     "mcp"
   ],
   "dependencies": {
+    "@mapbox/mapbox-gl-style-spec": "^14.26.0",
     "@mcp-ui/server": "^6.1.0",
     "@modelcontextprotocol/ext-apps": "^1.1.1",
     "@modelcontextprotocol/sdk": "^1.29.0",
