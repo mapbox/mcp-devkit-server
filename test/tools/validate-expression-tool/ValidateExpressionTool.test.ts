@@ -319,6 +319,28 @@ describe('ValidateExpressionTool', () => {
     });
   });
 
+  describe('deeply nested (adversarial) expressions', () => {
+    it('should reject an expression exceeding the max nesting depth instead of recursing unbounded', async () => {
+      let expression: any = ['get', 'value'];
+      for (let i = 0; i < 5000; i++) {
+        expression = ['+', expression, 1];
+      }
+
+      const start = Date.now();
+      const result = await tool.run({ expression });
+      expect(Date.now() - start).toBeLessThan(1000);
+
+      expect(result.isError).toBe(false);
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.valid).toBe(false);
+      expect(
+        parsed.errors.some((e: any) =>
+          e.message.includes('exceeds maximum nesting depth')
+        )
+      ).toBe(true);
+    });
+  });
+
   describe('nested expressions', () => {
     it('should validate nested expressions', async () => {
       const input = {

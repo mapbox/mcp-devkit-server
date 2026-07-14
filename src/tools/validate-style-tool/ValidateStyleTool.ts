@@ -39,6 +39,29 @@ function splitPathFromMessage(message: string): {
   return match ? { path: match[1], message: match[2] } : { message };
 }
 
+// validateMapboxStyle recurses into nested paint/layout expressions with no
+// depth limit of its own. A pathologically deep expression (cheap to construct
+// - a few KB of brackets) would otherwise recurse tens of thousands of frames
+// deep before failing with an unhelpful stack overflow. This check is itself
+// depth-limited (bails before recursing further) so it can safely measure
+// arbitrarily deep input without risking the same problem.
+const MAX_STYLE_DEPTH = 64;
+
+function exceedsMaxDepth(value: unknown, depth = 0): boolean {
+  if (depth > MAX_STYLE_DEPTH) {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => exceedsMaxDepth(item, depth + 1));
+  }
+  if (value && typeof value === 'object') {
+    return Object.values(value).some((item) =>
+      exceedsMaxDepth(item, depth + 1)
+    );
+  }
+  return false;
+}
+
 /**
  * ValidateStyleTool - Validates Mapbox GL JS style JSON
  *
@@ -103,6 +126,18 @@ export class ValidateStyleTool extends BaseTool<
         }
       } else {
         style = input.style as MapboxStyle;
+      }
+
+      if (exceedsMaxDepth(style)) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `Error: style exceeds maximum nesting depth of ${MAX_STYLE_DEPTH}`
+            }
+          ],
+          isError: true
+        };
       }
 
       const errors: ValidationIssue[] = [];

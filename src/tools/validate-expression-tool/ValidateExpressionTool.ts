@@ -22,6 +22,13 @@ const INTERPOLATION_TYPE_ARG_INDEX: Record<string, number> = {
   'interpolate-lab': 0
 };
 
+// Recursion in walkStructure (and in createPropertyExpression's own parser) is
+// bounded by user-controlled nesting depth. A pathologically deep expression
+// (cheap to construct - a few KB of brackets) would otherwise recurse tens of
+// thousands of frames deep before failing with an unhelpful stack overflow.
+// This cap is far beyond any realistic hand-written or generated expression.
+const MAX_EXPRESSION_DEPTH = 64;
+
 // `StylePropertySpecification` only covers concrete typed properties (color, string,
 // number, ...), so a literal like `true` or `"red"` would fail type-checking against
 // any of them. Using an unrecognized `type` makes createPropertyExpression skip return
@@ -180,6 +187,17 @@ export class ValidateExpressionTool extends BaseTool<
     path: string,
     depth = 0
   ): { expressionType?: string; depth: number; blocking: boolean } {
+    // Checked before recursing further, so the call stack never grows past this
+    // regardless of how deeply nested the (attacker-controlled) input actually is.
+    if (depth > MAX_EXPRESSION_DEPTH) {
+      errors.push({
+        severity: 'error',
+        message: `Expression exceeds maximum nesting depth of ${MAX_EXPRESSION_DEPTH}`,
+        path: path || 'root'
+      });
+      return { depth, blocking: true };
+    }
+
     if (
       typeof expression === 'string' ||
       typeof expression === 'number' ||
@@ -234,6 +252,7 @@ export class ValidateExpressionTool extends BaseTool<
     }
 
     let maxDepth = depth;
+    let anyBlocking = false;
     const interpolationTypeArgIndex = INTERPOLATION_TYPE_ARG_INDEX[operator];
     expression.slice(1).forEach((arg: unknown, index: number) => {
       if (index === interpolationTypeArgIndex) {
@@ -250,6 +269,7 @@ export class ValidateExpressionTool extends BaseTool<
           depth + 1
         );
         maxDepth = Math.max(maxDepth, argResult.depth);
+        anyBlocking = anyBlocking || argResult.blocking;
       }
     });
 
@@ -262,6 +282,6 @@ export class ValidateExpressionTool extends BaseTool<
       });
     }
 
-    return { expressionType: operator, depth: maxDepth, blocking: false };
+    return { expressionType: operator, depth: maxDepth, blocking: anyBlocking };
   }
 }

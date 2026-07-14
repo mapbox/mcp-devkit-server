@@ -331,4 +331,31 @@ describe('ValidateStyleTool', () => {
       expect(parsedResponse.errors).toHaveLength(0);
     });
   });
+
+  describe('deeply nested (adversarial) expressions', () => {
+    it('should reject a style with an expression exceeding the max nesting depth instead of recursing unbounded', async () => {
+      let expression: any = ['get', 'value'];
+      for (let i = 0; i < 5000; i++) {
+        expression = ['+', expression, 1];
+      }
+      const style = {
+        version: 8,
+        sources: {},
+        layers: [
+          {
+            id: 'l',
+            type: 'background',
+            paint: { 'background-opacity': expression }
+          }
+        ]
+      };
+
+      const start = Date.now();
+      const result = await tool.run({ style });
+      expect(Date.now() - start).toBeLessThan(1000);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('exceeds maximum nesting depth');
+    });
+  });
 });
