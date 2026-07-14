@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 import { z } from 'zod';
+import { expression as expressionSpec } from '@mapbox/mapbox-gl-style-spec';
+import type { StylePropertySpecification } from '@mapbox/mapbox-gl-style-spec';
 import { BaseTool } from '../BaseTool.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { ValidateExpressionInputSchema } from './ValidateExpressionTool.input.schema.js';
@@ -11,11 +13,43 @@ import {
   type ExpressionIssue
 } from './ValidateExpressionTool.output.schema.js';
 
+// Interpolate's interpolation-type argument (e.g. ["linear"], ["exponential", 1.5])
+// is a type descriptor, not a nested expression - it must be skipped when walking
+// the tree for operator-name checks, or it gets misidentified as an unknown operator.
+const INTERPOLATION_TYPE_ARG_INDEX: Record<string, number> = {
+  interpolate: 0,
+  'interpolate-hcl': 0,
+  'interpolate-lab': 0
+};
+
+// Recursion in walkStructure (and in createPropertyExpression's own parser) is
+// bounded by user-controlled nesting depth. A pathologically deep expression
+// (cheap to construct - a few KB of brackets) would otherwise recurse tens of
+// thousands of frames deep before failing with an unhelpful stack overflow.
+// This cap is far beyond any realistic hand-written or generated expression.
+const MAX_EXPRESSION_DEPTH = 64;
+
+// `StylePropertySpecification` only covers concrete typed properties (color, string,
+// number, ...), so a literal like `true` or `"red"` would fail type-checking against
+// any of them. Using an unrecognized `type` makes createPropertyExpression skip return
+// type checking entirely while still enforcing zoom/interpolation placement rules -
+// which is what a property-agnostic expression validator needs. Cast is unavoidable
+// since the union has no generic/"any" variant.
+const GENERIC_PROPERTY_SPEC = {
+  type: 'value',
+  expression: {
+    interpolated: true,
+    parameters: ['zoom', 'feature', 'feature-state']
+  },
+  'property-type': 'data-driven'
+} as unknown as StylePropertySpecification;
+
 /**
  * ValidateExpressionTool - Validates Mapbox style expressions
  *
- * Performs comprehensive validation of Mapbox style expressions including
- * syntax validation, operator checking, and argument validation.
+ * Delegates correctness checks (operator names, argument counts/types, and
+ * zoom-expression placement) to the official `@mapbox/mapbox-gl-style-spec`
+ * package, the same validation logic mapbox-gl-js uses at runtime.
  */
 export class ValidateExpressionTool extends BaseTool<
   typeof ValidateExpressionInputSchema,
@@ -32,114 +66,6 @@ export class ValidateExpressionTool extends BaseTool<
     openWorldHint: false
   };
 
-  // Mapbox expression operators with their expected argument counts
-  // Format: [minArgs, maxArgs, returnType]
-  private static readonly OPERATORS: Record<
-    string,
-    { min: number; max: number; returnType?: string }
-  > = {
-    // Decision
-    case: { min: 2, max: Infinity },
-    match: { min: 3, max: Infinity },
-    coalesce: { min: 1, max: Infinity },
-
-    // Lookup
-    get: { min: 1, max: 2, returnType: 'any' },
-    has: { min: 1, max: 2, returnType: 'boolean' },
-    in: { min: 2, max: 2, returnType: 'boolean' },
-    'index-of': { min: 2, max: 3, returnType: 'number' },
-    length: { min: 1, max: 1, returnType: 'number' },
-    slice: { min: 2, max: 3 },
-
-    // Math
-    '+': { min: 2, max: Infinity, returnType: 'number' },
-    '-': { min: 2, max: 2, returnType: 'number' },
-    '*': { min: 2, max: Infinity, returnType: 'number' },
-    '/': { min: 2, max: 2, returnType: 'number' },
-    '%': { min: 2, max: 2, returnType: 'number' },
-    '^': { min: 2, max: 2, returnType: 'number' },
-    min: { min: 1, max: Infinity, returnType: 'number' },
-    max: { min: 1, max: Infinity, returnType: 'number' },
-    round: { min: 1, max: 1, returnType: 'number' },
-    floor: { min: 1, max: 1, returnType: 'number' },
-    ceil: { min: 1, max: 1, returnType: 'number' },
-    abs: { min: 1, max: 1, returnType: 'number' },
-    sqrt: { min: 1, max: 1, returnType: 'number' },
-    log10: { min: 1, max: 1, returnType: 'number' },
-    log2: { min: 1, max: 1, returnType: 'number' },
-    ln: { min: 1, max: 1, returnType: 'number' },
-    e: { min: 0, max: 0, returnType: 'number' },
-    pi: { min: 0, max: 0, returnType: 'number' },
-
-    // Comparison
-    '==': { min: 2, max: 3, returnType: 'boolean' },
-    '!=': { min: 2, max: 3, returnType: 'boolean' },
-    '>': { min: 2, max: 3, returnType: 'boolean' },
-    '<': { min: 2, max: 3, returnType: 'boolean' },
-    '>=': { min: 2, max: 3, returnType: 'boolean' },
-    '<=': { min: 2, max: 3, returnType: 'boolean' },
-
-    // Logical
-    '!': { min: 1, max: 1, returnType: 'boolean' },
-    all: { min: 1, max: Infinity, returnType: 'boolean' },
-    any: { min: 1, max: Infinity, returnType: 'boolean' },
-
-    // String
-    concat: { min: 1, max: Infinity, returnType: 'string' },
-    downcase: { min: 1, max: 1, returnType: 'string' },
-    upcase: { min: 1, max: 1, returnType: 'string' },
-    'is-supported-script': { min: 1, max: 1, returnType: 'boolean' },
-    'resolved-locale': { min: 1, max: 1, returnType: 'string' },
-
-    // Color
-    rgb: { min: 3, max: 3, returnType: 'color' },
-    rgba: { min: 4, max: 4, returnType: 'color' },
-    'to-rgba': { min: 1, max: 1, returnType: 'array' },
-
-    // Type conversion
-    array: { min: 1, max: 3 },
-    boolean: { min: 1, max: 2, returnType: 'boolean' },
-    collator: { min: 0, max: 1 },
-    format: { min: 1, max: Infinity, returnType: 'formatted' },
-    image: { min: 1, max: 1, returnType: 'image' },
-    literal: { min: 1, max: 1 },
-    number: { min: 1, max: 3, returnType: 'number' },
-    object: { min: 1, max: 2, returnType: 'object' },
-    string: { min: 1, max: 2, returnType: 'string' },
-    'to-boolean': { min: 1, max: 1, returnType: 'boolean' },
-    'to-color': { min: 1, max: 3, returnType: 'color' },
-    'to-number': { min: 1, max: 3, returnType: 'number' },
-    'to-string': { min: 1, max: 1, returnType: 'string' },
-    typeof: { min: 1, max: 1, returnType: 'string' },
-
-    // Interpolation
-    interpolate: { min: 3, max: Infinity },
-    'interpolate-hcl': { min: 3, max: Infinity },
-    'interpolate-lab': { min: 3, max: Infinity },
-    step: { min: 2, max: Infinity },
-
-    // Feature data
-    'feature-state': { min: 1, max: 1 },
-    'geometry-type': { min: 0, max: 0, returnType: 'string' },
-    id: { min: 0, max: 0 },
-    properties: { min: 0, max: 0, returnType: 'object' },
-
-    // Camera
-    zoom: { min: 0, max: 0, returnType: 'number' },
-    pitch: { min: 0, max: 0, returnType: 'number' },
-    'distance-from-center': { min: 0, max: 0, returnType: 'number' },
-
-    // Heatmap
-    'heatmap-density': { min: 0, max: 0, returnType: 'number' },
-
-    // Variable binding
-    let: { min: 2, max: Infinity },
-    var: { min: 1, max: 1 },
-
-    // Array/object
-    at: { min: 2, max: 2 }
-  };
-
   constructor() {
     super({
       inputSchema: ValidateExpressionInputSchema,
@@ -151,6 +77,7 @@ export class ValidateExpressionTool extends BaseTool<
     input: z.infer<typeof ValidateExpressionInputSchema>
   ): Promise<CallToolResult> {
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- expression shape is validated below, not known upfront
       let expression: any;
       if (typeof input.expression === 'string') {
         try {
@@ -174,21 +101,52 @@ export class ValidateExpressionTool extends BaseTool<
       const warnings: ExpressionIssue[] = [];
       const info: ExpressionIssue[] = [];
 
-      // Validate the expression
-      const metadata = this.validateExpression(
+      const { expressionType, depth, blocking } = this.walkStructure(
         expression,
         errors,
         warnings,
-        info,
         ''
       );
+
+      // Only delegate to the real parser when the top-level shape is sound;
+      // structural errors above (empty array, unknown operator, ...) already
+      // explain the problem and would otherwise be duplicated or obscured by
+      // the library's own (differently-worded) diagnostics.
+      let returnType: string | undefined;
+      if (!blocking) {
+        const result = expressionSpec.createPropertyExpression(
+          expression,
+          GENERIC_PROPERTY_SPEC
+        );
+        if (result.result === 'error') {
+          for (const err of result.value) {
+            errors.push({
+              severity: 'error',
+              message: err.message,
+              path: err.key || undefined
+            });
+          }
+        } else {
+          // Re-parse via createExpression (which createPropertyExpression already
+          // succeeded through) purely to read the inferred return type - its result
+          // type (StyleExpression) is public, unlike createPropertyExpression's.
+          const parsed = expressionSpec.createExpression(
+            expression,
+            GENERIC_PROPERTY_SPEC
+          );
+          if (parsed.result === 'success') {
+            const kind = parsed.value.expression.type.kind;
+            returnType = kind === 'value' ? 'any' : kind;
+          }
+        }
+      }
 
       const result: ValidateExpressionOutput = {
         valid: errors.length === 0,
         errors,
         warnings,
         info,
-        metadata
+        metadata: { expressionType, returnType, depth }
       };
 
       const validatedResult = ValidateExpressionOutputSchema.parse(result);
@@ -215,61 +173,63 @@ export class ValidateExpressionTool extends BaseTool<
     }
   }
 
-  private validateExpression(
+  /**
+   * Walks the raw expression tree to check structural validity (is this an
+   * array with a recognized operator?) and compute display metadata
+   * (expressionType, depth). Argument counts, types, and zoom-placement
+   * rules are left to `createPropertyExpression`.
+   */
+  private walkStructure(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- raw, unvalidated JSON expression tree
     expression: any,
     errors: ExpressionIssue[],
     warnings: ExpressionIssue[],
-    info: ExpressionIssue[],
     path: string,
     depth = 0
-  ): { expressionType?: string; returnType?: string; depth: number } {
-    const maxDepth = depth;
+  ): { expressionType?: string; depth: number; blocking: boolean } {
+    // Checked before recursing further, so the call stack never grows past this
+    // regardless of how deeply nested the (attacker-controlled) input actually is.
+    if (depth > MAX_EXPRESSION_DEPTH) {
+      errors.push({
+        severity: 'error',
+        message: `Expression exceeds maximum nesting depth of ${MAX_EXPRESSION_DEPTH}`,
+        path: path || 'root'
+      });
+      return { depth, blocking: true };
+    }
 
-    // Literal values are valid expressions
     if (
       typeof expression === 'string' ||
       typeof expression === 'number' ||
       typeof expression === 'boolean' ||
       expression === null
     ) {
-      return {
-        expressionType: 'literal',
-        returnType: typeof expression === 'string' ? 'string' : 'number',
-        depth: maxDepth
-      };
+      return { expressionType: 'literal', depth, blocking: false };
     }
 
-    // Expressions must be arrays
     if (!Array.isArray(expression)) {
       if (typeof expression === 'object') {
-        // Objects are valid as literals (for filter expressions, etc.)
-        return {
-          expressionType: 'literal-object',
-          returnType: 'object',
-          depth: maxDepth
-        };
+        return { expressionType: 'literal-object', depth, blocking: false };
       }
       errors.push({
         severity: 'error',
         message: 'Expression must be an array or literal value',
         path: path || 'root'
       });
-      return { depth: maxDepth };
+      return { depth, blocking: true };
     }
 
-    // Empty arrays are invalid
     if (expression.length === 0) {
       errors.push({
         severity: 'error',
         message: 'Expression array cannot be empty',
         path: path || 'root'
       });
-      return { depth: maxDepth };
+      return { depth, blocking: true };
     }
 
     const operator = expression[0];
 
-    // Operator must be a string
     if (typeof operator !== 'string') {
       errors.push({
         severity: 'error',
@@ -277,12 +237,10 @@ export class ValidateExpressionTool extends BaseTool<
         path: path ? `${path}[0]` : '[0]',
         suggestion: 'Use a valid Mapbox expression operator'
       });
-      return { depth: maxDepth };
+      return { depth, blocking: true };
     }
 
-    // Check if operator is valid
-    const operatorSpec = ValidateExpressionTool.OPERATORS[operator];
-    if (!operatorSpec) {
+    if (!expressionSpec.isExpression(expression)) {
       errors.push({
         severity: 'error',
         message: `Unknown expression operator: "${operator}"`,
@@ -290,46 +248,31 @@ export class ValidateExpressionTool extends BaseTool<
         suggestion:
           'Use a valid Mapbox expression operator (e.g., "get", "case", "match")'
       });
-      return { expressionType: operator, depth: maxDepth };
+      return { expressionType: operator, depth, blocking: true };
     }
 
-    // Validate argument count
-    const args = expression.slice(1);
-    if (args.length < operatorSpec.min) {
-      errors.push({
-        severity: 'error',
-        message: `Operator "${operator}" requires at least ${operatorSpec.min} argument(s), got ${args.length}`,
-        path: path || 'root',
-        suggestion: `Add ${operatorSpec.min - args.length} more argument(s)`
-      });
-    }
-    if (operatorSpec.max !== Infinity && args.length > operatorSpec.max) {
-      errors.push({
-        severity: 'error',
-        message: `Operator "${operator}" accepts at most ${operatorSpec.max} argument(s), got ${args.length}`,
-        path: path || 'root',
-        suggestion: `Remove ${args.length - operatorSpec.max} argument(s)`
-      });
-    }
-
-    // Recursively validate nested expressions
-    let currentDepth = depth;
-    args.forEach((arg, index) => {
+    let maxDepth = depth;
+    let anyBlocking = false;
+    const interpolationTypeArgIndex = INTERPOLATION_TYPE_ARG_INDEX[operator];
+    expression.slice(1).forEach((arg: unknown, index: number) => {
+      if (index === interpolationTypeArgIndex) {
+        // e.g. ["linear"] / ["exponential", 1.5] - a type descriptor, not an expression
+        return;
+      }
       if (Array.isArray(arg)) {
         const argPath = path ? `${path}[${index + 1}]` : `[${index + 1}]`;
-        const argMetadata = this.validateExpression(
+        const argResult = this.walkStructure(
           arg,
           errors,
           warnings,
-          info,
           argPath,
           depth + 1
         );
-        currentDepth = Math.max(currentDepth, argMetadata.depth);
+        maxDepth = Math.max(maxDepth, argResult.depth);
+        anyBlocking = anyBlocking || argResult.blocking;
       }
     });
 
-    // Provide depth warnings for very deeply nested expressions
     if (depth > 10) {
       warnings.push({
         severity: 'warning',
@@ -339,10 +282,6 @@ export class ValidateExpressionTool extends BaseTool<
       });
     }
 
-    return {
-      expressionType: operator,
-      returnType: operatorSpec.returnType,
-      depth: Math.max(currentDepth, depth)
-    };
+    return { expressionType: operator, depth: maxDepth, blocking: anyBlocking };
   }
 }
