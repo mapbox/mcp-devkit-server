@@ -47,19 +47,49 @@ function splitPathFromMessage(message: string): {
 // arbitrarily deep input without risking the same problem.
 const MAX_STYLE_DEPTH = 64;
 
-function exceedsMaxDepth(value: unknown, depth = 0): boolean {
+// Depth alone doesn't bound memory: a single huge-but-shallow array (e.g. a
+// paint expression's "match" with millions of branches) sails past the depth
+// cap untouched, and handing that straight to validateMapboxStyle can exhaust
+// the heap - which, unlike a stack overflow, is not a catchable JS error and
+// crashes the whole process. Checking `.length`/key count is O(1), so
+// oversized arrays/objects are rejected before we ever iterate into them.
+const MAX_STYLE_COLLECTION_SIZE = 10_000;
+
+type LimitViolation = 'depth' | 'size' | null;
+
+function findLimitViolation(value: unknown, depth = 0): LimitViolation {
   if (depth > MAX_STYLE_DEPTH) {
-    return true;
+    return 'depth';
   }
   if (Array.isArray(value)) {
-    return value.some((item) => exceedsMaxDepth(item, depth + 1));
+    if (value.length > MAX_STYLE_COLLECTION_SIZE) {
+      return 'size';
+    }
+    for (const item of value) {
+      const violation = findLimitViolation(item, depth + 1);
+      if (violation) {
+        return violation;
+      }
+    }
+    return null;
   }
   if (value && typeof value === 'object') {
-    return Object.values(value).some((item) =>
-      exceedsMaxDepth(item, depth + 1)
-    );
+    const keys = Object.keys(value);
+    if (keys.length > MAX_STYLE_COLLECTION_SIZE) {
+      return 'size';
+    }
+    for (const key of keys) {
+      const violation = findLimitViolation(
+        (value as Record<string, unknown>)[key],
+        depth + 1
+      );
+      if (violation) {
+        return violation;
+      }
+    }
+    return null;
   }
-  return false;
+  return null;
 }
 
 /**
@@ -128,14 +158,14 @@ export class ValidateStyleTool extends BaseTool<
         style = input.style as MapboxStyle;
       }
 
-      if (exceedsMaxDepth(style)) {
+      const limitViolation = findLimitViolation(style);
+      if (limitViolation) {
+        const message =
+          limitViolation === 'depth'
+            ? `style exceeds maximum nesting depth of ${MAX_STYLE_DEPTH}`
+            : `style contains an array or object exceeding maximum size of ${MAX_STYLE_COLLECTION_SIZE} elements`;
         return {
-          content: [
-            {
-              type: 'text',
-              text: `Error: style exceeds maximum nesting depth of ${MAX_STYLE_DEPTH}`
-            }
-          ],
+          content: [{ type: 'text', text: `Error: ${message}` }],
           isError: true
         };
       }
