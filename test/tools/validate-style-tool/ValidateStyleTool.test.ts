@@ -357,5 +357,45 @@ describe('ValidateStyleTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('exceeds maximum nesting depth');
     });
+
+    it('should reject a style with a wide (shallow but huge) expression instead of exhausting memory', async () => {
+      // Depth stays ~1 here - this is the vector the depth cap alone does not catch.
+      const expression: any = ['match', ['get', 'x']];
+      for (let i = 0; i < 20_000; i++) {
+        expression.push(i, 'red');
+      }
+      expression.push('blue');
+      const style = {
+        version: 8,
+        sources: {},
+        layers: [
+          {
+            id: 'l',
+            type: 'background',
+            paint: { 'background-opacity': expression }
+          }
+        ]
+      };
+
+      const start = Date.now();
+      const result = await tool.run({ style });
+      expect(Date.now() - start).toBeLessThan(1000);
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('exceeding maximum size');
+    });
+
+    it('should reject a JSON string style exceeding the maximum length', async () => {
+      const style = JSON.stringify({
+        version: 8,
+        sources: {},
+        layers: [],
+        padding: 'x'.repeat(11 * 1024 * 1024)
+      });
+
+      const result = await tool.run({ style });
+
+      expect(result.isError).toBe(true);
+    });
   });
 });

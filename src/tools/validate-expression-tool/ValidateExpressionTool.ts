@@ -29,6 +29,14 @@ const INTERPOLATION_TYPE_ARG_INDEX: Record<string, number> = {
 // This cap is far beyond any realistic hand-written or generated expression.
 const MAX_EXPRESSION_DEPTH = 64;
 
+// The depth cap alone doesn't bound memory: a single huge-but-shallow array
+// (e.g. a "match" with millions of branches) sails past it untouched, and
+// handing that straight to createPropertyExpression can exhaust the heap -
+// which, unlike a stack overflow, is not a catchable JS error and crashes the
+// whole process. Checking `.length` is O(1), so oversized arrays/objects are
+// rejected before we ever iterate into or copy them.
+const MAX_ARRAY_LENGTH = 10_000;
+
 // `StylePropertySpecification` only covers concrete typed properties (color, string,
 // number, ...), so a literal like `true` or `"red"` would fail type-checking against
 // any of them. Using an unrecognized `type` makes createPropertyExpression skip return
@@ -209,11 +217,28 @@ export class ValidateExpressionTool extends BaseTool<
 
     if (!Array.isArray(expression)) {
       if (typeof expression === 'object') {
+        if (Object.keys(expression).length > MAX_ARRAY_LENGTH) {
+          errors.push({
+            severity: 'error',
+            message: `Expression object exceeds maximum size of ${MAX_ARRAY_LENGTH} properties`,
+            path: path || 'root'
+          });
+          return { depth, blocking: true };
+        }
         return { expressionType: 'literal-object', depth, blocking: false };
       }
       errors.push({
         severity: 'error',
         message: 'Expression must be an array or literal value',
+        path: path || 'root'
+      });
+      return { depth, blocking: true };
+    }
+
+    if (expression.length > MAX_ARRAY_LENGTH) {
+      errors.push({
+        severity: 'error',
+        message: `Expression array exceeds maximum size of ${MAX_ARRAY_LENGTH} elements`,
         path: path || 'root'
       });
       return { depth, blocking: true };
