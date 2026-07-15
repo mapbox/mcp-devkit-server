@@ -339,6 +339,37 @@ describe('ValidateExpressionTool', () => {
         )
       ).toBe(true);
     });
+
+    it('should reject a wide (shallow but huge) expression instead of exhausting memory', async () => {
+      // Depth stays ~1 here - this is the vector the depth cap alone does not catch.
+      const expression: any = ['match', ['get', 'x']];
+      for (let i = 0; i < 20_000; i++) {
+        expression.push(i, 'red');
+      }
+      expression.push('blue');
+
+      const start = Date.now();
+      const result = await tool.run({ expression });
+      expect(Date.now() - start).toBeLessThan(1000);
+
+      expect(result.isError).toBe(false);
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.valid).toBe(false);
+      expect(
+        parsed.errors.some((e: any) =>
+          e.message.includes('exceeds maximum size')
+        )
+      ).toBe(true);
+    });
+
+    it('should reject a JSON string expression exceeding the maximum length', async () => {
+      const expression = JSON.stringify(['get', 'x'.repeat(300_000)]);
+
+      const result = await tool.run({ expression });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('exceeds maximum length');
+    });
   });
 
   describe('nested expressions', () => {
