@@ -139,17 +139,56 @@ The builder can optimize styles for:
 
 Create multiple versions of a style:
 
-- Light and dark modes
+- Light and dark modes — on Mapbox Standard these are the same style with a different
+  `lightPreset` (`day`, `dawn`, `dusk`, `night`), not two separate styles. The preset can be
+  switched at runtime without reloading the style
 - Seasonal variations
 - Brand-specific color schemes
 
+## Working with Mapbox Standard
+
+Standard is the default base style, and it works differently from Classic styles in ways that
+matter for anything you add on top.
+
+**Configure before you add layers.** Standard exposes its basemap through style-import config:
+`theme` (`default`/`faded`/`monochrome`), `lightPreset`, `show*` toggles for labels, POIs, roads
+and 3D objects, and `color*` overrides for water, roads, greenspace, labels and boundaries.
+Setting one of those is cheaper than adding a layer, survives basemap updates, and can't land in
+the wrong place in the stack. Reach for a custom layer only for data the basemap doesn't carry.
+
+**Every custom layer needs a slot.** Mapbox owns the basemap layer order on Standard, so you don't
+hand-order layers into it — you place each one in a slot:
+
+| Slot     | Position                                                | Put here                                                       |
+| -------- | ------------------------------------------------------- | -------------------------------------------------------------- |
+| `bottom` | Above land / landuse / water, **below** roads           | Choropleths, rasters, terrain                                  |
+| `middle` | Above roads and lines, **behind** 3D buildings & labels | Data overlays, zone fills, heatmaps, routes, custom POI layers |
+| `top`    | Above POI labels, **behind** place & transit labels     | Markers, active selections                                     |
+
+Omitting `slot` is not a neutral default — the layer draws above every basemap layer, including
+street labels. The builder infers a slot from the layer type when you leave it off, and tells you
+which one it picked.
+
+**Custom fill, line and circle layers need emissive strength.** Standard is a lit scene, and
+`fill-emissive-strength`, `line-emissive-strength` and `circle-emissive-strength` all default to
+`0` — meaning the scene lights the layer, so it falls into shadow and goes nearly invisible under
+the `dusk` and `night` presets. The builder sets these to `1` for you on Standard styles. Symbol
+layers need nothing (icon and text emissive strength already default to `1`), and `fill-extrusion`
+is left alone because it is real 3D geometry that should be lit by the scene.
+
+Routes should also set `line-occlusion-opacity`; its default of `0` hides the part of the line
+that passes behind 3D buildings.
+
 ## Best Practices
 
-1. **Start Simple**: Begin with basic requirements and iteratively add complexity
-2. **Test at Multiple Zooms**: Ensure your style works well across zoom levels
-3. **Consider Performance**: More layers and complex filters can impact rendering speed
-4. **Use Consistent Naming**: When creating custom layers, use clear, descriptive IDs
-5. **Document Your Choices**: Keep notes on why certain styling decisions were made
+1. **Configure Before Layering**: On Standard, try `standard_config` before adding a custom layer
+2. **Start Simple**: Begin with basic requirements and iteratively add complexity
+3. **Test at Multiple Zooms**: Ensure your style works well across zoom levels
+4. **Test at Night**: Preview with `lightPreset: "night"`, not just the default `day` — a missing
+   emissive strength is invisible in day-time review and obvious at night
+5. **Consider Performance**: More layers and complex filters can impact rendering speed
+6. **Use Consistent Naming**: When creating custom layers, use clear, descriptive IDs
+7. **Document Your Choices**: Keep notes on why certain styling decisions were made
 
 ## Troubleshooting
 
@@ -157,8 +196,15 @@ Create multiple versions of a style:
 
 1. **Resources Not Loading**: Remember that sprite and glyph resources may not be accessible in Claude Desktop
 2. **Layer Conflicts**: Check layer ordering if elements appear hidden
-3. **Performance Issues**: Reduce layer count or simplify filters for better performance
-4. **Zoom Range Problems**: Verify minzoom and maxzoom settings on layers
+3. **Custom layer covers the street labels**: The layer has no `slot`, or is in `top` when it
+   should be in `bottom` or `middle`
+4. **Custom layer looks right by day and disappears at night**: The layer is missing its
+   `fill-`/`line-`/`circle-emissive-strength`, so the night preset lights it into shadow
+5. **Route vanishes behind buildings**: Set `line-occlusion-opacity`, which defaults to `0`
+6. **Dark mode looks half-applied**: `global_settings.mode: "dark"` only recolors custom layers.
+   On Standard, set `standard_config.lightPreset: "night"` instead
+7. **Performance Issues**: Reduce layer count or simplify filters for better performance
+8. **Zoom Range Problems**: Verify minzoom and maxzoom settings on layers
 
 ### Getting Help
 

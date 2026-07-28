@@ -20,32 +20,47 @@ npx add-skill mapbox/mapbox-agent-skills --skill mapbox-cartography
 
 ### Available Skills
 
-The mapbox-agent-skills repository includes **10 comprehensive skills**:
+The mapbox-agent-skills repository includes **19 skills**:
 
-**Migration & Platform:**
+**Migration:**
 
-- `mapbox-google-maps-migration` - Migrate from Google Maps to Mapbox GL JS
+- `mapbox-google-maps-migration` - Migrate from Google Maps Platform to Mapbox GL JS
 - `mapbox-maplibre-migration` - Migrate from MapLibre GL JS to Mapbox
-
-**Performance & Integration:**
-
-- `mapbox-web-performance-patterns` - Performance optimization for Mapbox GL JS
-- `mapbox-web-integration-patterns` - Framework integration (React, Vue, Svelte, Angular, Next.js)
 
 **Design & Styling:**
 
-- `mapbox-cartography` - Map design principles and best practices
-- `mapbox-style-patterns` - Common style patterns and layer configurations
+- `mapbox-cartography` - Map design on the Standard style: config-first workflow, themes, light presets, slots, color, hierarchy, typography
+- `mapbox-style-patterns` - Style recipes for typical scenarios (POI finders, real estate, data viz)
 - `mapbox-style-quality` - Style validation, accessibility, and testing
+- `mapbox-data-visualization-patterns` - Choropleths, heat maps, 3D and data-driven styling
 
-**Security:**
+**Web:**
 
-- `mapbox-token-security` - Access token security and best practices
+- `mapbox-web-integration-patterns` - Framework integration (React, Vue, Svelte, Angular, Next.js)
+- `mapbox-web-performance-patterns` - Performance optimization for Mapbox GL JS
 
 **Mobile:**
 
 - `mapbox-ios-patterns` - iOS integration with Swift, SwiftUI, UIKit
 - `mapbox-android-patterns` - Android integration with Kotlin, Jetpack Compose
+- `mapbox-flutter-patterns` - Flutter integration, including iOS/Android platform setup
+
+**Search & Location:**
+
+- `mapbox-search-patterns` - Choosing the right search tool and parameters
+- `mapbox-search-integration` - End-to-end search implementation workflow
+- `mapbox-store-locator-patterns` - Store locators, restaurant finders, location search apps
+- `mapbox-geospatial-operations` - Picking the right geospatial tool for the problem
+
+**MCP:**
+
+- `mapbox-mcp-devkit-patterns` - Using this server in AI coding assistants
+- `mapbox-mcp-runtime-patterns` - Using the Mapbox MCP Server in AI apps and agent frameworks
+- `mapbox-location-grounding` - Grounded, cited location answers from live data
+
+**Security:**
+
+- `mapbox-token-security` - Access token scopes, URL restrictions, and rotation
 
 ## How Skills Work with the MCP Server
 
@@ -70,13 +85,30 @@ With MCP Server + Skills:
 5. → Creates optimized, secure map
 ```
 
+### Where map-design decisions are defined
+
+`mapbox-cartography` is the source of truth for map-design doctrine. The tool descriptions, prompts
+and resources in this server follow it rather than restating it, so guidance stays consistent whether
+an agent has the skills installed or is working from the server's tool schemas alone. The rules that
+most often show up as bugs:
+
+- Default to `mapbox://styles/mapbox/standard`; Classic styles only when explicitly asked for
+- Change appearance through style-import config before adding layers
+- Dark mode is `lightPreset: "night"` — not a different base style, not hand-authored dark colors
+- Every custom layer sets an explicit `slot`
+- Custom fill/line/circle layers set emissive strength `1`, or they vanish at dusk/night
+- Routes set `line-occlusion-opacity` so 3D buildings don't hide them
+- Never red→green or rainbow ramps for ordered data; use ColorBrewer RdBu / PuOr / BrBG
+
+If you change one of these in the server, change it in `mapbox-cartography` too — and vice versa.
+
 ## Why Skills Moved to a Separate Repository
 
 **Benefits:**
 
 - ✅ **Dedicated maintenance**: Skills can be updated independently
 - ✅ **Better discoverability**: Easier to find and install via `npx add-skill`
-- ✅ **Comprehensive collection**: 10 skills covering web, mobile, and migration
+- ✅ **Comprehensive collection**: 19 skills covering design, web, mobile, search, and migration
 - ✅ **Community contributions**: Easier for community to contribute new skills
 - ✅ **Versioning**: Skills can be versioned independently from MCP server
 

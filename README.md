@@ -829,7 +829,7 @@ Create a new Mapbox map style and generate a shareable preview link with automat
 
 - `style_name` (required): Name for the new map style
 - `style_description` (optional): Description of the style theme or purpose
-- `base_style` (optional): Base style to start from (e.g., "streets-v12", "dark-v11")
+- `base_style` (optional): Base style to start from. Defaults to `"standard"` (Mapbox Standard), which is the right choice for almost every new style. Pass a Classic style (`"streets-v12"`, `"dark-v11"`, …) only when a classic style is explicitly wanted.
 - `preview_location` (optional): Location to center the preview map
 - `preview_zoom` (optional): Zoom level for the preview (0-22, default: 12)
 
@@ -839,6 +839,7 @@ Create a new Mapbox map style and generate a shareable preview link with automat
 2. Creates a new public token if needed
 3. Creates the map style
 4. Generates a preview link
+5. Runs the `prepare-style-for-production` validation workflow
 
 **Example usage:**
 
@@ -847,10 +848,15 @@ Use prompt: create-and-preview-style
 Arguments:
   style_name: "My Custom Map"
   style_description: "A dark-themed map for nighttime navigation"
-  base_style: "dark-v11"
+  base_style: "standard"
   preview_location: "San Francisco"
   preview_zoom: "13"
 ```
+
+Note that a dark map keeps `base_style: "standard"` — the workflow sets the Standard style's
+`lightPreset` to `night` rather than switching to `dark-v11`. The light preset relights the whole
+basemap coherently, and it can be changed at runtime without reloading the style. Custom layers do
+not follow the preset, which is why the workflow also gives them emissive strength `1`.
 
 ### build-custom-map
 
