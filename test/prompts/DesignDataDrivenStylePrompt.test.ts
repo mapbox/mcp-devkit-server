@@ -138,6 +138,55 @@ describe('DesignDataDrivenStylePrompt', () => {
     expect(text).toContain('midpoint');
   });
 
+  it('should not offer a red-to-green ramp for diverging data', () => {
+    const result = prompt.execute({
+      style_name: 'Test',
+      data_description: 'Data',
+      property_name: 'value',
+      color_scheme: 'diverging'
+    });
+
+    const text = result.messages[0].content.text;
+
+    // RdYlGn endpoints. A red-to-green ramp is the most common colorblind failure in
+    // data visualization, and this prompt used to recommend one while simultaneously
+    // warning against it further down.
+    expect(text).not.toContain('#d7191c');
+    expect(text).not.toContain('#1a9641');
+    expect(text).not.toContain('#a6d96a');
+
+    // ColorBrewer RdBu instead, which keeps its endpoints distinct under deuteranopia.
+    expect(text).toContain('#b2182b');
+    expect(text).toContain('#2166ac');
+  });
+
+  it('should give every example layer a slot and emissive strength', () => {
+    for (const visualizationType of ['color', 'size', 'both']) {
+      const result = prompt.execute({
+        style_name: 'Test',
+        data_description: 'Data',
+        property_name: 'value',
+        visualization_type: visualizationType
+      });
+
+      const text = result.messages[0].content.text;
+      expect(text).toContain('"slot"');
+      expect(text).toMatch(/-emissive-strength": 1/);
+    }
+  });
+
+  it('should not claim a heatmap emissive-strength property exists', () => {
+    const result = prompt.execute({
+      style_name: 'Test',
+      data_description: 'Data',
+      property_name: 'value',
+      visualization_type: 'heatmap'
+    });
+
+    const text = result.messages[0].content.text;
+    expect(text).not.toContain('"heatmap-emissive-strength": 1');
+  });
+
   it('should include categorical colors when specified', () => {
     const result = prompt.execute({
       style_name: 'Test',

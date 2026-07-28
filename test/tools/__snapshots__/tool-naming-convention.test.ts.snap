@@ -94,21 +94,36 @@ BASE STYLES:
 • Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/outdoors-v12/satellite-streets-v12/navigation-day-v1/navigation-night-v1
   Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
 
-STANDARD STYLE CONFIG:
-Use standard_config to customize the basemap:
-• Theme: default/faded/monochrome
-• Light: day/night/dawn/dusk
-• Show/hide: labels, roads, 3D buildings
-• Colors: water, roads, parks, etc.
+STANDARD STYLE CONFIG (try this before adding layers):
+Configuring the basemap is cheaper and more robust than layering over it. Use standard_config:
+• Theme: default/faded/monochrome — 'faded'/'monochrome' is the fastest way to make your own data pop
+• Light: day/night/dawn/dusk — this is how you do dark mode. Do NOT switch to dark-v11 and do NOT
+  hand-author dark colors via global_settings.mode
+• Show/hide: labels, POIs, roads, 3D buildings — hide what competes with your data
+• Colors: water, roads, parks, labels, etc. — override basemap colors here rather than re-adding layers
 
-LAYER ORDERING:
-• Layers are rendered in order - last layer in the array appears visually on top
-• The 'slot' parameter is OPTIONAL - by default, layer order in the array determines visibility
-• For Standard style, you can optionally use 'slot' to control placement:
-  - No slot (default): Above all existing layers in the style
-  - 'top': Behind Place and Transit labels
-  - 'middle': Between basemap and labels
-  - 'bottom': Below most basemap features
+LAYER ORDERING (slots):
+On Standard, Mapbox owns the basemap layer order — you don't hand-order it. Every custom layer goes
+into a slot. Set 'slot' explicitly on EVERY layer; it is the single most common mistake to omit it.
+  - 'bottom': above land/landuse/water polygons, BELOW roads. Choropleths, rasters, terrain
+  - 'middle': above roads and lines, BEHIND 3D buildings and labels. Most data overlays — polygon
+    fills, geofences, zone boundaries, heatmaps, routes, custom POI layers
+  - 'top':    above POI labels, BEHIND place and transit labels. Markers, active selections
+• Omitting 'slot' does NOT mean "sensible default" — the layer lands above every basemap layer,
+  including street labels, which is almost never what you want. When you omit it on a Standard
+  style this tool infers a slot from the layer type and tells you which one it picked.
+• Two layers in the same slot keep their insertion order.
+• Slot is a style-spec property, so the same string works on GL JS, Android, iOS and Flutter.
+
+EMISSIVE STRENGTH (why your layer vanishes at night):
+Standard is a lit 3D scene. fill-, line- and circle-emissive-strength default to 0, meaning the
+layer is lit by the scene — so under the dusk/night presets it falls into shadow and goes nearly
+invisible. This tool sets emissive strength to 1 on fill/line/circle layers you add to a Standard
+style so they hold their authored color across all four presets.
+• Symbol layers need nothing: icon-emissive-strength and text-emissive-strength already default to 1.
+• fill-extrusion is genuinely 3D and should be lit by the scene — it is left alone deliberately.
+• Routes should also set line-occlusion-opacity (default 0 hides the occluded part completely),
+  otherwise a route disappears where it passes behind 3D buildings.
 
 LAYER RENDERING:
 • render_type controls HOW to visualize the layer (line, fill, symbol, etc.)

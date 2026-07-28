@@ -757,11 +757,15 @@ describe('StyleBuilderTool', () => {
       expect(style.sources).toBeDefined();
       expect(style.sources.composite).toBeDefined();
 
-      // Check that layers don't have slot by default for Standard style
-      // No slot means the layer appears above all existing layers
+      // Every custom layer on a Standard style gets a slot. Leaving it off would put the
+      // layer above every basemap layer, including street labels.
       style.layers.forEach((layer: any) => {
-        expect(layer.slot).toBeUndefined();
+        expect(layer.slot).toBeDefined();
+        expect(['bottom', 'middle', 'top']).toContain(layer.slot);
       });
+
+      // The inferred slot is reported rather than applied silently.
+      expect(text).toContain('inferred slot');
     });
 
     it('should generate Standard style with configuration', async () => {
@@ -921,6 +925,134 @@ describe('StyleBuilderTool', () => {
       expect(waterLayer.slot).toBe('bottom');
       expect(parksLayer.slot).toBe('middle');
       expect(poiLayer.slot).toBe('top');
+    });
+
+    it('should infer a slot from the layer type when none is given', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Slot Inference Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'landuse',
+            filter_properties: { class: 'park' },
+            action: 'color',
+            color: '#00ff00',
+            render_type: 'fill'
+          },
+          {
+            layer_type: 'road',
+            action: 'color',
+            color: '#ffaa00',
+            render_type: 'line'
+          },
+          {
+            layer_type: 'poi_label',
+            action: 'show',
+            render_type: 'symbol'
+          }
+        ]
+      };
+
+      const result = await tool.run(input);
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+
+      const byType = (type: string) =>
+        style.layers.find((l: any) => l.type === type);
+
+      // Area fills belong under the road network, lines above roads but behind
+      // labels, symbols above POI labels where markers stay legible.
+      expect(byType('fill').slot).toBe('bottom');
+      expect(byType('line').slot).toBe('middle');
+      expect(byType('symbol').slot).toBe('top');
+    });
+
+    it('should set emissive strength on custom fill/line/circle layers so they survive the night preset', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Emissive Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'landuse',
+            filter_properties: { class: 'park' },
+            action: 'color',
+            color: '#00ff00',
+            render_type: 'fill'
+          },
+          {
+            layer_type: 'road',
+            action: 'color',
+            color: '#ffaa00',
+            render_type: 'line'
+          },
+          {
+            layer_type: 'poi_label',
+            action: 'show',
+            render_type: 'symbol'
+          }
+        ],
+        standard_config: { lightPreset: 'night' }
+      };
+
+      const result = await tool.run(input);
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+
+      const byType = (type: string) =>
+        style.layers.find((l: any) => l.type === type);
+
+      // These three default to 0, meaning the scene lights them into shadow.
+      expect(byType('fill').paint['fill-emissive-strength']).toBe(1);
+      expect(byType('line').paint['line-emissive-strength']).toBe(1);
+
+      // Symbols already default to 1, so nothing should be added for them.
+      expect(byType('symbol').paint['icon-emissive-strength']).toBeUndefined();
+      expect(byType('symbol').paint['text-emissive-strength']).toBeUndefined();
+    });
+
+    it('should not add emissive strength to Classic styles, which have no lighting to shadow them', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Classic Emissive Test',
+        base_style: 'streets-v12',
+        layers: [
+          {
+            layer_type: 'landuse',
+            filter_properties: { class: 'park' },
+            action: 'color',
+            color: '#00ff00',
+            render_type: 'fill'
+          }
+        ]
+      };
+
+      const result = await tool.run(input);
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+
+      const fillLayer = style.layers.find((l: any) => l.type === 'fill');
+      expect(fillLayer.paint['fill-emissive-strength']).toBeUndefined();
+    });
+
+    it('should redirect global_settings.mode dark to lightPreset on Standard', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Dark Mode Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#0099ff',
+            render_type: 'fill'
+          }
+        ],
+        global_settings: { mode: 'dark' }
+      };
+
+      const result = await tool.run(input);
+      const text = result.content[0].text as string;
+
+      expect(text).toContain('lightPreset');
+      expect(text).toContain('night');
     });
 
     it('should always default to Standard style when not specified', async () => {
