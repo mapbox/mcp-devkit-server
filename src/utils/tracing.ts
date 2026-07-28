@@ -18,6 +18,7 @@ import {
   DiagLogLevel
 } from '@opentelemetry/api';
 import { getVersionInfo } from './versionUtils.js';
+import { RedactingSpanExporter } from './redactingSpanExporter.js';
 import { ATTR_SERVICE_INSTANCE_ID } from '@opentelemetry/semantic-conventions/incubating';
 import { type HttpRequest } from './types.js';
 
@@ -194,7 +195,9 @@ export async function initializeTracing(): Promise<void> {
     // Create SDK instance
     sdk = new NodeSDK({
       resource,
-      traceExporter: exporter,
+      // Wrap the exporter so access tokens recorded in HTTP client span
+      // attributes (url.full, url.query) never reach the OTLP backend
+      traceExporter: new RedactingSpanExporter(exporter),
       instrumentations: [
         getNodeAutoInstrumentations({
           // Disable instrumentations that might be too noisy

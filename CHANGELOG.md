@@ -2,6 +2,7 @@
 
 ### Fixed
 
+- **Tracing**: Access tokens are no longer included in exported spans. Mapbox APIs take the access token as a URL query parameter, and OpenTelemetry's HTTP/undici auto-instrumentation records the full request URL on client spans (`url.full`, `url.query`), so operators who configured `OTEL_EXPORTER_OTLP_ENDPOINT` had tokens copied verbatim into their telemetry backend. The OTLP exporter is now wrapped in a `RedactingSpanExporter` that rewrites `access_token=<value>` to `access_token=***` across all string span attributes before export.
 - **`validate_expression_tool` / `validate_style_tool`**: Both tools now delegate expression and style validation to the official `@mapbox/mapbox-gl-style-spec` package (the same logic mapbox-gl-js runs at runtime) instead of a hand-rolled reimplementation. Fixes two disagreements with real mapbox-gl-js behavior around the `["zoom"]` expression placement rule (#123):
   - `validate_expression_tool` no longer false-positives on ordinary zoom-based `interpolate`/`step` expressions (it previously misidentified the interpolation-type argument, e.g. `["linear"]`, as an unknown operator).
   - `validate_style_tool` now correctly flags `["zoom"]` expressions nested inside e.g. a `case` (invalid per spec — zoom may only be used as the top-level input to `step`/`interpolate`), which it previously missed entirely.
