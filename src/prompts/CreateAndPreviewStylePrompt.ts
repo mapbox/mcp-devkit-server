@@ -32,7 +32,7 @@ export class CreateAndPreviewStylePrompt extends BasePrompt {
     {
       name: 'base_style',
       description:
-        'Optional base style to start from (e.g., "streets-v12", "outdoors-v12", "light-v11", "dark-v11")',
+        'Optional base style to start from. Defaults to "standard" (Mapbox Standard), which is the right choice for almost every new style. Only pass a Classic style ("streets-v12", "outdoors-v12", "light-v11", "dark-v11") when the user explicitly asks for a classic style. For a dark map, keep "standard" and set lightPreset to "night" rather than passing "dark-v11".',
       required: false
     },
     {
@@ -51,7 +51,7 @@ export class CreateAndPreviewStylePrompt extends BasePrompt {
   getMessages(args: Record<string, string>): PromptMessage[] {
     const styleName = args['style_name'];
     const styleDescription = args['style_description'];
-    const baseStyle = args['base_style'] || 'streets-v12';
+    const baseStyle = args['base_style'] || 'standard';
     const previewLocation = args['preview_location'];
     const previewZoom = args['preview_zoom'] || '12';
 
@@ -80,26 +80,33 @@ Follow these steps carefully:
     }
 
     instructionText += `\n   - Base the style on Mapbox ${baseStyle}
-   - You can start with a basic style like:
+   - Build the style JSON with \`style_builder_tool\` (base_style: "${baseStyle}") rather than
+     hand-authoring it. Do not write a \`background\` layer and a raw streets-v8 source by hand —
+     on Standard the basemap arrives through the import, and a hand-rolled background layer will
+     sit on top of it.
+   - Reach for appearance changes in this order:
+     1. \`standard_config\` (theme, lightPreset, show/hide toggles, color overrides)
+     2. custom layers in an explicit \`slot\`, only for data the basemap doesn't already carry
+   - A Standard style starts out as an import, not a layer list:
      \`\`\`json
      {
        "version": 8,
        "name": "${styleName}",
-       "sources": {
-         "mapbox": {
-           "type": "vector",
-           "url": "mapbox://mapbox.mapbox-streets-v8"
-         }
-       },
-       "layers": [
+       "imports": [
          {
-           "id": "background",
-           "type": "background",
-           "paint": { "background-color": "#f0f0f0" }
+           "id": "basemap",
+           "url": "mapbox://styles/mapbox/standard",
+           "config": { "theme": "default", "lightPreset": "day" }
          }
-       ]
+       ],
+       "sources": {},
+       "layers": []
      }
      \`\`\`
+   - For a dark map, set \`config.lightPreset\` to \`"night"\`. Do not switch to \`dark-v11\` and do not
+     hand-author dark colors — the preset relights the whole basemap coherently.
+   - Any custom layer you add needs an explicit \`slot\`, and fill/line/circle layers need
+     emissive strength \`1\`, or they will go nearly invisible under the dusk/night presets.
    - Save the style ID from the response
 
 4. **Generate preview link**

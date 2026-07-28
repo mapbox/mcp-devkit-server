@@ -93,6 +93,7 @@ Use color to show values from low to high:
 \`\`\`json
 {
   "type": "fill",
+  "slot": "bottom",
   "paint": {
     "fill-color": [
       "interpolate",
@@ -104,12 +105,21 @@ Use color to show values from low to high:
       75, "#08519c",     // Medium-high: deep blue
       100, "#08306b"     // High values: darkest blue
     ],
-    "fill-opacity": 0.7
+    "fill-opacity": 0.7,
+    "fill-emissive-strength": 1
   }
 }
 \`\`\`
 
 **Adjust the breakpoints** (0, 25, 50, 75, 100) based on your actual data range.
+
+**Why \`slot\` and \`fill-emissive-strength\` are there** (Standard styles):
+- \`"slot": "bottom"\` puts the choropleth above land and water but **below roads and labels**, so
+  the basemap stays readable through it. Without a slot the layer lands above every basemap layer,
+  including street labels. Use \`"middle"\` instead for zone/geofence overlays that should sit above roads.
+- \`"fill-emissive-strength": 1\` keeps the fill at its authored color under the \`dusk\` and \`night\`
+  light presets. It defaults to \`0\`, which lets the scene light the layer — so it falls into shadow
+  and goes nearly invisible on a night map.
 
 `;
       } else if (colorScheme === 'diverging') {
@@ -120,23 +130,32 @@ Use two colors to show deviation from a midpoint:
 \`\`\`json
 {
   "type": "fill",
+  "slot": "bottom",
   "paint": {
     "fill-color": [
       "interpolate",
       ["linear"],
       ["get", "${propertyName}"],
-      0, "#d7191c",      // Low values: red
-      25, "#fdae61",     // Below average: orange
-      50, "#ffffbf",     // Average: yellow
-      75, "#a6d96a",     // Above average: light green
-      100, "#1a9641"     // High values: green
+      0, "#b2182b",      // Low values: dark red
+      25, "#ef8a62",     // Below average: salmon
+      50, "#f7f7f7",     // Average: near-white midpoint
+      75, "#67a9cf",     // Above average: light blue
+      100, "#2166ac"     // High values: dark blue
     ],
-    "fill-opacity": 0.7
+    "fill-opacity": 0.7,
+    "fill-emissive-strength": 1
   }
 }
 \`\`\`
 
 **Use when**: Showing deviation from a norm (e.g., temperature above/below average).
+
+**This is ColorBrewer RdBu, not red→green, and that is deliberate.** A red→yellow→green ramp
+(RdYlGn, the "traffic light") is the single most common colorblind failure in data visualization —
+roughly 1 in 12 men cannot separate its endpoints, so the two extremes that carry all the meaning
+collapse into each other. For diverging data use **RdBu**, **PuOr**, or **BrBG**, all of which keep
+their endpoints distinct under deuteranopia and protanopia. Put the neutral color at the value that
+actually is the midpoint of your data, not at the middle of the number range.
 
 `;
       } else if (colorScheme === 'categorical') {
@@ -147,6 +166,7 @@ Use distinct colors for different categories:
 \`\`\`json
 {
   "type": "fill",
+  "slot": "bottom",
   "paint": {
     "fill-color": [
       "match",
@@ -158,12 +178,19 @@ Use distinct colors for different categories:
       "category5", "#ff7f00",  // Orange
       "#999999"                // Default: gray
     ],
-    "fill-opacity": 0.7
+    "fill-opacity": 0.7,
+    "fill-emissive-strength": 1
   }
 }
 \`\`\`
 
-**Replace** "category1", "category2", etc. with your actual category values.
+**Replace** "category1", "category2", etc. with your actual category values. Always keep the final
+fallback color — a \`match\` without one drops features whose value you didn't anticipate.
+
+This is ColorBrewer Set1, a qualitative palette. Red and green appearing in the same *categorical*
+palette is fine, because the categories are unordered and each one gets a legend entry. What to avoid
+is red→green as a *ramp*, where the reader has to judge position along the scale by hue alone.
+Keep categorical palettes to 8 colors or fewer; past that, colors stop being tellable apart.
 
 `;
       }
@@ -177,6 +204,7 @@ Use circle size to represent magnitude:
 \`\`\`json
 {
   "type": "circle",
+  "slot": "middle",
   "paint": {
     "circle-radius": [
       "interpolate",
@@ -191,10 +219,20 @@ Use circle size to represent magnitude:
     "circle-color": "#3182bd",
     "circle-opacity": 0.6,
     "circle-stroke-width": 1,
-    "circle-stroke-color": "#ffffff"
+    "circle-stroke-color": "#ffffff",
+    "circle-emissive-strength": 1
   }
 }
 \`\`\`
+
+\`circle-emissive-strength\` is the one most often left out, because circles are usually the
+foreground data — cluster bubbles, proportional symbols, user-location dots. It defaults to \`0\`
+just like fill and line, so a bubble map that looks right at \`day\` dims out at \`night\`.
+
+**Scale circles by area, not radius.** Feeding the value straight into \`circle-radius\` makes a
+value of 100 look ~4x bigger than a value of 25 rather than 4x in area, so large values read as
+wildly exaggerated. Interpolate on \`["sqrt", ["get", "${propertyName}"]]\` when the circle is meant
+to encode magnitude proportionally.
 
 `;
     }
@@ -207,6 +245,7 @@ Show density and intensity using a heatmap:
 \`\`\`json
 {
   "type": "heatmap",
+  "slot": "middle",
   "paint": {
     "heatmap-weight": [
       "interpolate",
@@ -244,6 +283,14 @@ Show density and intensity using a heatmap:
 }
 \`\`\`
 
+Note there is no \`heatmap-emissive-strength\` — heatmap layers aren't lit by the scene, so they hold
+their color across all four light presets on their own. Don't invent that property; \`validate_style_tool\`
+will reject it.
+
+**\`heatmap-radius\` must grow with zoom**, as it does above. Radius is in screen pixels, so a fixed
+value covers a far larger geographic area when zoomed out — a heatmap that reads correctly at z9
+becomes one undifferentiated blob at z2 if the radius doesn't scale.
+
 `;
     }
 
@@ -267,8 +314,15 @@ Before finalizing the style, you need to know:
 Now create the data-driven style:
 
 1. **Start with a base style**
-   - Use style_builder_tool to generate a base style
+   - Use style_builder_tool with \`base_style: "standard"\` — Mapbox Standard is the default for new styles
    - Provide instructions like: "Create a ${colorScheme} map for visualizing ${dataDescription}"
+   - **Quiet the basemap through \`standard_config\`, not by deleting layers.** A data map needs the
+     basemap to recede. Set \`theme: "faded"\` or \`"monochrome"\`, and turn off what competes with your
+     data (\`showPointOfInterestLabels: false\`, \`show3dObjects: false\`). This is the single biggest
+     readability win for a choropleth, and it costs one config property.
+   - For a dark data map set \`lightPreset: "night"\`. Don't reach for \`dark-v11\` and don't hand-author
+     dark colors — and remember your own layers do *not* follow the preset, which is why they need
+     emissive strength \`1\`.
 
 2. **Add your data source**
    - If using GeoJSON, you'll add it as a source:
@@ -384,15 +438,27 @@ Show property values as labels:
 ✅ **DO:**
 - Use interpolate for smooth transitions (continuous data)
 - Use step for clear breaks (ranked/classified data)
-- Use match for categorical data
-- Test at different zoom levels
+- Use match for categorical data, always with a fallback color
+- Give every custom layer an explicit \`slot\` — \`bottom\` for choropleths, \`middle\` for overlays,
+  routes and custom POI layers, \`top\` for markers and active selections
+- Set emissive strength \`1\` on every fill, line, and circle layer you add
+- Add \`line-occlusion-opacity\` to routes so 3D buildings don't hide them
+- Quiet the basemap via \`standard_config\` (\`theme: "faded"\`, POI labels off) before restyling data
+- Test at different zoom levels, and at the \`night\` light preset as well as \`day\`
 - Ensure color contrasts are accessible (4.5:1 ratio)
 - Document your data property names and ranges
 
 ❌ **DON'T:**
 - Use too many color breaks (5-7 is usually enough)
 - Rely solely on color (add patterns or sizes for accessibility)
-- Use red/green combinations (colorblind-unfriendly)
+- **Use red→green ramps for ordered data** (RdYlGn / "traffic light"). It is the most common
+  colorblind failure. Use RdBu, PuOr, or BrBG for diverging data instead
+- **Use rainbow ramps for ordered data** — hue has no natural order, so readers can't tell which
+  end is "more" without constantly consulting the legend, and the bands imply breaks that aren't
+  in the data. Use a single-hue or multi-hue sequential ramp
+- Omit \`slot\` and let a data layer land above the street labels
+- Leave fill/line/circle emissive strength at its \`0\` default and ship a map that goes blank at night
+- Cap \`fill-opacity\` so low that a data-driven ramp can never reach full strength
 - Forget to handle null/undefined property values
 
 ## Step 8: Validate the Style
