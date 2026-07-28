@@ -25,7 +25,14 @@ describe('CreateStyleTool', () => {
       const { httpRequest } = setupHttpRequest();
       const tool = new CreateStyleTool({ httpRequest });
       expect(tool.name).toBe('create_style_tool');
-      expect(tool.description).toBe('Create a new Mapbox style');
+      expect(tool.description).toContain('Create a new Mapbox style');
+
+      // The description has to be clear that this tool uploads a style rather than builds
+      // one, and point at the tool that does build one correctly. Without that, agents
+      // hand-author a version/sources/layers object and lose imports, config and slots.
+      expect(tool.description).toContain('style_builder_tool');
+      expect(tool.description).toContain('imports');
+      expect(tool.description).toContain('lightPreset');
     });
 
     it('should have correct input schema', async () => {

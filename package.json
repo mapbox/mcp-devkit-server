@@ -26,7 +26,8 @@
     "test": "vitest",
     "tracing:jaeger:start": "docker run --rm -d --name jaeger -p 16686:16686 -p 14250:14250 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest",
     "tracing:jaeger:stop": "docker stop jaeger",
-    "tracing:verify": "node -e \"console.log('🔍 Verifying tracing setup with Jaeger...\\n1. Copy .env.example to .env and add your MAPBOX_ACCESS_TOKEN\\n2. Start Jaeger: npm run tracing:jaeger:start\\n3. Run server: npm run inspect:build\\n4. Check traces at: http://localhost:16686')\""
+    "tracing:verify": "node -e \"console.log('🔍 Verifying tracing setup with Jaeger...\\n1. Copy .env.example to .env and add your MAPBOX_ACCESS_TOKEN\\n2. Start Jaeger: npm run tracing:jaeger:start\\n3. Run server: npm run inspect:build\\n4. Check traces at: http://localhost:16686')\"",
+    "eval:tools": "node scripts/eval-tools.mjs"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": "eslint --fix",
@@ -64,6 +65,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
     "@eslint/js": "^9.27.0",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^22.0.0",

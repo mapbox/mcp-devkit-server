@@ -21,7 +21,26 @@ export class CreateStyleTool extends MapboxApiBasedTool<
   typeof MapboxStyleOutputSchema
 > {
   name = 'create_style_tool';
-  description = 'Create a new Mapbox style';
+  description = `Create a new Mapbox style from a complete style JSON.
+
+This tool uploads whatever JSON it is given — it does not build a style. Prefer building the JSON
+with style_builder_tool first, which defaults to Mapbox Standard and supplies what hand-authored
+styles usually miss: an explicit slot on every custom layer, and emissive strength on fill/line/
+circle layers so they stay visible under the dusk and night light presets.
+
+Before creating a style at all, check whether Standard's config expresses the intent. theme,
+lightPreset, the show* visibility toggles and the color* overrides need no style to be created or
+maintained, and they keep working as the basemap is updated. A dark map is lightPreset:'night',
+not a new style and not dark-v11.
+
+A Standard-based style is an import, not a layer stack:
+  {
+    "version": 8,
+    "imports": [{ "id": "basemap", "url": "mapbox://styles/mapbox/standard",
+                  "config": { "theme": "faded", "lightPreset": "night" } }],
+    "sources": {},
+    "layers": []
+  }`;
   readonly annotations = {
     readOnlyHint: false,
     destructiveHint: false,

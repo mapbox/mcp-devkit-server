@@ -1,0 +1,342 @@
+#!/usr/bin/env node
+// Copyright (c) Mapbox, Inc.
+// Licensed under the MIT License.
+
+/**
+ * Tool-surface eval.
+ *
+ * Unit tests verify that a tool emits what we intended. They cannot tell us whether an
+ * agent reading our tool descriptions and schemas actually reaches for the right tool with
+ * the right arguments — and that is what most of the design guidance in this repo is: text
+ * a model reads. This eval closes that gap.
+ *
+ * It hands the model our real tool definitions (descriptions and JSON-Schema-converted zod
+ * input schemas, straight off the tool registry), gives it a task, and inspects the tool
+ * calls it makes. Where a call lands on style_builder_tool the tool is executed for real —
+ * it needs no network — so checks run against the style JSON that would actually ship.
+ *
+ * Checks are deterministic predicates rather than an LLM judge, because the thing being
+ * measured is structured output. That keeps the score stable run to run, so a change in it
+ * means a change in behavior rather than judge variance.
+ *
+ * Usage:
+ *   npm run build && npm run eval:tools
+ *   EVAL_MODEL=claude-sonnet-5 npm run eval:tools
+ *   npm run eval:tools -- --json out.json
+ */
+
+import Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { resolve } from 'path';
+import { pathToFileURL } from 'url';
+
+if (existsSync('.env')) {
+  for (const line of readFileSync('.env', 'utf-8').split('\n')) {
+    const m = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+    if (m && !process.env[m[1]]) {
+      process.env[m[1]] = (m[2] || '').replace(/^["']|["']$/g, '');
+    }
+  }
+}
+
+const MODEL = process.env.EVAL_MODEL || 'claude-sonnet-5';
+const MAX_TURNS = 4;
+
+// Resolved against cwd rather than this file, so the script works from an npm script.
+const REGISTRY = resolve(process.cwd(), 'dist/esm/tools/toolRegistry.js');
+if (!existsSync(REGISTRY)) {
+  console.error('Build output missing. Run `npm run build` first.');
+  process.exit(1);
+}
+
+const { CORE_TOOLS, TOOLS_WITH_UI } = await import(
+  pathToFileURL(REGISTRY).href
+);
+const allTools = [...CORE_TOOLS, ...(TOOLS_WITH_UI || [])];
+
+// The style/design surface. Narrowed so the model isn't picking between 25 tools for a
+// task about map appearance, and so the eval stays cheap.
+const SURFACE = [
+  'style_builder_tool',
+  'create_style_tool',
+  'update_style_tool',
+  'preview_style_tool',
+  'list_styles_tool',
+  'retrieve_style_tool',
+  'validate_style_tool',
+  'check_color_contrast_tool'
+];
+
+function toolDefinitions() {
+  const defs = [];
+  for (const tool of allTools) {
+    if (!SURFACE.includes(tool.name)) continue;
+    let input_schema;
+    try {
+      input_schema = z.toJSONSchema(tool.inputSchema ?? tool._inputSchema, {
+        io: 'input',
+        unrepresentable: 'any'
+      });
+      delete input_schema.$schema;
+    } catch {
+      input_schema = { type: 'object', properties: {} };
+    }
+    if (input_schema.type !== 'object') {
+      input_schema = { type: 'object', properties: {} };
+    }
+    defs.push({
+      name: tool.name,
+      description: String(tool.description || '').slice(0, 8000),
+      input_schema
+    });
+  }
+  return defs;
+}
+
+const styleBuilder = allTools.find((t) => t.name === 'style_builder_tool');
+
+/** Run style_builder_tool for real and return the style JSON it produced. */
+async function buildStyle(input) {
+  try {
+    const result = await styleBuilder.run(input);
+    const text = result.content?.[0]?.text ?? '';
+    const match = text.match(/```json\n([\s\S]*?)\n```/);
+    return match ? JSON.parse(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Layers a style declares itself, i.e. excluding anything the import supplies. */
+const ownLayers = (style) =>
+  (style?.layers || []).filter((l) => l.type !== 'background');
+
+/** The call that actually ships a style, whichever tool the model routed through. */
+const uploadCall = (calls) =>
+  calls.find((c) => c.name === 'create_style_tool' || c.name === 'update_style_tool');
+
+const EMISSIVE = {
+  fill: 'fill-emissive-strength',
+  line: 'line-emissive-strength',
+  circle: 'circle-emissive-strength'
+};
+
+const RD_YL_GN = ['#d7191c', '#1a9641', '#a6d96a', '#fdae61', '#ffffbf'];
+
+const CASES = [
+  {
+    id: 'dark-mode',
+    prompt:
+      'Build me a dark map style for a nighttime food delivery app. I want the base map to be dark so the delivery info on top stands out.',
+    checks: {
+      'uses style_builder_tool': (c) => c.called('style_builder_tool'),
+      'base_style is standard': (c) => {
+        const call = c.first('style_builder_tool');
+        return !call || (call.input.base_style ?? 'standard') === 'standard';
+      },
+      'dark via lightPreset night': (c) =>
+        c.first('style_builder_tool')?.input?.standard_config?.lightPreset ===
+        'night',
+      'does not use a dark base style': (c) =>
+        !c.calls.some((x) =>
+          /dark-v11|navigation-night/.test(JSON.stringify(x.input))
+        ),
+      'does not use global_settings.mode': (c) =>
+        !c.calls.some((x) => x.input?.global_settings?.mode)
+    }
+  },
+  {
+    id: 'custom-data-layer',
+    prompt:
+      'I have a GeoJSON of delivery zone polygons and a route line. Put them on a Mapbox map. The map needs to work at night as well as during the day.',
+    // These checks deliberately inspect the style that would actually be uploaded, not the
+    // tool used to build it. style_builder_tool only restyles Streets v8 basemap layers —
+    // it has no way to add a user's own GeoJSON source — so on this task the model has to
+    // hand-author the layers. What matters is whether the style it ships is correct.
+    checks: {
+      'uploaded style is Standard-based': (c) => {
+        const call = c.uploaded();
+        return !!call && Array.isArray(call.input?.style?.imports);
+      },
+      'every custom layer has a slot': (c) => {
+        const layers = ownLayers(c.uploaded()?.input?.style);
+        return layers.length > 0 && layers.every((l) => !!l.slot);
+      },
+      'fill/line/circle layers set emissive strength': (c) => {
+        const lit = ownLayers(c.uploaded()?.input?.style).filter(
+          (l) => EMISSIVE[l.type]
+        );
+        return (
+          lit.length > 0 && lit.every((l) => l.paint?.[EMISSIVE[l.type]] === 1)
+        );
+      },
+      'route sets line-occlusion-opacity': (c) => {
+        const lines = ownLayers(c.uploaded()?.input?.style).filter(
+          (l) => l.type === 'line'
+        );
+        return (
+          lines.length > 0 &&
+          lines.some((l) => l.paint?.['line-occlusion-opacity'] !== undefined)
+        );
+      },
+      'mentions night visibility in its reasoning': (c) =>
+        /emissive|night|light preset|lightPreset/i.test(c.text)
+    }
+  },
+  {
+    id: 'config-first',
+    prompt:
+      'On my existing Mapbox map the roads are too loud and the POI labels are cluttering everything. Quiet them down.',
+    checks: {
+      'reaches for Standard config': (c) =>
+        /standard_config|lightPreset|theme|showPointOfInterestLabels|setConfigProperty|setStyleImportConfigProperty/.test(
+          JSON.stringify(c.calls.map((x) => x.input)) + c.text
+        ),
+      'uses a theme or POI toggle rather than new layers': (c) =>
+        /faded|monochrome|showPointOfInterestLabels|densityPointOfInterestLabels/.test(
+          JSON.stringify(c.calls.map((x) => x.input)) + c.text
+        ),
+      'does not create a new style for a config change': (c) =>
+        !c.called('create_style_tool')
+    }
+  },
+  {
+    id: 'diverging-ramp',
+    prompt:
+      'Shade US counties by temperature anomaly — how far above or below the long-run average each one is. Give me the paint expression.',
+    checks: {
+      'avoids a red-to-green ramp': (c) =>
+        !RD_YL_GN.some((hex) =>
+          (JSON.stringify(c.calls.map((x) => x.input)) + c.text)
+            .toLowerCase()
+            .includes(hex)
+        ),
+      'uses a colorblind-safe diverging scheme': (c) =>
+        /RdBu|PuOr|BrBG|#b2182b|#2166ac|#67a9cf|#ef8a62/i.test(
+          JSON.stringify(c.calls.map((x) => x.input)) + c.text
+        )
+    }
+  },
+  {
+    id: 'create-style-routing',
+    prompt:
+      'Create a brand new style in my Mapbox account for a public transit app and give me a preview link.',
+    checks: {
+      'builds the JSON with style_builder_tool': (c) =>
+        c.called('style_builder_tool'),
+      'any uploaded style is Standard-based': (c) => {
+        const call = c.first('create_style_tool');
+        if (!call) return true; // nothing uploaded yet is not a failure
+        return Array.isArray(call.input?.style?.imports);
+      },
+      'does not hand-author a background layer': (c) => {
+        const call = c.first('create_style_tool');
+        if (!call) return true;
+        return !(call.input?.style?.layers || []).some(
+          (l) => l.type === 'background'
+        );
+      }
+    }
+  }
+];
+
+const SYSTEM = `You are helping a developer build Mapbox maps. You have the Mapbox MCP DevKit tools available. Use them to do the work rather than only describing it. Explain your choices briefly.`;
+
+async function runCase(client, tools, testCase) {
+  const messages = [{ role: 'user', content: testCase.prompt }];
+  const calls = [];
+  let text = '';
+
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const response = await client.messages.create({
+      model: MODEL,
+      max_tokens: 4096,
+      thinking: { type: 'disabled' },
+      system: SYSTEM,
+      tools,
+      messages
+    });
+
+    for (const block of response.content) {
+      if (block.type === 'text') text += `\n${block.text}`;
+      if (block.type === 'tool_use') {
+        calls.push({ name: block.name, input: block.input });
+      }
+    }
+
+    if (response.stop_reason !== 'tool_use') break;
+
+    messages.push({ role: 'assistant', content: response.content });
+    const results = [];
+    for (const block of response.content) {
+      if (block.type !== 'tool_use') continue;
+      let content;
+      if (block.name === 'style_builder_tool') {
+        // Feed back the tool's real output so the model can chain into create_style_tool.
+        const real = await styleBuilder.run(block.input);
+        content = (real.content?.[0]?.text ?? '').slice(0, 6000);
+      } else {
+        content = `Success. (Eval stub — no live Mapbox API call was made.)`;
+      }
+      results.push({ type: 'tool_result', tool_use_id: block.id, content });
+    }
+    messages.push({ role: 'user', content: results });
+  }
+
+  const ctx = {
+    calls,
+    text,
+    called: (name) => calls.some((c) => c.name === name),
+    first: (name) => calls.find((c) => c.name === name),
+    uploaded: () => uploadCall(calls)
+  };
+
+  const results = {};
+  for (const [label, check] of Object.entries(testCase.checks)) {
+    try {
+      results[label] = (await check(ctx)) === true;
+    } catch {
+      results[label] = false;
+    }
+  }
+  return { id: testCase.id, results, toolsUsed: calls.map((c) => c.name) };
+}
+
+const client = new Anthropic();
+const tools = toolDefinitions();
+console.log(
+  `Model: ${MODEL}\nTools exposed: ${tools.map((t) => t.name).join(', ')}\n`
+);
+
+const outcomes = await Promise.all(
+  CASES.map((c) => runCase(client, tools, c))
+);
+
+let passed = 0;
+let total = 0;
+for (const outcome of outcomes) {
+  const entries = Object.entries(outcome.results);
+  const casePassed = entries.filter(([, ok]) => ok).length;
+  passed += casePassed;
+  total += entries.length;
+  const mark = casePassed === entries.length ? '✓' : '✗';
+  console.log(`${mark} ${outcome.id}  ${casePassed}/${entries.length}`);
+  for (const [label, ok] of entries) {
+    console.log(`    ${ok ? 'pass' : 'FAIL'}  ${label}`);
+  }
+  console.log(`    tools: ${outcome.toolsUsed.join(' → ') || '(none)'}\n`);
+}
+
+const pct = total ? ((passed / total) * 100).toFixed(1) : '0.0';
+console.log(`Total: ${passed}/${total} checks (${pct}%)`);
+
+const jsonFlag = process.argv.indexOf('--json');
+if (jsonFlag !== -1 && process.argv[jsonFlag + 1]) {
+  writeFileSync(
+    process.argv[jsonFlag + 1],
+    JSON.stringify({ model: MODEL, passed, total, pct, outcomes }, null, 2)
+  );
+}
+
+process.exit(passed === total ? 0 : 1);
