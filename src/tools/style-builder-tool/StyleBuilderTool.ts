@@ -73,21 +73,36 @@ BASE STYLES:
 • Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/outdoors-v12/satellite-streets-v12/navigation-day-v1/navigation-night-v1
   Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
 
-STANDARD STYLE CONFIG:
-Use standard_config to customize the basemap:
-• Theme: default/faded/monochrome
-• Light: day/night/dawn/dusk
-• Show/hide: labels, roads, 3D buildings
-• Colors: water, roads, parks, etc.
+STANDARD STYLE CONFIG (try this before adding layers):
+Configuring the basemap is cheaper and more robust than layering over it. Use standard_config:
+• Theme: default/faded/monochrome — 'faded'/'monochrome' is the fastest way to make your own data pop
+• Light: day/night/dawn/dusk — this is how you do dark mode. Do NOT switch to dark-v11 and do NOT
+  hand-author dark colors via global_settings.mode
+• Show/hide: labels, POIs, roads, 3D buildings — hide what competes with your data
+• Colors: water, roads, parks, labels, etc. — override basemap colors here rather than re-adding layers
 
-LAYER ORDERING:
-• Layers are rendered in order - last layer in the array appears visually on top
-• The 'slot' parameter is OPTIONAL - by default, layer order in the array determines visibility
-• For Standard style, you can optionally use 'slot' to control placement:
-  - No slot (default): Above all existing layers in the style
-  - 'top': Behind Place and Transit labels
-  - 'middle': Between basemap and labels
-  - 'bottom': Below most basemap features
+LAYER ORDERING (slots):
+On Standard, Mapbox owns the basemap layer order — you don't hand-order it. Every custom layer goes
+into a slot. Set 'slot' explicitly on EVERY layer; it is the single most common mistake to omit it.
+  - 'bottom': above land/landuse/water polygons, BELOW roads. Choropleths, rasters, terrain
+  - 'middle': above roads and lines, BEHIND 3D buildings and labels. Most data overlays — polygon
+    fills, geofences, zone boundaries, heatmaps, routes, custom POI layers
+  - 'top':    above POI labels, BEHIND place and transit labels. Markers, active selections
+• Omitting 'slot' does NOT mean "sensible default" — the layer lands above every basemap layer,
+  including street labels, which is almost never what you want. When you omit it on a Standard
+  style this tool infers a slot from the layer type and tells you which one it picked.
+• Two layers in the same slot keep their insertion order.
+• Slot is a style-spec property, so the same string works on GL JS, Android, iOS and Flutter.
+
+EMISSIVE STRENGTH (why your layer vanishes at night):
+Standard is a lit 3D scene. fill-, line- and circle-emissive-strength default to 0, meaning the
+layer is lit by the scene — so under the dusk/night presets it falls into shadow and goes nearly
+invisible. This tool sets emissive strength to 1 on fill/line/circle layers you add to a Standard
+style so they hold their authored color across all four presets.
+• Symbol layers need nothing: icon-emissive-strength and text-emissive-strength already default to 1.
+• fill-extrusion is genuinely 3D and should be lit by the scene — it is left alone deliberately.
+• Routes should also set line-occlusion-opacity (default 0 hides the occluded part completely),
+  otherwise a route disappears where it passes behind 3D buildings.
 
 LAYER RENDERING:
 • render_type controls HOW to visualize the layer (line, fill, symbol, etc.)
@@ -242,6 +257,24 @@ ${JSON.stringify(style, null, 2)}
       };
 
       layers.push(backgroundLayer);
+    }
+
+    // global_settings.mode predates Standard's light presets. On Standard it is the wrong
+    // control: lightPreset relights the entire scene, while mode only recolors the handful of
+    // layers this tool emits, leaving them fighting the basemap. Steer callers to the preset
+    // rather than silently applying half a dark theme.
+    if (isUsingStandard && input.global_settings?.mode === 'dark') {
+      const hasNightPreset = input.standard_config?.lightPreset === 'night';
+      allCorrections.push(
+        hasNightPreset
+          ? `• global_settings.mode:"dark" ignored — standard_config.lightPreset:"night" already handles dark mode on Standard.`
+          : `• global_settings.mode:"dark" does not darken a Standard style. Set standard_config.lightPreset:"night" instead — it relights the whole basemap, where mode only recolors custom layers.`
+      );
+    }
+    if (isUsingStandard && input.global_settings?.background_color) {
+      allCorrections.push(
+        `• global_settings.background_color ignored — Standard supplies its own background through the import. Use standard_config color overrides (e.g. colorWater, colorGreenspace) to change basemap colors.`
+      );
     }
 
     // Build each configured layer
@@ -581,18 +614,24 @@ ${JSON.stringify(style, null, 2)}
       type: layerDef.type as Layer['type']
     };
 
-    // Add slot for Standard style if explicitly provided
-    if (isUsingStandard && config.slot) {
-      // User explicitly set the slot - respect their choice
-      // Available slots:
-      // - no slot (undefined): Above all existing layers in the style
-      // - 'top': Behind Place and Transit labels
-      // - 'middle': Between basemap and labels
-      // - 'bottom': Below most basemap features
-      layer.slot = config.slot;
+    // Slots only exist for styles that import Standard. On Standard, Mapbox owns the
+    // basemap layer order, so a layer with no slot is not "unordered" — it lands above
+    // every basemap layer including street labels. That is almost never intended, so
+    // infer a slot from the layer type rather than leaving it off.
+    const slotCorrections: string[] = [];
+    if (isUsingStandard) {
+      if (config.slot) {
+        // Explicitly set - respect their choice.
+        layer.slot = config.slot;
+      } else {
+        const inferred = StyleBuilderTool.inferSlot(layerDef.type);
+        layer.slot = inferred;
+        slotCorrections.push(
+          `• No slot given for "${layerId}" — inferred slot "${inferred}" from its ${layerDef.type} type. ` +
+            `Without a slot the layer would draw above the street labels. Set 'slot' explicitly to override.`
+        );
+      }
     }
-    // Note: If no slot is specified, the layer will appear above all existing layers
-    // Layers are rendered in order - last layer in the array appears visually on top
 
     // Add source configuration
     if (layerDef.sourceLayer) {
@@ -864,11 +903,28 @@ ${JSON.stringify(style, null, 2)}
       }
     }
 
-    // Adjust for dark mode
-    if (globalSettings?.mode === 'dark') {
+    // Adjust for dark mode.
+    //
+    // On Standard, dark mode is standard_config.lightPreset:'night' — the preset relights the
+    // whole scene coherently. Hand-authoring white text on top of that fights the preset instead
+    // of cooperating with it, so this override applies to Classic styles only, where there is no
+    // preset to defer to. buildStyle() emits a correction pointing at lightPreset when a caller
+    // asks for mode:'dark' on a Standard style.
+    if (globalSettings?.mode === 'dark' && !isUsingStandard) {
       if (layer.type === 'symbol') {
         paint['text-color'] = paint['text-color'] || '#ffffff';
         paint['text-halo-color'] = '#000000';
+      }
+    }
+
+    // Keep custom fill/line/circle layers visible under the dusk and night light presets.
+    // These properties default to 0, which lets the scene light the layer into shadow.
+    if (isUsingStandard) {
+      const emissiveProp = StyleBuilderTool.getEmissiveStrengthProperty(
+        layer.type as string
+      );
+      if (emissiveProp && paint[emissiveProp] === undefined) {
+        paint[emissiveProp] = 1;
       }
     }
 
@@ -935,7 +991,64 @@ ${JSON.stringify(style, null, 2)}
       }
     }
 
-    return { layer, corrections: filterResult.corrections };
+    return {
+      layer,
+      corrections: [...slotCorrections, ...filterResult.corrections]
+    };
+  }
+
+  /**
+   * Pick a slot for a custom layer that didn't specify one.
+   *
+   * Mapbox Standard exposes three slots. The mapping below follows the placement each
+   * geometry type normally wants: area fills belong under the road network, lines and
+   * point overlays above roads but behind labels and 3D buildings, and symbols above
+   * POI labels where markers are legible.
+   *
+   * fill-extrusion is deliberately absent — 3D geometry participates in the scene's
+   * depth and lighting, so it keeps no slot rather than being forced under the roads.
+   */
+  private static inferSlot(
+    layerType: string
+  ): 'bottom' | 'middle' | 'top' | undefined {
+    switch (layerType) {
+      case 'fill':
+      case 'raster':
+      case 'hillshade':
+        return 'bottom';
+      case 'line':
+      case 'circle':
+      case 'heatmap':
+        return 'middle';
+      case 'symbol':
+        return 'top';
+      default:
+        return undefined;
+    }
+  }
+
+  /**
+   * Emissive strength for custom layers on Standard.
+   *
+   * fill-, line- and circle-emissive-strength default to 0, which means the scene lights
+   * the layer — so it falls into shadow and goes nearly invisible under the dusk and night
+   * light presets. Setting 1 makes the layer hold its authored color across all four presets.
+   *
+   * Symbol layers are intentionally excluded: icon-emissive-strength and text-emissive-strength
+   * already default to 1. fill-extrusion is excluded because it is real 3D geometry that
+   * should be lit by the scene.
+   */
+  private static getEmissiveStrengthProperty(layerType: string): string | null {
+    switch (layerType) {
+      case 'fill':
+        return 'fill-emissive-strength';
+      case 'line':
+        return 'line-emissive-strength';
+      case 'circle':
+        return 'circle-emissive-strength';
+      default:
+        return null;
+    }
   }
 
   private getColorProperty(layerType: string): string | null {

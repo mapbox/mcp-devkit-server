@@ -119,8 +119,14 @@ const LayerConfigSchema = z.object({
     .enum(['bottom', 'middle', 'top'])
     .optional()
     .describe(
-      'Layer slot for Mapbox Standard styles. Controls layer stacking order. ' +
-        'Bottom: below most map features, Middle: between base and labels, Top: above all base map features (default)'
+      'Layer slot for Mapbox Standard styles. Set this on every custom layer — omitting it does not ' +
+        'mean "default placement", it means the layer draws above every basemap layer including street ' +
+        'labels. When omitted on a Standard style the tool infers a slot from the layer type and reports ' +
+        'which one it chose. ' +
+        'bottom: above land/landuse/water polygons but below roads — choropleths, rasters, terrain. ' +
+        'middle: above roads and lines but behind 3D buildings and labels — most data overlays, zone ' +
+        'fills, heatmaps, routes, custom POI layers. ' +
+        'top: above POI labels but behind place and transit labels — markers, active selections.'
     )
 });
 
@@ -152,12 +158,29 @@ export const StyleBuilderToolSchema = z.object({
 
   global_settings: z
     .object({
-      background_color: z.string().optional().describe('Background/land color'),
-      label_color: z.string().optional().describe('Default label color'),
-      mode: z.enum(['light', 'dark']).optional().describe('Light or dark mode')
+      background_color: z
+        .string()
+        .optional()
+        .describe(
+          'Background/land color. Classic styles only — Standard supplies its own background through the import, so this is ignored there. Use standard_config color overrides instead.'
+        ),
+      label_color: z
+        .string()
+        .optional()
+        .describe(
+          'Default label color. Currently not applied to the generated style — to recolor labels, use the standard_config colorPlaceLabels / colorRoadLabels / colorPointOfInterestLabels overrides on Standard, or set text-color on a symbol layer.'
+        ),
+      mode: z
+        .enum(['light', 'dark'])
+        .optional()
+        .describe(
+          'Light or dark mode for Classic styles. Do NOT use this for dark mode on Standard — set standard_config.lightPreset to "night" instead, which relights the entire basemap. This flag only recolors the custom layers this tool emits, so on Standard it produces a half-dark map that fights the basemap.'
+        )
     })
     .optional()
-    .describe('Global style settings'),
+    .describe(
+      'Global style settings for Classic styles. For Standard, prefer standard_config.'
+    ),
 
   standard_config: z
     .object({
