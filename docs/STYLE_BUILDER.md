@@ -179,6 +179,71 @@ is left alone because it is real 3D geometry that should be lit by the scene.
 Routes should also set `line-occlusion-opacity`; its default of `0` hides the part of the line
 that passes behind 3D buildings.
 
+## Adding Your Own Data
+
+The `layer_type` lookup covers Mapbox Streets v8 basemap features — roads, landuse, water,
+POIs. It does not cover your data. For that, declare a source in `custom_sources` and point a
+layer at it with `source_id`:
+
+```json
+{
+  "style_name": "Delivery",
+  "base_style": "standard",
+  "custom_sources": {
+    "zones": { "type": "geojson", "data": "https://example.com/zones.geojson" },
+    "route": { "type": "geojson", "data": "https://example.com/route.geojson" }
+  },
+  "layers": [
+    {
+      "layer_type": "Delivery zones",
+      "source_id": "zones",
+      "render_type": "fill",
+      "action": "color",
+      "color": "#7b61ff",
+      "opacity": 0.6
+    },
+    {
+      "layer_type": "Route",
+      "source_id": "route",
+      "render_type": "line",
+      "action": "color",
+      "color": "#3b6df5",
+      "width": 4
+    }
+  ]
+}
+```
+
+Notes:
+
+- **`render_type` is required** for these layers. A GeoJSON URL or a tileset gives the builder
+  nothing to inspect, so it cannot pick between fill, line and circle for you.
+- For `type: "vector"`, also set `source_layer` — the layer name inside the tileset. GeoJSON
+  has no source layers.
+- **Placement differs from basemap layers on purpose.** A basemap fill (parks, water) goes in
+  `bottom`, under the road network. A fill of your own data is an overlay, so it goes in
+  `middle` — above roads, behind labels and 3D buildings. Symbols go in `top`.
+- Lines from your own data get `line-occlusion-opacity`, since the canonical user line is a
+  route and a route vanishing behind buildings is a bug. Basemap roads are left alone, where
+  being hidden by a building is correct.
+
+## Standard and Classic Take Different Options
+
+The two targets are configured differently, and passing options for the wrong one is
+**rejected rather than ignored** — so a setting that would have done nothing tells you
+immediately instead of shipping a style that looks unchanged.
+
+|                   | Standard                                                      | Classic                                                       |
+| ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
+| Appearance        | `standard_config` (`theme`, `lightPreset`, `show*`, `color*`) | `global_settings` (`background_color`, `label_color`, `mode`) |
+| Slots             | yes                                                           | no                                                            |
+| Emissive strength | yes (lit scene)                                               | no lighting to shadow layers                                  |
+| Background layer  | supplied by the import                                        | authored into the style                                       |
+| Dark mode         | `lightPreset: "night"`                                        | `mode: "dark"`                                                |
+
+On Classic, `label_color` sets `text-color` on label layers, and a colour set on an individual
+layer takes precedence over it.
+
 ## Best Practices
 
 1. **Configure Before Layering**: On Standard, try `standard_config` before adding a custom layer

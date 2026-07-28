@@ -113,6 +113,24 @@ BASE STYLES:
 • Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/outdoors-v12/satellite-streets-v12/navigation-day-v1/navigation-night-v1
   Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
 
+Standard and Classic are configured through different options, and passing the wrong ones is
+rejected rather than ignored, so you learn immediately instead of shipping a style where a
+setting silently did nothing:
+• Standard takes standard_config (theme, lightPreset, show*, color*) — it has a config surface
+• Classic takes global_settings (background_color, label_color, mode) — it has no config surface
+
+YOUR OWN DATA (custom_sources):
+Declare your data in custom_sources, then point a layer at it with source_id. This is how you
+put delivery zones, a route, store locations or choropleth values on the map — the layer_type
+lookup only covers Mapbox Streets v8 basemap features, not your data.
+• custom_sources: { zones: { type: 'geojson', data: <url or inline FeatureCollection> } }
+• layer: { layer_type: 'Delivery zones', source_id: 'zones', render_type: 'fill', color: '#7b61ff' }
+• render_type is REQUIRED for these layers — geometry can't be inferred from a URL
+• For type 'vector', also set source_layer (the layer name inside the tileset)
+• These layers are placed as overlays ('middle', or 'top' for symbols) rather than under the
+  road network, get emissive strength so they survive the night preset, and lines get
+  line-occlusion-opacity so a route isn't hidden by 3D buildings
+
 STANDARD STYLE CONFIG (try this before adding layers):
 Configuring the basemap is cheaper and more robust than layering over it. Use standard_config:
 • Theme: default/faded/monochrome — 'faded'/'monochrome' is the fastest way to make your own data pop

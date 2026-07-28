@@ -956,6 +956,179 @@ describe('StyleBuilderTool', () => {
       expect(style.sprite).toBe('mapbox://sprites/mapbox/streets-v12');
     });
 
+    it('should build layers over the callers own GeoJSON sources', async () => {
+      const result = await tool.run({
+        style_name: 'Delivery',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/zones.geojson' },
+          route: { type: 'geojson', data: 'https://example.com/route.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Delivery zones',
+            source_id: 'zones',
+            action: 'color',
+            color: '#7b61ff',
+            opacity: 0.6,
+            render_type: 'fill'
+          },
+          {
+            layer_type: 'Route',
+            source_id: 'route',
+            action: 'color',
+            color: '#3b6df5',
+            width: 4,
+            render_type: 'line'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+
+      // The sources land alongside the basemap source under the ids the layers use.
+      expect(style.sources.zones).toEqual({
+        type: 'geojson',
+        data: 'https://example.com/zones.geojson'
+      });
+      expect(style.sources.route).toBeDefined();
+
+      const fill = style.layers.find((l: any) => l.type === 'fill');
+      const line = style.layers.find((l: any) => l.type === 'line');
+
+      // The user's own data is an overlay, so it belongs above roads and behind labels —
+      // unlike a basemap-derived fill, which goes in `bottom`, under the road network.
+      expect(fill.slot).toBe('middle');
+      expect(line.slot).toBe('middle');
+
+      expect(fill.paint['fill-emissive-strength']).toBe(1);
+      expect(line.paint['line-emissive-strength']).toBe(1);
+
+      // A route hidden behind 3D buildings is the failure this prevents.
+      expect(line.paint['line-occlusion-opacity']).toBe(1);
+    });
+
+    it('should require render_type and a known source_id for user data layers', async () => {
+      const missingRenderType = await tool.run({
+        style_name: 'G',
+        base_style: 'standard',
+        custom_sources: { z: { type: 'geojson', data: 'u' } },
+        layers: [{ layer_type: 'z', source_id: 'z', action: 'color' }]
+      } as StyleBuilderToolInput);
+      // Geometry cannot be inferred from a URL, so "auto" has nothing to work from.
+      expect(missingRenderType.content[0].text).toContain(
+        'render_type is required'
+      );
+
+      const unknownSource = await tool.run({
+        style_name: 'G',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'z',
+            source_id: 'nope',
+            action: 'color',
+            render_type: 'fill'
+          }
+        ]
+      } as StyleBuilderToolInput);
+      expect(unknownSource.content[0].text).toContain('Unknown source_id');
+    });
+
+    it('should reject options belonging to the other target instead of ignoring them', async () => {
+      // Standard relights and recolors labels through its config surface, so these
+      // Classic-only controls would silently do nothing.
+      const onStandard = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        global_settings: { label_color: '#ff00ff' },
+        layers: [{ layer_type: 'place_label', action: 'show' }]
+      } as StyleBuilderToolInput);
+      expect(onStandard.content[0].text).toContain('do not apply');
+      expect(onStandard.content[0].text).toContain('colorPlaceLabels');
+
+      // And the reverse: Classic has no config surface to configure.
+      const onClassic = await tool.run({
+        style_name: 'C',
+        base_style: 'dark-v11',
+        standard_config: { lightPreset: 'night' },
+        layers: []
+      } as StyleBuilderToolInput);
+      expect(onClassic.content[0].text).toContain('do not apply');
+      expect(onClassic.content[0].text).toContain('standard_config');
+    });
+
+    it('should apply label_color on Classic in precedence order', async () => {
+      const run = async (
+        globalSettings: Record<string, unknown>,
+        layerColor?: string
+      ) => {
+        const result = await tool.run({
+          style_name: 'C',
+          base_style: 'streets-v12',
+          global_settings: globalSettings,
+          layers: [
+            {
+              layer_type: 'place_label',
+              action: layerColor ? 'color' : 'show',
+              color: layerColor,
+              render_type: 'symbol'
+            }
+          ]
+        } as StyleBuilderToolInput);
+        const style = JSON.parse(
+          (result.content[0].text as string).match(
+            /```json\n([\s\S]*?)\n```/
+          )![1]
+        );
+        return style.layers.find((l: any) => l.type === 'symbol').paint;
+      };
+
+      // Each of these has to beat the generic per-property default, which already put a
+      // literal text-color in place — deferring to it made label_color a no-op.
+      expect((await run({ label_color: '#ff00ff' }))['text-color']).toBe(
+        '#ff00ff'
+      );
+      expect((await run({ mode: 'dark' }))['text-color']).toBe('#ffffff');
+      expect(
+        (await run({ label_color: '#ff00ff', mode: 'dark' }))['text-color']
+      ).toBe('#ff00ff');
+      // A color set on the layer itself is more specific than a style-wide default.
+      expect(
+        (await run({ label_color: '#ff00ff' }, '#00ff00'))['text-color']
+      ).toBe('#00ff00');
+    });
+
+    it('should drive icons off each layers own icon field rather than a literal', async () => {
+      const iconFor = async (layerType: string) => {
+        const result = await tool.run({
+          style_name: 'I',
+          base_style: 'standard',
+          layers: [
+            { layer_type: layerType, action: 'show', render_type: 'symbol' }
+          ]
+        } as StyleBuilderToolInput);
+        const style = JSON.parse(
+          (result.content[0].text as string).match(
+            /```json\n([\s\S]*?)\n```/
+          )![1]
+        );
+        return style.layers.find((l: any) => l.type === 'symbol')?.layout?.[
+          'icon-image'
+        ];
+      };
+
+      // These branches were previously keyed on 'poi_labels' and 'transit' — neither is a
+      // real source layer, so they were unreachable and every symbol layer fell through to
+      // a hardcoded "marker-15", giving every feature the same generic pin.
+      expect(await iconFor('poi_label')).toEqual(['get', 'maki']);
+      expect(await iconFor('airport_label')).toEqual(['get', 'maki']);
+
+      // Place labels are text only; a marker on every city was never intended.
+      expect(await iconFor('place_label')).toBeUndefined();
+    });
+
     it('should infer a slot from the layer type when none is given', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Slot Inference Test',

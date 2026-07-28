@@ -155,6 +155,13 @@ const CASES = [
     // it has no way to add a user's own GeoJSON source — so on this task the model has to
     // hand-author the layers. What matters is whether the style it ships is correct.
     checks: {
+      // The capability is only worth having if the model finds it. Before custom_sources
+      // existed the builder rejected user data outright ("layer not found"), so the model
+      // had to hand-author the layers and upload them raw.
+      'routes user data through custom_sources': (c) => {
+        const call = c.first('style_builder_tool');
+        return !!call && !!call.input?.custom_sources;
+      },
       'uploaded style is Standard-based': (c) => {
         const call = c.uploaded();
         return !!call && Array.isArray(call.input?.style?.imports);

@@ -7,7 +7,28 @@ const LayerConfigSchema = z.object({
   layer_type: z
     .string()
     .describe(
-      'Layer type from the resource (e.g., "water", "railways", "parks")'
+      'Layer type from the resource (e.g., "water", "railways", "parks"). ' +
+        'Ignored when source_id is set, since the layer then comes from your own data ' +
+        'rather than from Mapbox Streets v8 — use it as a human-readable name in that case.'
+    ),
+
+  source_id: z
+    .string()
+    .optional()
+    .describe(
+      'Key of an entry in custom_sources. Set this to style YOUR OWN data — delivery zones, ' +
+        'a route, store locations — instead of a Mapbox Streets v8 basemap layer. When set, ' +
+        'render_type is required (the geometry type cannot be inferred from a URL), the ' +
+        'Streets v8 layer lookup is skipped, and the layer is placed in a slot suited to a ' +
+        'data overlay rather than to a basemap feature.'
+    ),
+
+  source_layer: z
+    .string()
+    .optional()
+    .describe(
+      'Source layer name within a custom vector tile source. Required for custom_sources ' +
+        'entries of type "vector"; ignored for GeoJSON sources, which have no source layers.'
     ),
 
   render_type: z
@@ -155,6 +176,35 @@ export const StyleBuilderToolSchema = z.object({
   layers: z
     .array(LayerConfigSchema)
     .describe('Layer configurations based on the mapbox-style-layers resource'),
+
+  custom_sources: z
+    .record(
+      z.string(),
+      z.union([
+        z.object({
+          type: z.literal('geojson'),
+          data: z
+            .union([z.string(), z.record(z.string(), z.any())])
+            .describe(
+              'GeoJSON URL, or an inline FeatureCollection/Feature object'
+            )
+        }),
+        z.object({
+          type: z.literal('vector'),
+          url: z
+            .string()
+            .describe('Tileset URL, e.g. "mapbox://username.tilesetid"')
+        })
+      ])
+    )
+    .optional()
+    .describe(
+      'Your own data sources, keyed by an id you then reference from a layer via source_id. ' +
+        'This is how you put your own GeoJSON or tilesets on the map — delivery zones, routes, ' +
+        'store locations, choropleth values. Layers built from these sources get a slot suited ' +
+        'to a data overlay, emissive strength so they survive the night light preset, and ' +
+        'line-occlusion-opacity on lines so routes are not hidden by 3D buildings.'
+    ),
 
   global_settings: z
     .object({
