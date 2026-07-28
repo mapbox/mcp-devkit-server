@@ -406,6 +406,19 @@ ${JSON.stringify(style, null, 2)}
           type: 'vector'
         }
       };
+      // The Streets sprite is deliberate here, not a Classic-style leftover.
+      //
+      // A sprite has to match the icon vocabulary of the *data source*, not the basemap
+      // being imported. The symbol layers this tool emits reference icons by maki name —
+      // either ["get", "maki"] straight off the Streets v8 maki field (101 names like
+      // "restaurant" and "cafe") or a literal default such as "marker-15". The Streets
+      // sprite is the sprite built for exactly that data, so it resolves those names.
+      //
+      // Standard's own icons are not an option: an import is a separate scope whose
+      // contents are not addressable from the importing style's layers, and Standard
+      // carries its own iconography rather than exposing maki names. Per the style spec,
+      // a sprite is required once any layer uses icon-image or a *-pattern property, and
+      // it is the root style's sprite that serves the root style's layers.
       style.sprite = 'mapbox://sprites/mapbox/streets-v12';
       style.glyphs = 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf';
       style.projection = { name: 'globe' };

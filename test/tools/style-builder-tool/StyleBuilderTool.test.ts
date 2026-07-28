@@ -927,6 +927,35 @@ describe('StyleBuilderTool', () => {
       expect(poiLayer.slot).toBe('top');
     });
 
+    it('should give Standard styles a sprite that can resolve the maki icons it references', async () => {
+      const input: StyleBuilderToolInput = {
+        style_name: 'Sprite Test',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'poi_label',
+            action: 'show',
+            render_type: 'symbol'
+          }
+        ]
+      };
+
+      const result = await tool.run(input);
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+
+      const symbolLayer = style.layers.find((l: any) => l.type === 'symbol');
+
+      // The layer references an icon by maki name — either ["get", "maki"] off the
+      // Streets v8 field or a literal default like "marker-15".
+      expect(symbolLayer.layout['icon-image']).toBeDefined();
+
+      // So the root sprite has to be one that contains maki icons. Standard's own icons
+      // live in the import's scope and are not addressable from these layers, which is
+      // why the Streets sprite is correct here despite the Standard basemap.
+      expect(style.sprite).toBe('mapbox://sprites/mapbox/streets-v12');
+    });
+
     it('should infer a slot from the layer type when none is given', async () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Slot Inference Test',
