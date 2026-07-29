@@ -296,7 +296,9 @@ remove:
 - **Standard** — the basemap draws it through the import, so omitting a layer hides nothing. The
   builder sets the matching config toggle instead: `poi_label` →
   `showPointOfInterestLabels`, `place_label` → `showPlaceLabels`, `transit_stop_label` →
-  `showTransitLabels`, `building` → `show3dObjects`, `admin` → `showAdminBoundaries`.
+  `showTransitLabels`, `building` → `show3dBuildings`, `admin` → `showAdminBoundaries`.
+  (`show3dBuildings` rather than `show3dObjects`, which would take the 3D trees and landmarks
+  with it. Set `show3dObjects: false` yourself when you do want all 3D gone.)
 - Standard exposes no toggle for water, landuse or the road network itself, so `hide` on those is
   **rejected** rather than silently doing nothing. Make them recede with `theme: "faded"` or
   `"monochrome"` and the `color*` overrides. (`showRoadLabels` hides road labels and shields;

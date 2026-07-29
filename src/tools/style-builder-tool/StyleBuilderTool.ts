@@ -184,8 +184,29 @@ const STANDARD_HIDE_TOGGLE: Record<string, string> = {
   poi_label: 'showPointOfInterestLabels',
   place_label: 'showPlaceLabels',
   transit_stop_label: 'showTransitLabels',
-  building: 'show3dObjects',
+  // show3dBuildings, not show3dObjects: the latter is the whole 3D group — buildings, trees,
+  // landmarks and facades — so hiding "building" through it also strips the trees and
+  // landmarks the caller never mentioned. show3dObjects stays available on standard_config
+  // for callers who do want all 3D off.
+  building: 'show3dBuildings',
   admin: 'showAdminBoundaries'
+};
+
+/**
+ * `standard_config` properties that belong to a Standard style this tool does not build.
+ *
+ * The import URL here is always `mapbox://styles/mapbox/standard`, and `base_style` offers no
+ * Standard Satellite value, so a Satellite-only property lands in the import config and is
+ * ignored — the exact "setting silently did nothing" failure the target split exists to stop.
+ * Rejected rather than dropped, and rejected here rather than by removing it from the schema,
+ * because the schema strips unknown keys: a caller who sent it anyway would get silence.
+ */
+const STANDARD_SATELLITE_ONLY_CONFIG: Record<string, string> = {
+  showRoadsAndTransit:
+    'Standard Satellite only. On the Standard style this tool builds, the road network cannot ' +
+    'be toggled off at all — `showRoadLabels: false` drops the labels and shields, ' +
+    '`showPedestrianRoads: false` the paths, and `theme: "faded"` with `colorRoads` makes the ' +
+    'network recede without removing it.'
 };
 
 /**
@@ -377,7 +398,8 @@ v8 layer draws a SECOND copy over the basemap's own, which you then have to keep
   it as a layer and the tool builds the overdraw but tells you which config property to use instead
 • Hiding a basemap feature: action:'hide' on Standard sets the matching standard_config toggle —
   poi_label→showPointOfInterestLabels, place_label→showPlaceLabels,
-  transit_stop_label→showTransitLabels, building→show3dObjects, admin→showAdminBoundaries
+  transit_stop_label→showTransitLabels, building→show3dBuildings, admin→showAdminBoundaries
+  (show3dBuildings, not show3dObjects — that one takes the 3D trees and landmarks with it)
 • Standard has no toggle for water, landuse or the road network itself, so 'hide' on those is
   rejected rather than silently doing nothing. Use theme:'faded'/'monochrome' and the color*
   overrides to make them recede
@@ -542,6 +564,8 @@ ${JSON.stringify(style, null, 2)}
     standardConfig?: Record<string, unknown>;
     /** Which `standard_config` toggle each hidden layer resolved to, by index in `layers`. */
     hideToggles: Map<number, string>;
+    /** The Streets v8 source layer each basemap layer resolved to, by index in `layers`. */
+    resolvedSourceLayers: Map<number, string>;
     /** The reconciled Classic appearance, or null on Standard. */
     classic: ClassicSettings | null;
   } {
@@ -569,6 +593,10 @@ ${JSON.stringify(style, null, 2)}
       ...(input.standard_config ?? {})
     };
     const hideToggles = new Map<number, string>();
+    // The source layer each basemap layer resolved to, so the summary can describe a layer by
+    // the name the style actually uses rather than by the string that was passed in.
+    const resolvedSourceLayers = new Map<number, string>();
+    const reportedHideToggles = new Set<string>();
 
     /**
      * A build that stopped with guidance instead of a style.
@@ -582,6 +610,7 @@ ${JSON.stringify(style, null, 2)}
       layerHelp,
       availableProperties: {},
       hideToggles,
+      resolvedSourceLayers,
       classic
     });
 
@@ -590,6 +619,27 @@ ${JSON.stringify(style, null, 2)}
     const foreign = StyleBuilderTool.assertTargetOptions(input, target);
     if (foreign) {
       return guidance(foreign);
+    }
+
+    // Same rule one level down: a property of a *different Standard style* is as inert as a
+    // Classic option on Standard, and gets the same treatment rather than being passed through
+    // into the import config where nothing would read it.
+    const satelliteOnly = Object.keys(input.standard_config ?? {}).filter(
+      (key) => key in STANDARD_SATELLITE_ONLY_CONFIG
+    );
+    if (satelliteOnly.length > 0) {
+      return guidance(
+        `**Not available on the Standard style this tool builds: ${satelliteOnly
+          .map((key) => `\`${key}\``)
+          .join(', ')}.**\n\n` +
+          satelliteOnly
+            .map(
+              (key) => `• \`${key}\` — ${STANDARD_SATELLITE_ONLY_CONFIG[key]}`
+            )
+            .join('\n') +
+          `\n\nThis tool imports \`mapbox://styles/mapbox/standard\`, which has no such config ` +
+          `property, so setting it would have done nothing. Nothing was generated.`
+      );
     }
 
     // The builder's own source ids. A caller's source keyed the same way would replace the
@@ -687,6 +737,8 @@ ${JSON.stringify(style, null, 2)}
         return guidance(this.generateLayerHelp(config));
       }
 
+      resolvedSourceLayers.set(index, sourceLayer);
+
       // `hide` is answered against the *resolved* source layer, so a name the tool had to
       // work out from filter_properties gets the same answer as every other action would.
       if (config.action === 'hide') {
@@ -702,12 +754,17 @@ ${JSON.stringify(style, null, 2)}
                 `two so the intent is unambiguous.`
             );
           }
+          // Reported once per toggle. Two layers hiding the same feature is one decision,
+          // and repeating the line reads like two separate things happened.
+          if (!reportedHideToggles.has(toggle)) {
+            reportedHideToggles.add(toggle);
+            allCorrections.push(
+              `• Hiding "${sourceLayer}" on Standard set \`standard_config.${toggle}: false\`. ` +
+                `Omitting the layer would not have hidden it — the basemap draws it through the import.`
+            );
+          }
           standardConfig[toggle] = false;
           hideToggles.set(index, toggle);
-          allCorrections.push(
-            `• Hiding "${sourceLayer}" on Standard set \`standard_config.${toggle}: false\`. ` +
-              `Omitting the layer would not have hidden it — the basemap draws it through the import.`
-          );
         }
         // On Classic, leaving the layer out of the stack is what hides the feature.
         continue;
@@ -762,6 +819,40 @@ ${JSON.stringify(style, null, 2)}
         }
         allCorrections.push(...result.corrections);
       }
+    }
+
+    // Hiding a basemap feature and also drawing it is contradictory on its face, but it is a
+    // real technique on Standard: turn the basemap's own POIs off, draw your filtered subset
+    // over the top. So it is worth naming rather than rejecting — the same input is a mistake
+    // when the drawn layer is unfiltered, since that just reinstates what was hidden.
+    //
+    // Keyed by the hidden feature rather than by the layer that hid it, so two layers hiding
+    // one feature produce one line — the same de-duplication the toggle report needs.
+    const hiddenFeatures = new Map<string, string>();
+    for (const [index, toggle] of hideToggles) {
+      const name = resolvedSourceLayers.get(index);
+      if (name) hiddenFeatures.set(name, toggle);
+    }
+    for (const [hiddenLayer, toggle] of hiddenFeatures) {
+      const alsoDrawn = [...resolvedSourceLayers].filter(
+        ([otherIndex, name]) =>
+          name === hiddenLayer && input.layers[otherIndex].action !== 'hide'
+      );
+      if (alsoDrawn.length === 0) continue;
+      const unfiltered = alsoDrawn.some(
+        ([otherIndex]) =>
+          !input.layers[otherIndex].filter_properties &&
+          !input.layers[otherIndex].filter
+      );
+      allCorrections.push(
+        `• "${hiddenLayer}" is hidden through \`standard_config.${toggle}\` and also drawn as a ` +
+          `custom layer. ` +
+          (unfiltered
+            ? `The custom layer has no filter, so it redraws what the toggle just hid — drop ` +
+              `one of the two.`
+            : `That is the right shape for showing a filtered subset of a feature you have ` +
+              `otherwise turned off; no change needed if it was deliberate.`)
+      );
     }
 
     // Note: We no longer automatically add layers that weren't explicitly requested
@@ -870,6 +961,7 @@ ${JSON.stringify(style, null, 2)}
           ? standardConfig
           : undefined,
       hideToggles,
+      resolvedSourceLayers,
       classic
     };
   }
@@ -1655,29 +1747,36 @@ ${JSON.stringify(style, null, 2)}
   /**
    * The summary reports what the build produced, not what was passed in.
    *
-   * Everything here comes from the build result rather than being re-derived from the input:
-   * `standardConfig` carries the toggles `hide` actions resolved to, `hideToggles` says which
-   * toggle each layer got, and `classic` is the already-reconciled Classic appearance.
-   * Re-reading the input instead is how "poi_label: Hidden" appeared above a style that hid
-   * nothing.
+   * Every resolved value comes from the build result: `standardConfig` carries the toggles
+   * `hide` actions resolved to, `hideToggles` says which toggle each layer got,
+   * `resolvedSourceLayers` gives the Streets v8 layer each one landed on, and `classic` is the
+   * already-reconciled Classic appearance. Re-deriving any of it from the input is how
+   * "poi_label: Hidden" appeared above a style that hid nothing, and how a layer passed as
+   * "pois" was described by a name the built style never used.
+   *
+   * `input` is still read for the caller's own intent — the action, the colour they asked for,
+   * the id of a custom source — none of which the build changes.
    */
   private generateSummary(
     input: StyleBuilderToolInput,
     built: {
       standardConfig?: Record<string, unknown>;
       hideToggles: Map<number, string>;
+      resolvedSourceLayers: Map<number, string>;
       classic: ClassicSettings | null;
     }
   ): string {
-    const { standardConfig, hideToggles, classic } = built;
+    const { standardConfig, hideToggles, resolvedSourceLayers, classic } =
+      built;
     const parts: string[] = ['**Layer Configurations:**'];
 
     for (const [index, config] of input.layers.entries()) {
-      const layerDef = this.createDynamicLayerDefinition(
-        config.layer_type,
-        config
-      );
-      const description = layerDef?.description || config.layer_type;
+      // The resolved name, so a layer the tool worked out from filter_properties is described
+      // as what it became. Falls back to the input only for a layer that never resolved —
+      // one of the caller's own, which has no Streets v8 definition to describe.
+      const resolved = resolvedSourceLayers.get(index) ?? config.layer_type;
+      const layerDef = this.createDynamicLayerDefinition(resolved, config);
+      const description = layerDef?.description || resolved;
 
       switch (config.action) {
         case 'color':
@@ -1746,6 +1845,12 @@ ${JSON.stringify(style, null, 2)}
       if (config.show3dObjects !== undefined)
         visibilitySettings.push(
           `3D objects: ${config.show3dObjects ? 'shown' : 'hidden'}`
+        );
+      // Reported separately from show3dObjects, since hiding buildings and hiding every 3D
+      // object are different requests and this is the one `hide` on a building layer sets.
+      if (config.show3dBuildings !== undefined)
+        visibilitySettings.push(
+          `3D buildings: ${config.show3dBuildings ? 'shown' : 'hidden'}`
         );
       if (config.showAdminBoundaries !== undefined)
         visibilitySettings.push(

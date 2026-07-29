@@ -1106,7 +1106,7 @@ describe('StyleBuilderTool', () => {
 
       expect(style.imports[0].config).toEqual({
         showPointOfInterestLabels: false,
-        show3dObjects: false
+        show3dBuildings: false
       });
       // And the report names the toggle rather than claiming a hidden layer.
       expect(text).toContain('showPointOfInterestLabels');
@@ -1216,6 +1216,150 @@ describe('StyleBuilderTool', () => {
       expect(text).toBe(shown.content[0].text as string);
     });
 
+    it('should hide buildings without taking the 3D trees and landmarks too', async () => {
+      // show3dObjects is the whole 3D group. Hiding a building through it also strips the
+      // trees and landmarks nobody mentioned, while the report claimed only buildings.
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [{ layer_type: 'building', action: 'hide' }]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      expect(style.imports[0].config).toEqual({ show3dBuildings: false });
+      expect(style.imports[0].config.show3dObjects).toBeUndefined();
+
+      // The blunter toggle is still reachable for a caller who does want all 3D gone.
+      const allOff = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        standard_config: { show3dObjects: false },
+        layers: []
+      } as StyleBuilderToolInput);
+      const allOffStyle = JSON.parse(
+        (allOff.content[0].text as string).match(/```json\n([\s\S]*?)\n```/)![1]
+      );
+      expect(allOffStyle.imports[0].config).toEqual({ show3dObjects: false });
+    });
+
+    it('should reject a config property belonging to Standard Satellite', async () => {
+      // showRoadsAndTransit exists on Standard Satellite, not on the plain Standard this tool
+      // imports — so it used to land an inert key in the import config. The wrong-target check
+      // only compared Standard against Classic, never against a different Standard.
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        standard_config: { showRoadsAndTransit: false },
+        layers: [{ layer_type: 'water', action: 'show' }]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      expect(text).toContain('showRoadsAndTransit');
+      expect(text).toContain('Standard Satellite only');
+      expect(text).not.toContain('Style Built Successfully');
+      // And it points at what does work on Standard.
+      expect(text).toContain('showRoadLabels');
+    });
+
+    it('should describe a filter-resolved layer by the name the style uses', async () => {
+      // The summary used to re-derive the description from the raw input, so a layer passed as
+      // "pois" was reported under a name appearing nowhere in the built style.
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'pois',
+            filter_properties: { maki: 'restaurant' },
+            action: 'color',
+            color: '#ff0000'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const summary = text.slice(text.indexOf('**Layer Configurations:**'));
+      expect(summary).not.toContain('pois');
+      expect(summary).toContain('poi_label');
+    });
+
+    it('should report one correction when two layers hide the same feature', async () => {
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [
+          { layer_type: 'poi_label', action: 'hide' },
+          {
+            layer_type: 'poi_label',
+            filter_properties: { class: 'food_and_drink' },
+            action: 'hide'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      // One decision, one line — repeating it reads like two things happened.
+      const hits = text.match(
+        /set `standard_config\.showPointOfInterestLabels/g
+      );
+      expect(hits).toHaveLength(1);
+    });
+
+    it('should name a hide that is redrawn by an unfiltered custom layer', async () => {
+      // Hiding the basemap POIs and drawing a filtered subset is a real technique, so it is
+      // named rather than rejected — but an unfiltered redraw just reinstates what was hidden.
+      const unfiltered = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [
+          { layer_type: 'poi_label', action: 'hide' },
+          { layer_type: 'poi_label', action: 'color', color: '#ff0000' }
+        ]
+      } as StyleBuilderToolInput);
+      expect(unfiltered.content[0].text).toContain(
+        'redraws what the toggle just hid'
+      );
+
+      const filtered = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [
+          { layer_type: 'poi_label', action: 'hide' },
+          {
+            layer_type: 'poi_label',
+            filter_properties: { class: 'food_and_drink' },
+            action: 'color',
+            color: '#ff0000'
+          }
+        ]
+      } as StyleBuilderToolInput);
+      const filteredText = filtered.content[0].text as string;
+      expect(filteredText).toContain('filtered subset');
+      expect(filteredText).not.toContain('redraws what the toggle just hid');
+      expect(filteredText).toContain('Style Built Successfully');
+
+      // Keyed by the hidden feature, not by the layer that hid it: two layers hiding one
+      // feature is still one contradiction, and reporting it twice is the noise this avoids.
+      const twoHides = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [
+          { layer_type: 'poi_label', action: 'hide' },
+          {
+            layer_type: 'pois',
+            filter_properties: { maki: 'cafe' },
+            action: 'hide'
+          },
+          { layer_type: 'poi_label', action: 'color', color: '#ff0000' }
+        ]
+      } as StyleBuilderToolInput);
+      const hits = (twoHides.content[0].text as string).match(
+        /is hidden through `standard_config/g
+      );
+      expect(hits).toHaveLength(1);
+    });
+
     it('should flag a hide that contradicts an explicit show toggle', async () => {
       const result = await tool.run({
         style_name: 'S',
@@ -1232,7 +1376,7 @@ describe('StyleBuilderTool', () => {
       expect(style.imports[0].config.showPlaceLabels).toBe(false);
     });
 
-    it('should reject a custom_source keyed like one of the builder-s own', async () => {
+    it("should reject a custom_source keyed like one of the builder's own", async () => {
       // custom_sources is merged last, so a collision replaces the basemap source rather
       // than sitting beside it — and every basemap layer then reads the caller's data.
       const composite = await tool.run({
@@ -1249,6 +1393,18 @@ describe('StyleBuilderTool', () => {
       expect(text).toContain('`composite`');
       expect(text).toContain('my-composite');
       expect(text).not.toContain('Style Built Successfully');
+
+      // It is about what lands in `style.sources`, not about layer wiring: a declared source
+      // clobbers the basemap whether or not any layer points at it.
+      const unreferenced = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        custom_sources: {
+          composite: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: []
+      } as StyleBuilderToolInput);
+      expect(unreferenced.content[0].text).toContain('Reserved source id');
 
       // "satellite" is reserved only where the base actually declares it.
       const onSatelliteBase = await tool.run({

@@ -156,7 +156,8 @@ v8 layer draws a SECOND copy over the basemap's own, which you then have to keep
   it as a layer and the tool builds the overdraw but tells you which config property to use instead
 • Hiding a basemap feature: action:'hide' on Standard sets the matching standard_config toggle —
   poi_label→showPointOfInterestLabels, place_label→showPlaceLabels,
-  transit_stop_label→showTransitLabels, building→show3dObjects, admin→showAdminBoundaries
+  transit_stop_label→showTransitLabels, building→show3dBuildings, admin→showAdminBoundaries
+  (show3dBuildings, not show3dObjects — that one takes the 3D trees and landmarks with it)
 • Standard has no toggle for water, landuse or the road network itself, so 'hide' on those is
   rejected rather than silently doing nothing. Use theme:'faded'/'monochrome' and the color*
   overrides to make them recede

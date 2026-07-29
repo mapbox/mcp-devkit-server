@@ -285,7 +285,15 @@ export const StyleBuilderToolSchema = z.object({
         .boolean()
         .optional()
         .describe(
-          'Show/hide the base 3D objects like buildings and landmarks from the Standard style'
+          'Show/hide ALL base 3D objects at once — buildings, trees, landmarks and facades. ' +
+            'For buildings alone use show3dBuildings; this one takes the trees and landmarks with it.'
+        ),
+      show3dBuildings: z
+        .boolean()
+        .optional()
+        .describe(
+          'Show/hide the base 3D buildings, leaving the other 3D objects (trees, landmarks) ' +
+            'in place. This is what action:"hide" on a "building" layer sets.'
         ),
       showLandmarkIcons: z
         .boolean()
@@ -307,7 +315,11 @@ export const StyleBuilderToolSchema = z.object({
         .boolean()
         .optional()
         .describe(
-          'Show/hide the base roads and transit networks from the Standard style (Standard-Satellite)'
+          'Standard Satellite only — REJECTED here. This tool imports mapbox://styles/mapbox/' +
+            'standard, which has no such property, so setting it would do nothing. The road ' +
+            'network cannot be toggled off on Standard: showRoadLabels drops the labels and ' +
+            'shields, showPedestrianRoads the paths, and theme "faded" with colorRoads makes ' +
+            'the network recede. Listed so passing it is an error rather than silence.'
         ),
 
       // String configuration properties
