@@ -6,7 +6,10 @@ process.env.MAPBOX_ACCESS_TOKEN = `eyJhbGciOiJIUzI1NiJ9.${payload}.signature`;
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { z } from 'zod';
-import { MapboxApiBasedTool } from '../../src/tools/MapboxApiBasedTool.js';
+import {
+  MapboxApiBasedTool,
+  redactToken
+} from '../../src/tools/MapboxApiBasedTool.js';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { HttpRequest } from '../../src/utils/types.js';
 import { setupHttpRequest } from '../utils/httpPipelineUtils.js';
@@ -41,6 +44,64 @@ class TestTool extends MapboxApiBasedTool<typeof TestTool.inputSchema> {
     throw new Error('Test error message');
   }
 }
+
+describe('redactToken', () => {
+  const PUBLIC_TOKEN =
+    'pk.eyJ1IjoidmFsaXVuaWEiLCJhIjoiY21yb3FqdWtiMDJobjJ5c2c3NGVxeXphZCJ9.signaturevalue';
+  const SECRET_TOKEN = 'sk.eyJ1IjoidGVzdHVzZXIifQ.signaturevalue';
+  const TEMP_TOKEN = 'tk.eyJ1IjoidGVtcC11c2VyXzEifQ.signaturevalue';
+
+  it('keeps the prefix and account name, dropping the signature', () => {
+    expect(redactToken(`access_token=${PUBLIC_TOKEN}`)).toBe(
+      'access_token=pk.valiunia.redacted'
+    );
+    expect(redactToken(`access_token=${SECRET_TOKEN}`)).toBe(
+      'access_token=sk.testuser.redacted'
+    );
+    expect(redactToken(`access_token=${TEMP_TOKEN}`)).toBe(
+      'access_token=tk.temp-user_1.redacted'
+    );
+  });
+
+  it('never emits the token signature', () => {
+    expect(
+      redactToken(
+        `https://api.mapbox.com/tokens/v2/valiunia?access_token=${PUBLIC_TOKEN}&limit=5`
+      )
+    ).toBe(
+      'https://api.mapbox.com/tokens/v2/valiunia?access_token=pk.valiunia.redacted&limit=5'
+    );
+  });
+
+  it('redacts every occurrence in a string', () => {
+    expect(
+      redactToken(
+        `first access_token=${PUBLIC_TOKEN} second access_token=${SECRET_TOKEN}`
+      )
+    ).toBe(
+      'first access_token=pk.valiunia.redacted second access_token=sk.testuser.redacted'
+    );
+  });
+
+  it.each([
+    ['an unrecognized prefix', 'zz.eyJ1IjoidGVzdHVzZXIifQ.signaturevalue'],
+    ['too few segments', 'pk.eyJ1IjoidGVzdHVzZXIifQ'],
+    ['a payload that is not base64 JSON', 'pk.@@@notbase64@@@.signaturevalue'],
+    [
+      'a payload with no account name',
+      'pk.eyJhIjoibm9hY2NvdW50In0.signaturevalue'
+    ],
+    ['an opaque value', 'some-legacy-opaque-token']
+  ])('falls back to *** for %s', (_case, token) => {
+    expect(redactToken(`access_token=${token}`)).toBe('access_token=***');
+  });
+
+  it('leaves strings without a token untouched', () => {
+    expect(redactToken('https://api.mapbox.com/tokens/v2/valiunia')).toBe(
+      'https://api.mapbox.com/tokens/v2/valiunia'
+    );
+  });
+});
 
 describe('MapboxApiBasedTool', () => {
   let testTool: TestTool;
