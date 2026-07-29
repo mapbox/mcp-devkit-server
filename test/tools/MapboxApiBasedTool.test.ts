@@ -46,14 +46,13 @@ class TestTool extends MapboxApiBasedTool<typeof TestTool.inputSchema> {
 }
 
 describe('redactToken', () => {
-  const PUBLIC_TOKEN =
-    'pk.eyJ1IjoidmFsaXVuaWEiLCJhIjoiY21yb3FqdWtiMDJobjJ5c2c3NGVxeXphZCJ9.signaturevalue';
+  const PUBLIC_TOKEN = 'pk.eyJ1IjoiZXhhbXBsZS1hY2NvdW50In0.signaturevalue';
   const SECRET_TOKEN = 'sk.eyJ1IjoidGVzdHVzZXIifQ.signaturevalue';
   const TEMP_TOKEN = 'tk.eyJ1IjoidGVtcC11c2VyXzEifQ.signaturevalue';
 
   it('keeps the prefix and account name, dropping the signature', () => {
     expect(redactToken(`access_token=${PUBLIC_TOKEN}`)).toBe(
-      'access_token=pk.valiunia.redacted'
+      'access_token=pk.example-account.redacted'
     );
     expect(redactToken(`access_token=${SECRET_TOKEN}`)).toBe(
       'access_token=sk.testuser.redacted'
@@ -66,10 +65,10 @@ describe('redactToken', () => {
   it('never emits the token signature', () => {
     expect(
       redactToken(
-        `https://api.mapbox.com/tokens/v2/valiunia?access_token=${PUBLIC_TOKEN}&limit=5`
+        `https://api.mapbox.com/tokens/v2/example-account?access_token=${PUBLIC_TOKEN}&limit=5`
       )
     ).toBe(
-      'https://api.mapbox.com/tokens/v2/valiunia?access_token=pk.valiunia.redacted&limit=5'
+      'https://api.mapbox.com/tokens/v2/example-account?access_token=pk.example-account.redacted&limit=5'
     );
   });
 
@@ -79,7 +78,7 @@ describe('redactToken', () => {
         `first access_token=${PUBLIC_TOKEN} second access_token=${SECRET_TOKEN}`
       )
     ).toBe(
-      'first access_token=pk.valiunia.redacted second access_token=sk.testuser.redacted'
+      'first access_token=pk.example-account.redacted second access_token=sk.testuser.redacted'
     );
   });
 
@@ -97,9 +96,9 @@ describe('redactToken', () => {
   });
 
   it('leaves strings without a token untouched', () => {
-    expect(redactToken('https://api.mapbox.com/tokens/v2/valiunia')).toBe(
-      'https://api.mapbox.com/tokens/v2/valiunia'
-    );
+    expect(
+      redactToken('https://api.mapbox.com/tokens/v2/example-account')
+    ).toBe('https://api.mapbox.com/tokens/v2/example-account');
   });
 });
 
