@@ -159,9 +159,12 @@ export const StyleBuilderToolSchema = z.object({
     .default('standard')
     .describe(
       'ALWAYS "standard" unless a Classic style is explicitly asked for. A Classic base is not ' +
-        'an import and does not reproduce the named style — only the layers you list get drawn. ' +
-        'The name sets light vs dark ("dark-v11", "navigation-night-v1" and the satellite bases ' +
-        'are dark) and whether mapbox.satellite imagery sits underneath.'
+        'an import and does not reproduce the named style — only the layers you list get drawn, ' +
+        'and an empty layers array is rejected. The name sets light vs dark ("dark-v11", ' +
+        '"navigation-night-v1" and the satellite bases are dark) and whether mapbox.satellite ' +
+        'imagery sits underneath. To use a named Classic style as it actually looks, reference ' +
+        'mapbox://styles/mapbox/<name> in the map instead of building a style here — see ' +
+        'https://docs.mapbox.com/map-styles/guides/classic-styles/'
     ),
 
   layers: z

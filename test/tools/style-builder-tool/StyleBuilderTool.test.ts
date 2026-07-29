@@ -50,7 +50,9 @@ describe('StyleBuilderTool', () => {
       const input: StyleBuilderToolInput = {
         style_name: 'Dark Mode Style',
         base_style: 'streets-v12', // Use classic style to test background color
-        layers: [],
+        // A Classic build needs at least one layer — an empty stack is a redirect now — and this
+        // test is about global_settings reaching the output, not about the empty case.
+        layers: [{ layer_type: 'water', action: 'color', color: '#0a1a2a' }],
         global_settings: {
           mode: 'dark',
           background_color: '#000000'
@@ -284,25 +286,20 @@ describe('StyleBuilderTool', () => {
       }
     });
 
-    it('should include only background layer when no layers specified', async () => {
-      // Test with classic style
-      const input: StyleBuilderToolInput = {
+    it('should build no style at all when a Classic base is given no layers', async () => {
+      // This used to assert the opposite — a lone background layer — which is the outcome the
+      // redirect replaced: a style reported as built that draws nothing but a colour. See
+      // "should redirect an empty Classic build instead of shipping a bare background" for the
+      // guidance itself.
+      const result = await tool.run({
         style_name: 'Essential Layers Test',
-        base_style: 'streets-v12', // Use classic style
-        layers: [] // No layers specified
-      };
-
-      const result = await tool.run(input);
+        base_style: 'streets-v12',
+        layers: []
+      } as StyleBuilderToolInput);
       const text = result.content[0].text as string;
 
-      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
-      const style = JSON.parse(jsonMatch![1]);
-
-      // Classic styles should only have background when no layers specified
-      expect(style.layers.length).toBe(1);
-
-      const bgLayer = style.layers.find((l: any) => l.id === 'background');
-      expect(bgLayer).toBeTruthy();
+      expect(text).not.toContain('Style Built Successfully');
+      expect(text.match(/```json\n([\s\S]*?)\n```/)).toBeNull();
     });
   });
 
@@ -1295,6 +1292,156 @@ describe('StyleBuilderTool', () => {
       expect(text).toContain('`name` property');
     });
 
+    it('should not leave a layer over your own data with no colour at all', async () => {
+      const result = await tool.run({
+        style_name: 'Zones',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Zones',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'show'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+
+      // fill-color defaults to opaque black, so omitting it is not "unstyled" — it is a black
+      // slab over the whole map. Same failure as a `match` with no fallback arm.
+      expect(style.layers[0].paint['fill-color']).toBe('#999999');
+      expect(text).toContain('opaque black');
+    });
+
+    it('should normalise a bare hex colour on your own data, as it does on the basemap', async () => {
+      const build = async (layer: Record<string, unknown>) => {
+        const result = await tool.run({
+          style_name: 'Zones',
+          base_style: 'standard',
+          custom_sources: {
+            zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+          },
+          layers: [layer]
+        } as StyleBuilderToolInput);
+        return JSON.parse(
+          (result.content[0].text as string).match(
+            /```json\n([\s\S]*?)\n```/
+          )![1]
+        );
+      };
+
+      // "7b61ff" is not a colour the spec can parse, so it failed validation at upload rather
+      // than here. The basemap path has always prefixed it; this one passed it straight through.
+      const bare = await build({
+        layer_type: 'Zones',
+        source_id: 'zones',
+        render_type: 'fill',
+        action: 'color',
+        color: '7b61ff'
+      });
+      expect(bare.layers[0].paint['fill-color']).toBe('#7b61ff');
+
+      // A functional or named colour is already valid and must not be prefixed into "#red".
+      const named = await build({
+        layer_type: 'Zones',
+        source_id: 'zones',
+        render_type: 'fill',
+        action: 'color',
+        color: 'rgba(123, 97, 255, 0.5)'
+      });
+      expect(named.layers[0].paint['fill-color']).toBe(
+        'rgba(123, 97, 255, 0.5)'
+      );
+    });
+
+    it('should give a fill-extrusion over your own data a height and no slot', async () => {
+      const result = await tool.run({
+        style_name: 'Buildings',
+        base_style: 'standard',
+        custom_sources: { bld: { type: 'vector', url: 'mapbox://me.bld' } },
+        layers: [
+          {
+            layer_type: 'My buildings',
+            source_id: 'bld',
+            source_layer: 'bld',
+            render_type: 'fill-extrusion',
+            action: 'color',
+            color: '#cccccc'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const layer = style.layers[0];
+
+      // fill-extrusion-height defaults to 0, so without one the layer is present, valid and flat.
+      expect(layer.paint['fill-extrusion-height']).toEqual(['get', 'height']);
+      expect(text).toContain('`height` property');
+
+      // Unslotted for the same reason a basemap fill-extrusion is: it is real 3D geometry that
+      // depth-sorts against the buildings around it, and a slot flattens it into the 2D stack.
+      // Whose data it is doesn't change that.
+      expect(layer.slot).toBeUndefined();
+      expect(text).toContain('without a slot deliberately');
+    });
+
+    it('should say when zoom_based had nothing to ramp on your own data', async () => {
+      const result = await tool.run({
+        style_name: 'Zones',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Zones',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'color',
+            color: '#7b61ff',
+            zoom_based: true
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      // zoom_based ramps opacity and width; with neither set it was accepted and did nothing.
+      expect(result.content[0].text as string).toContain(
+        '`zoom_based` had no effect'
+      );
+
+      // With something to act on it ramps, and says nothing.
+      const ramped = await tool.run({
+        style_name: 'Zones',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Zones',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'color',
+            color: '#7b61ff',
+            opacity: 0.6,
+            zoom_based: true
+          }
+        ]
+      } as StyleBuilderToolInput);
+      const rampedText = ramped.content[0].text as string;
+      const style = JSON.parse(
+        rampedText.match(/```json\n([\s\S]*?)\n```/)![1]
+      );
+      expect(style.layers[0].paint['fill-opacity'][0]).toBe('interpolate');
+      expect(rampedText).not.toContain('`zoom_based` had no effect');
+    });
+
     it('should say a fill-extrusion is unslotted on purpose, not report a slot of undefined', async () => {
       const result = await tool.run({
         style_name: '3D',
@@ -1875,6 +2022,87 @@ describe('StyleBuilderTool', () => {
       for (const style of [light, dark, night, satellite, satelliteStreets]) {
         expect(style.imports).toBeUndefined();
       }
+    });
+
+    it('should redirect an empty Classic build instead of shipping a bare background', async () => {
+      const result = await tool.run({
+        style_name: 'C',
+        base_style: 'dark-v11',
+        layers: []
+      } as StyleBuilderToolInput);
+      const text = result.content[0].text as string;
+
+      // A Classic base authors nothing, so this used to be a lone background layer reported as
+      // "Style Built Successfully" — and the likeliest reading of the request is "give me
+      // dark-v11", which is a reference to an existing style rather than a build.
+      expect(text).not.toContain('Style Built Successfully');
+      expect(text).toContain('Nothing was generated');
+      expect(text).toContain('mapbox://styles/mapbox/dark-v11');
+      expect(text).toContain(
+        'https://docs.mapbox.com/map-styles/guides/classic-styles/'
+      );
+      // A dark Classic base is the case where Standard has a direct equivalent.
+      expect(text).toContain('lightPreset');
+      // And the third reading: they really do want a stack they author themselves.
+      expect(text).toContain('place_label');
+
+      // An imagery base gets the extra option, since standard-satellite is what it wants.
+      const satellite = await tool.run({
+        style_name: 'C',
+        base_style: 'satellite-v9',
+        layers: []
+      } as StyleBuilderToolInput);
+      expect(satellite.content[0].text as string).toContain(
+        'mapbox://styles/mapbox/standard-satellite'
+      );
+
+      // Standard is exempt: a config-only style with no layers of its own is the normal shape
+      // there, because the import supplies the map.
+      const standard = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [],
+        standard_config: { lightPreset: 'night' }
+      } as StyleBuilderToolInput);
+      expect(standard.content[0].text as string).toContain(
+        'Style Built Successfully'
+      );
+    });
+
+    it('should name the basemap features a thin Classic stack leaves undrawn', async () => {
+      const result = await tool.run({
+        style_name: 'C',
+        base_style: 'streets-v12',
+        layers: [{ layer_type: 'road', action: 'color', color: '#ffffff' }]
+      } as StyleBuilderToolInput);
+      const text = result.content[0].text as string;
+
+      // Built, not rejected — one layer over a background is a legitimate thing to want — but the
+      // shortfall is invisible in the JSON, so it is named.
+      expect(text).toContain('Style Built Successfully');
+      const shortfall = text
+        .split('\n')
+        .find((line) => line.includes('draws nothing for'))!;
+      expect(shortfall).toContain('"water"');
+      expect(shortfall).toContain('"place_label"');
+      // The one feature that *was* asked for is not reported as missing.
+      expect(shortfall).not.toContain('"road"');
+
+      // A full stack has nothing to report.
+      const complete = await tool.run({
+        style_name: 'C',
+        base_style: 'streets-v12',
+        layers: [
+          { layer_type: 'water', action: 'color', color: '#a0c8f0' },
+          { layer_type: 'landuse', action: 'color', color: '#d0e0d0' },
+          { layer_type: 'road', action: 'color', color: '#ffffff' },
+          { layer_type: 'building', action: 'color', color: '#e0e0e0' },
+          { layer_type: 'place_label', action: 'show', render_type: 'symbol' }
+        ]
+      } as StyleBuilderToolInput);
+      expect(complete.content[0].text as string).not.toContain(
+        'draws nothing for'
+      );
     });
 
     it('should let label_color beat a dark mode the base name implied', async () => {

@@ -172,6 +172,75 @@ function resolveClassicSettings(
   };
 }
 
+/** The Classic styles guide, which lists every Classic style and the URL that references it. */
+const CLASSIC_STYLES_DOC =
+  'https://docs.mapbox.com/map-styles/guides/classic-styles/';
+
+/**
+ * What a general-purpose Classic map is expected to draw.
+ *
+ * Used to name the shortfall in a thin Classic stack, and to say what a complete one looks like.
+ * Not a hard stop past the empty case — a couple of layers over satellite imagery is a legitimate
+ * thing to build — but a stack missing these is more often an incomplete list than a deliberate one.
+ */
+const CLASSIC_STAPLE_LAYERS = [
+  'water',
+  'landuse',
+  'road',
+  'building',
+  'place_label'
+];
+
+/**
+ * Why an empty Classic build is a redirect rather than a style.
+ *
+ * A Classic base authors nothing, so `layers: []` produced a lone background layer and reported
+ * success — the "looks finished and did nothing" outcome every other hard stop here exists to
+ * prevent. It is also the shape a caller lands in having read `base_style: "dark-v11"` as "give me
+ * dark-v11", which is the likeliest thing they meant and the one thing this tool cannot do: it
+ * builds a new self-contained style, so using the real one is a reference rather than a build.
+ */
+function emptyClassicGuidance(baseStyle: string, imagery: boolean): string {
+  const options = [
+    `**You want the real \`${baseStyle}\`** — its palette, road hierarchy and label treatment. ` +
+      `Reference \`mapbox://styles/mapbox/${baseStyle}\` in your map directly; there is no style ` +
+      `to create. This tool builds new styles, it is not a way to fetch an existing one. Every ` +
+      `Classic style and the URL for it: ${CLASSIC_STYLES_DOC}`,
+    `**You want a map you can configure** — use \`base_style: "standard"\`. ` +
+      (DARK_CLASSIC_BASES.has(baseStyle)
+        ? `For a dark one add \`standard_config: { lightPreset: "night" }\`, which relights the ` +
+          `whole scene instead of recolouring a hand-authored stack.`
+        : `\`standard_config\` (\`theme\`, \`lightPreset\`, \`show*\`, \`color*\`) restyles the ` +
+          `basemap without authoring a single layer.`)
+  ];
+
+  if (imagery) {
+    options.push(
+      `**You want imagery under an otherwise-Standard map** — reference ` +
+        `\`mapbox://styles/mapbox/standard-satellite\` in your map. This tool imports plain ` +
+        `Standard, and \`custom_sources\` takes GeoJSON and vector tilesets, not raster.`
+    );
+  }
+
+  options.push(
+    `**You do want a self-contained Classic stack** — then list every feature it should draw in ` +
+      `\`layers\`: ${CLASSIC_STAPLE_LAYERS.map((name) => `\`${name}\``).join(', ')} at a ` +
+      `minimum, plus whatever else the map needs.`
+  );
+
+  return (
+    `**A Classic base draws nothing on its own, and no layers were listed.**\n\n` +
+    `\`base_style: "${baseStyle}"\` is not a style import — the builder authors the whole stack, ` +
+    `so an empty \`layers\` array means an empty map: ` +
+    (imagery
+      ? `satellite imagery with nothing over it.`
+      : `a background colour and nothing else.`) +
+    `\n\nOne of these is what you meant:\n` +
+    options.map((option) => `• ${option}`).join('\n') +
+    `\n\nNothing was generated.`
+  );
+}
+
 /**
  * The Standard config toggle that hides a basemap feature, where one exists.
  *
@@ -279,6 +348,11 @@ function inferSlot(layerType: string, origin: LayerOrigin): Slot | undefined {
     // behind labels and 3D buildings. A choropleth is the exception that can't be inferred —
     // it wants 'bottom' so the road network reads over it — so the inferred slot is reported
     // and the caller told to set 'bottom' when the fill encodes a data value.
+    //
+    // fill-extrusion is exempt for exactly the reason a basemap one is: it is real 3D geometry
+    // that the scene depth-sorts against the buildings around it, and any slot flattens it into
+    // the 2D stack. Whose data it is doesn't change that.
+    if (layerType === 'fill-extrusion') return undefined;
     return layerType === 'symbol' ? 'top' : 'middle';
   }
   switch (layerType) {
@@ -380,6 +454,21 @@ const NON_COLOR_CONFIG = new Set(['colorModePointOfInterestLabels']);
  */
 const UNCLASSIFIED_COLOR = '#999999';
 
+/**
+ * A colour value the style spec can actually parse.
+ *
+ * Bare hex ("7b61ff") arrives often enough to be worth handling, and left raw it fails validation
+ * at upload rather than at the point the mistake was made. Only something that is unambiguously
+ * bare hex is prefixed: a named colour ("red") or a functional one is already valid, and prefixing
+ * it would produce "#red".
+ */
+function normalizeColor(color?: string): string | undefined {
+  if (!color) return undefined;
+  return /^(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(color)
+    ? `#${color}`
+    : color;
+}
+
 // Geometry types from Mapbox tilestats API for Streets v8
 // This maps actual source-layer names to their geometry types
 const SOURCE_LAYER_GEOMETRY: Record<
@@ -429,9 +518,10 @@ TARGET — base_style decides which options apply, and the wrong ones are REJECT
 • Classic (streets-v12/light-v11/dark-v11/satellite-*/outdoors-v12/navigation-*) only when a
   classic style is explicitly asked for. Takes global_settings; no config surface, no slots
 • A Classic base is NOT an import and does not reproduce the named style — this tool authors the
-  stack, so EVERYTHING you want drawn must be listed in 'layers'. Pass none and you get a
-  background and nothing else. The base name only sets light vs dark and whether satellite imagery
-  goes underneath; bases within a group are equivalent
+  stack, so EVERYTHING you want drawn must be listed in 'layers', and an empty list is REJECTED.
+  To use the named style itself, reference mapbox://styles/mapbox/<name> in the map rather than
+  building anything here. The base name only sets light vs dark and whether satellite imagery goes
+  underneath; bases within a group are equivalent
 
 ON STANDARD, CONFIGURE BEFORE YOU LAYER:
 The basemap belongs to the import and this tool cannot reach into it, so a Streets v8 layer draws a
@@ -626,6 +716,17 @@ ${JSON.stringify(style, null, 2)}
     const foreign = StyleBuilderTool.assertTargetOptions(input, target);
     if (foreign) {
       return guidance(foreign);
+    }
+
+    // A Classic base authors nothing, so no layers is no map — a background layer reported as a
+    // style built successfully. Stopped rather than built, because the likeliest reading of
+    // `base_style: "dark-v11"` is "give me dark-v11", which is a reference to an existing style
+    // rather than anything this tool can produce. Standard is exempt: a config-only style with no
+    // layers of its own is the normal shape there, since the import supplies the map.
+    if (target.kind === 'classic' && input.layers.length === 0) {
+      return guidance(
+        emptyClassicGuidance(baseStyle, classic?.imagery ?? false)
+      );
     }
 
     // Same rule one level down: a property of a *different Standard style* is as inert as a
@@ -871,6 +972,32 @@ ${JSON.stringify(style, null, 2)}
             : `That is the right shape for showing a filtered subset of a feature you have ` +
               `otherwise turned off; no change needed if it was deliberate.`)
       );
+    }
+
+    // A thin Classic stack is usually an incomplete layer list rather than a deliberate one, and
+    // the shortfall is invisible in the output: the style is valid, it just draws less of the map
+    // than the caller pictured. Named rather than rejected, since a few layers over imagery — or a
+    // data-only style — are both legitimate. Imagery bases are exempt: there the photograph is the
+    // map, and the vector features are the addition.
+    if (target.kind === 'classic' && !classic?.imagery) {
+      const drawn = new Set(
+        [...resolvedSourceLayers]
+          .filter(([index]) => input.layers[index].action !== 'hide')
+          .map(([, name]) => name)
+      );
+      const missing = CLASSIC_STAPLE_LAYERS.filter((name) => !drawn.has(name));
+      if (missing.length > 0) {
+        allCorrections.push(
+          `• This Classic style draws nothing for ${missing
+            .map((name) => `"${name}"`)
+            .join(
+              ', '
+            )}. A Classic base is not an import, so a feature absent from \`layers\` is ` +
+            `absent from the map. Add them if the map should show them — or reference ` +
+            `\`mapbox://styles/mapbox/${baseStyle}\` directly if what you wanted was that style's ` +
+            `own cartography (${CLASSIC_STYLES_DOC}).`
+        );
+      }
     }
 
     // Note: We no longer automatically add layers that weren't explicitly requested
@@ -1216,17 +1343,7 @@ ${JSON.stringify(style, null, 2)}
     const paint: Record<string, unknown> = {};
 
     // Use the user-provided color if available, otherwise use defaults
-    let effectiveColor = config.color;
-
-    // Ensure hex colors have # prefix
-    if (
-      effectiveColor &&
-      !effectiveColor.startsWith('#') &&
-      !effectiveColor.startsWith('rgb') &&
-      !effectiveColor.startsWith('hsl')
-    ) {
-      effectiveColor = '#' + effectiveColor;
-    }
+    let effectiveColor = normalizeColor(config.color);
 
     // Only provide a default color if none was specified
     if (
@@ -1641,15 +1758,26 @@ ${JSON.stringify(style, null, 2)}
         layer.slot = config.slot;
       } else {
         const inferred = inferSlot(renderType, 'user');
-        layer.slot = inferred;
-        corrections.push(
-          `• No slot given for "${layer.id}" — inferred slot "${inferred}" from its ${renderType} ` +
-            `type, the overlay placement for your own data. ` +
-            (renderType === 'fill'
-              ? `Set \`slot: "bottom"\` instead if this fill encodes a data value (a choropleth), ` +
-                `so the road network still reads over it.`
-              : `Set 'slot' explicitly to override.`)
-        );
+        if (inferred) {
+          layer.slot = inferred;
+          corrections.push(
+            `• No slot given for "${layer.id}" — inferred slot "${inferred}" from its ${renderType} ` +
+              `type, the overlay placement for your own data. ` +
+              (renderType === 'fill'
+                ? `Set \`slot: "bottom"\` instead if this fill encodes a data value (a choropleth), ` +
+                  `so the road network still reads over it.`
+                : `Set 'slot' explicitly to override.`)
+          );
+        } else {
+          // Same reasoning, and the same wording, as a basemap fill-extrusion: the layer is left
+          // unslotted on purpose, and that is reported because a layer coming back without the
+          // slot the docs insist on otherwise looks like a bug.
+          corrections.push(
+            `• "${layer.id}" was left without a slot deliberately — a ${renderType} layer is 3D ` +
+              `geometry that the scene depth-sorts against the buildings around it, and a slot would ` +
+              `flatten it into the 2D stack. Set 'slot' explicitly only if you want that.`
+          );
+        }
       }
     }
 
@@ -1659,6 +1787,9 @@ ${JSON.stringify(style, null, 2)}
     // `fill-color` at all, which the spec renders as opaque black over the whole map.
     const paint: Record<string, unknown> = {};
     const colorProp = this.getColorProperty(renderType);
+    // Normalised through the same helper as a basemap layer: bare hex reaches this path just as
+    // readily, and it was the one path that passed it straight into the style.
+    const literalColor = normalizeColor(config.color);
     if (colorProp) {
       const dataDriven =
         config.expression !== undefined ||
@@ -1674,12 +1805,24 @@ ${JSON.stringify(style, null, 2)}
           );
         }
         paint[colorProp] = this.generateExpression(
-          config.color ?? UNCLASSIFIED_COLOR,
+          literalColor ?? UNCLASSIFIED_COLOR,
           config,
           'color'
         );
-      } else if (config.color) {
-        paint[colorProp] = config.color;
+      } else if (literalColor) {
+        paint[colorProp] = literalColor;
+      } else {
+        // No colour is not the same as leaving the layer unstyled: every colour property here
+        // defaults to opaque black, so the layer lands as a black slab over the map. That is the
+        // same failure a `match` with no fallback has, which is why this path always emits one —
+        // and the basemap path has always filled in a colour it wasn't given.
+        paint[colorProp] = UNCLASSIFIED_COLOR;
+        corrections.push(
+          `• "${layer.id}" was given no \`color\`, so ${UNCLASSIFIED_COLOR} was used. The spec ` +
+            `default for \`${colorProp}\` is opaque black, which covers the map rather than ` +
+            `leaving the layer unstyled. Set \`color\`, or \`expression\` / \`property_based\` to ` +
+            `colour it by value.`
+        );
       }
     }
 
@@ -1701,6 +1844,36 @@ ${JSON.stringify(style, null, 2)}
     }
     if (renderType === 'line' && config.width !== undefined) {
       paint['line-width'] = ramped(config.width, 'width');
+    }
+
+    // `zoom_based` ramps opacity and width, and a colour ramp is what `expression` is for. With
+    // neither of those set it has nothing to act on, so it was accepted and did nothing — the
+    // silence this tool is otherwise careful to avoid.
+    if (
+      config.zoom_based &&
+      config.opacity === undefined &&
+      !(renderType === 'line' && config.width !== undefined)
+    ) {
+      corrections.push(
+        `• \`zoom_based\` had no effect on "${layer.id}": it ramps \`opacity\` and, on a line, ` +
+          `\`width\` — neither was set. Set one of them, or pass \`expression\` with an ` +
+          `\`["interpolate", ["linear"], ["zoom"], …]\` ramp to vary the colour by zoom.`
+      );
+    }
+
+    // A fill-extrusion with no height renders nothing: fill-extrusion-height defaults to 0, so the
+    // layer is present, valid and flat — the same "looks finished, draws nothing" shape as a symbol
+    // layer with no text-field. The property holding the height cannot be read out of a URL or a
+    // tileset, so "height" is assumed, and the assumption reported rather than left to be found.
+    if (renderType === 'fill-extrusion') {
+      paint['fill-extrusion-height'] = ['get', 'height'];
+      corrections.push(
+        `• "${layer.id}" extrudes each feature by its \`height\` property. A fill-extrusion with ` +
+          `no \`fill-extrusion-height\` draws nothing at all — the default is 0 — and the tool ` +
+          `cannot read your data to find the right property. Edit ` +
+          `\`paint.fill-extrusion-height\` in the JSON below if your features name it differently, ` +
+          `or set it to a constant.`
+      );
     }
 
     if (target.usesLighting) {

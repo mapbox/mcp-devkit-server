@@ -273,8 +273,10 @@ layer takes precedence over it.
 
 A Classic base is **not a style import**, by design: the style stays self-contained, with no
 `imports` array and no dependency on another style. The builder authors the stack, so **only the
-layers you list get drawn** — ask for `dark-v11` and pass no layers and you get a dark background
-and nothing else.
+layers you list get drawn**. An empty `layers` array is therefore **rejected** rather than built —
+`base_style: "dark-v11"` with no layers would be a bare background reported as a finished style, and
+what it usually means is "give me dark-v11", which is a reference rather than a build. The rejection
+names the options, including the one below.
 
 The consequence is that the builder cannot reproduce the named style. It has no access to that
 style's palette, and inventing one would mean attributing made-up cartography to a Mapbox style. So

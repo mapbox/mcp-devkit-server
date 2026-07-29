@@ -105,9 +105,10 @@ TARGET — base_style decides which options apply, and the wrong ones are REJECT
 • Classic (streets-v12/light-v11/dark-v11/satellite-*/outdoors-v12/navigation-*) only when a
   classic style is explicitly asked for. Takes global_settings; no config surface, no slots
 • A Classic base is NOT an import and does not reproduce the named style — this tool authors the
-  stack, so EVERYTHING you want drawn must be listed in 'layers'. Pass none and you get a
-  background and nothing else. The base name only sets light vs dark and whether satellite imagery
-  goes underneath; bases within a group are equivalent
+  stack, so EVERYTHING you want drawn must be listed in 'layers', and an empty list is REJECTED.
+  To use the named style itself, reference mapbox://styles/mapbox/<name> in the map rather than
+  building anything here. The base name only sets light vs dark and whether satellite imagery goes
+  underneath; bases within a group are equivalent
 
 ON STANDARD, CONFIGURE BEFORE YOU LAYER:
 The basemap belongs to the import and this tool cannot reach into it, so a Streets v8 layer draws a
