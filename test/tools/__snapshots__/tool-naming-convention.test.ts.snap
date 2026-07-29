@@ -133,6 +133,8 @@ basemap features, not your data.
 • layer: { layer_type: 'Delivery zones', source_id: 'zones', render_type: 'fill', color: '#7b61ff' }
 • render_type is REQUIRED here — geometry can't be inferred from a URL
 • For type 'vector', also set source_layer (the layer name inside the tileset)
+• Don't key one 'composite' (or 'satellite' on a satellite base) — those are the basemap's own
+  source ids, and yours would replace the basemap rather than join it. The tool rejects it
 • These layers get overlay placement ('middle', or 'top' for symbols) rather than sitting under
   the road network, emissive strength to survive the night preset, and — on lines —
   line-occlusion-opacity so a route isn't hidden by 3D buildings
@@ -152,12 +154,14 @@ On Standard the basemap belongs to the import, and this tool cannot reach into i
 v8 layer draws a SECOND copy over the basemap's own, which you then have to keep in sync by hand.
 • Recoloring water/roads/parks/labels/boundaries: use the standard_config color* override. Ask for
   it as a layer and the tool builds the overdraw but tells you which config property to use instead
-• Hiding a feature: action:'hide' on Standard sets the matching standard_config toggle —
+• Hiding a basemap feature: action:'hide' on Standard sets the matching standard_config toggle —
   poi_label→showPointOfInterestLabels, place_label→showPlaceLabels,
   transit_stop_label→showTransitLabels, building→show3dObjects, admin→showAdminBoundaries
 • Standard has no toggle for water, landuse or the road network itself, so 'hide' on those is
   rejected rather than silently doing nothing. Use theme:'faded'/'monochrome' and the color*
   overrides to make them recede
+• Hiding a layer of YOUR OWN (source_id set) is omission on either target — it is yours to leave
+  out, not the import's to remove, so no config toggle is involved
 • On Classic, action:'hide' works by omitting the layer, because there the tool authors every layer
 
 LAYER ORDERING (slots — Standard only):

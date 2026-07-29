@@ -1136,6 +1136,152 @@ describe('StyleBuilderTool', () => {
       expect(roads.content[0].text).toContain('showPedestrianRoads');
     });
 
+    it('should resolve the layer name before deciding whether it can be hidden', async () => {
+      // The hide answer has to come from the *resolved* source layer, as every other action
+      // does. Keyed off the raw layer_type instead, "pois" was rejected as unhideable by a
+      // message that went on to list poi_label as hideable.
+      const hidden = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'pois',
+            filter_properties: { maki: 'restaurant' },
+            action: 'hide'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = hidden.content[0].text as string;
+      expect(text).toContain('Style Built Successfully');
+      expect(text).not.toContain('cannot be hidden');
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      expect(style.imports[0].config).toEqual({
+        showPointOfInterestLabels: false
+      });
+      // And the summary names the toggle it resolved to, not the name that was passed in.
+      expect(text).toContain(
+        'Hidden via `standard_config.showPointOfInterestLabels`'
+      );
+    });
+
+    it('should hide your own data layer by omission, on either target', async () => {
+      // A custom_sources layer is not the import's to remove, so `hide` is omission on
+      // Standard too — the show* toggles are advice about the basemap, not about your data.
+      for (const baseStyle of ['standard', 'streets-v12']) {
+        const result = await tool.run({
+          style_name: 'S',
+          base_style: baseStyle,
+          custom_sources: {
+            zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+          },
+          layers: [
+            {
+              layer_type: 'Delivery zones',
+              source_id: 'zones',
+              render_type: 'fill',
+              action: 'hide'
+            }
+          ]
+        } as StyleBuilderToolInput);
+
+        const text = result.content[0].text as string;
+        expect(text).toContain('Style Built Successfully');
+        expect(text).not.toContain('cannot be hidden');
+        const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+        expect(style.layers.some((l: any) => l.source === 'zones')).toBe(false);
+        // No config toggle was invented for it, so it reports as a plain omission.
+        expect(text).toContain('Hidden');
+        expect(text).not.toContain('Hidden via');
+      }
+    });
+
+    it('should report an unknown layer type as unknown even when hiding it', async () => {
+      // The suggestion list is the useful answer; a verdict about what Standard can hide
+      // diagnoses the wrong problem.
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [{ layer_type: 'labels', action: 'hide' }]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      expect(text).not.toContain('cannot be hidden on a Standard style');
+      // Same guidance the identical input gets under any other action.
+      const shown = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [{ layer_type: 'labels', action: 'show' }]
+      } as StyleBuilderToolInput);
+      expect(text).toBe(shown.content[0].text as string);
+    });
+
+    it('should flag a hide that contradicts an explicit show toggle', async () => {
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        standard_config: { showPlaceLabels: true },
+        layers: [{ layer_type: 'place_label', action: 'hide' }]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      // The hide wins, but silently resolving the contradiction is how a caller ends up
+      // believing the toggle they set is what shipped.
+      expect(text).toContain('The hide won');
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      expect(style.imports[0].config.showPlaceLabels).toBe(false);
+    });
+
+    it('should reject a custom_source keyed like one of the builder-s own', async () => {
+      // custom_sources is merged last, so a collision replaces the basemap source rather
+      // than sitting beside it — and every basemap layer then reads the caller's data.
+      const composite = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        custom_sources: {
+          composite: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [{ layer_type: 'water', action: 'show' }]
+      } as StyleBuilderToolInput);
+
+      const text = composite.content[0].text as string;
+      expect(text).toContain('Reserved source id');
+      expect(text).toContain('`composite`');
+      expect(text).toContain('my-composite');
+      expect(text).not.toContain('Style Built Successfully');
+
+      // "satellite" is reserved only where the base actually declares it.
+      const onSatelliteBase = await tool.run({
+        style_name: 'C',
+        base_style: 'satellite-v9',
+        custom_sources: {
+          satellite: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [{ layer_type: 'water', action: 'show' }]
+      } as StyleBuilderToolInput);
+      expect(onSatelliteBase.content[0].text).toContain('Reserved source id');
+
+      const onVectorBase = await tool.run({
+        style_name: 'C',
+        base_style: 'streets-v12',
+        custom_sources: {
+          satellite: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'My raster-ish data',
+            source_id: 'satellite',
+            render_type: 'fill',
+            action: 'color',
+            color: '#ff0000'
+          }
+        ]
+      } as StyleBuilderToolInput);
+      expect(onVectorBase.content[0].text).toContain(
+        'Style Built Successfully'
+      );
+    });
+
     it('should keep hide working by omission on Classic', async () => {
       // There the tool authors every layer, so leaving one out is what hides the feature.
       const result = await tool.run({
@@ -1224,10 +1370,45 @@ describe('StyleBuilderTool', () => {
         false
       );
 
+      // The other imagery base is imagery too — and it is dark, so its labels have to read
+      // against the photograph rather than against the land colour it never draws.
+      const satelliteStreets = await build('satellite-streets-v12');
+      expect(satelliteStreets.sources.satellite).toEqual(
+        satellite.sources.satellite
+      );
+      expect(satelliteStreets.layers[0]).toEqual(satellite.layers[0]);
+      expect(
+        satelliteStreets.layers.find((l: any) => l.type === 'symbol').paint[
+          'text-color'
+        ]
+      ).toBe('#ffffff');
+
       // Still self-contained: a Classic base never becomes a style import.
-      for (const style of [light, dark, night, satellite]) {
+      for (const style of [light, dark, night, satellite, satelliteStreets]) {
         expect(style.imports).toBeUndefined();
       }
+    });
+
+    it('should let label_color beat a dark mode the base name implied', async () => {
+      // The dark default and an explicit label_color arrive from different places now, so
+      // their precedence is worth pinning: label_color is the more specific of the two.
+      const result = await tool.run({
+        style_name: 'C',
+        base_style: 'dark-v11',
+        global_settings: { label_color: '#ffcc00' },
+        layers: [
+          { layer_type: 'place_label', action: 'show', render_type: 'symbol' }
+        ]
+      } as StyleBuilderToolInput);
+
+      const style = JSON.parse(
+        (result.content[0].text as string).match(/```json\n([\s\S]*?)\n```/)![1]
+      );
+      const labels = style.layers.find((l: any) => l.type === 'symbol');
+      expect(labels.paint['text-color']).toBe('#ffcc00');
+      // The halo still follows the mode, so the chosen colour stays legible on dark land.
+      expect(labels.paint['text-halo-color']).toBe('#000000');
+      expect(style.layers[0].paint['background-color']).toBe('#1a1a1a');
     });
 
     it('should let global_settings override what the Classic base implies', async () => {

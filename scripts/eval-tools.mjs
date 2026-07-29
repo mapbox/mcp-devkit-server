@@ -27,9 +27,9 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
-import { pathToFileURL } from 'url';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 if (existsSync('.env')) {
   for (const line of readFileSync('.env', 'utf-8').split('\n')) {
@@ -290,15 +290,17 @@ const CASES = [
         const haystack = JSON.stringify(c.calls.map((x) => x.input)) + c.text;
         return /showPointOfInterestLabels["']?\s*[:=]\s*false/.test(haystack);
       },
-      'does not claim omitting a layer hides it': (c) => {
+      'asks for the POI feature by name, not something adjacent': (c) => {
         const call = c.first('style_builder_tool');
         if (!call) return true;
-        const config = call.input?.standard_config ?? {};
-        // A bare `hide` with no toggle is the misconception; the builder now converts it, so
-        // what matters is that the shipped style carries the toggle.
-        return (
-          config.showPointOfInterestLabels === false ||
-          Array.isArray(call.input?.layers)
+        // Either route is correct: the toggle set directly, or `hide` on the POI layer, which
+        // the builder converts into that toggle. Anything else — recolouring the POIs, hiding
+        // some other layer, listing no POI layer at all — leaves them on the map.
+        if (call.input?.standard_config?.showPointOfInterestLabels === false) {
+          return true;
+        }
+        return (call.input?.layers ?? []).some(
+          (l) => l.action === 'hide' && /poi/i.test(l.layer_type ?? '')
         );
       },
       'uploaded style carries the config': (c) => {

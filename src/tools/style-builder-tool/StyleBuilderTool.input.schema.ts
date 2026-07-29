@@ -58,11 +58,13 @@ const LayerConfigSchema = z.object({
     .enum(['show', 'hide', 'color', 'highlight'])
     .describe(
       'What to do with this layer. "hide" works differently per target: on Classic the layer is ' +
-        'simply left out of the stack, while on Standard the feature belongs to the import and ' +
-        'keeps drawing, so the tool sets the matching standard_config toggle instead ' +
+        'simply left out of the stack, while on Standard a basemap feature belongs to the import ' +
+        'and keeps drawing, so the tool sets the matching standard_config toggle instead ' +
         '(poi_label, place_label, transit_stop_label, building, admin). Standard exposes no toggle ' +
         'for water, landuse or the road network, so "hide" on those is rejected — use ' +
-        'standard_config theme and color* overrides to make them recede.'
+        'standard_config theme and color* overrides to make them recede. A layer of your own ' +
+        '(source_id set) is hidden by omission on either target, since it is yours to leave out ' +
+        "rather than the import's to remove."
     ),
   color: z
     .string()
@@ -214,7 +216,9 @@ export const StyleBuilderToolSchema = z.object({
       'Your own data sources, keyed by an id a layer then references via source_id. This is how ' +
         'you put your GeoJSON or tilesets on the map — delivery zones, routes, store locations, ' +
         'choropleth values. Layers built from them get an overlay slot, emissive strength to ' +
-        'survive the night preset, and line-occlusion-opacity so routes are not hidden by 3D buildings.'
+        'survive the night preset, and line-occlusion-opacity so routes are not hidden by 3D ' +
+        'buildings. "composite" is reserved for the basemap source (as is "satellite" on a ' +
+        'satellite base) and is rejected, since it would replace the basemap rather than join it.'
     ),
 
   global_settings: z

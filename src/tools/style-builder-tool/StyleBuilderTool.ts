@@ -354,6 +354,8 @@ basemap features, not your data.
 • layer: { layer_type: 'Delivery zones', source_id: 'zones', render_type: 'fill', color: '#7b61ff' }
 • render_type is REQUIRED here — geometry can't be inferred from a URL
 • For type 'vector', also set source_layer (the layer name inside the tileset)
+• Don't key one 'composite' (or 'satellite' on a satellite base) — those are the basemap's own
+  source ids, and yours would replace the basemap rather than join it. The tool rejects it
 • These layers get overlay placement ('middle', or 'top' for symbols) rather than sitting under
   the road network, emissive strength to survive the night preset, and — on lines —
   line-occlusion-opacity so a route isn't hidden by 3D buildings
@@ -373,12 +375,14 @@ On Standard the basemap belongs to the import, and this tool cannot reach into i
 v8 layer draws a SECOND copy over the basemap's own, which you then have to keep in sync by hand.
 • Recoloring water/roads/parks/labels/boundaries: use the standard_config color* override. Ask for
   it as a layer and the tool builds the overdraw but tells you which config property to use instead
-• Hiding a feature: action:'hide' on Standard sets the matching standard_config toggle —
+• Hiding a basemap feature: action:'hide' on Standard sets the matching standard_config toggle —
   poi_label→showPointOfInterestLabels, place_label→showPlaceLabels,
   transit_stop_label→showTransitLabels, building→show3dObjects, admin→showAdminBoundaries
 • Standard has no toggle for water, landuse or the road network itself, so 'hide' on those is
   rejected rather than silently doing nothing. Use theme:'faded'/'monochrome' and the color*
   overrides to make them recede
+• Hiding a layer of YOUR OWN (source_id set) is omission on either target — it is yours to leave
+  out, not the import's to remove, so no config toggle is involved
 • On Classic, action:'hide' works by omitting the layer, because there the tool authors every layer
 
 LAYER ORDERING (slots — Standard only):
@@ -501,7 +505,7 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
 ${standardConfig ? `**Standard Config:** ${Object.keys(standardConfig).length} properties set` : ''}
 ${correctionsMessage}
 ${propertiesMessage}
-${this.generateSummary(input, standardConfig)}
+${this.generateSummary(input, result)}
 
 **Generated Style JSON:**
 \`\`\`json
@@ -536,6 +540,10 @@ ${JSON.stringify(style, null, 2)}
     availableProperties?: Record<string, { paint: string[]; layout: string[] }>;
     /** `standard_config` as generated, including toggles resolved from `hide` actions. */
     standardConfig?: Record<string, unknown>;
+    /** Which `standard_config` toggle each hidden layer resolved to, by index in `layers`. */
+    hideToggles: Map<number, string>;
+    /** The reconciled Classic appearance, or null on Standard. */
+    classic: ClassicSettings | null;
   } {
     const layers: Layer[] = [];
     const allCorrections: string[] = [];
@@ -547,18 +555,6 @@ ${JSON.stringify(style, null, 2)}
     const baseStyle = input.base_style || 'standard';
     const target = resolveTarget(baseStyle);
 
-    // Reject the other target's options before generating anything, so a caller never
-    // walks away believing a setting took effect when it was quietly dropped.
-    const foreign = StyleBuilderTool.assertTargetOptions(input, target);
-    if (foreign) {
-      return {
-        style: {} as MapboxStyle,
-        corrections: [],
-        layerHelp: foreign,
-        availableProperties: {}
-      };
-    }
-
     // What each Classic base implies, reconciled with anything the caller set explicitly.
     // Standard takes none of it — the import supplies the basemap.
     const classic =
@@ -566,29 +562,59 @@ ${JSON.stringify(style, null, 2)}
         ? resolveClassicSettings(baseStyle, input.global_settings)
         : null;
 
-    // A `hide` on Standard has to become a basemap config toggle, since the feature belongs
-    // to the import. Resolved up front so the toggles land in the import config below.
+    // A `hide` on Standard becomes a basemap config toggle, since the feature belongs to the
+    // import. Filled in as each layer is resolved, and read back by the summary so a `hide`
+    // is reported as the toggle it actually set.
     const standardConfig: Record<string, unknown> = {
       ...(input.standard_config ?? {})
     };
-    if (target.kind === 'standard') {
-      for (const config of input.layers) {
-        if (config.action !== 'hide') continue;
-        const toggle = STANDARD_HIDE_TOGGLE[config.layer_type];
-        if (!toggle) {
-          return {
-            style: {} as MapboxStyle,
-            corrections: [],
-            layerHelp: standardHideGuidance(config.layer_type),
-            availableProperties: {}
-          };
-        }
-        standardConfig[toggle] = false;
-        allCorrections.push(
-          `• Hiding "${config.layer_type}" on Standard set \`standard_config.${toggle}: false\`. ` +
-            `Omitting the layer would not have hidden it — the basemap draws it through the import.`
-        );
-      }
+    const hideToggles = new Map<number, string>();
+
+    /**
+     * A build that stopped with guidance instead of a style.
+     *
+     * Every one of these is a hard stop rather than a warning: the shared failure mode is a
+     * style that looks finished and did not do what was asked.
+     */
+    const guidance = (layerHelp: string) => ({
+      style: {} as MapboxStyle,
+      corrections: [],
+      layerHelp,
+      availableProperties: {},
+      hideToggles,
+      classic
+    });
+
+    // Reject the other target's options before generating anything, so a caller never
+    // walks away believing a setting took effect when it was quietly dropped.
+    const foreign = StyleBuilderTool.assertTargetOptions(input, target);
+    if (foreign) {
+      return guidance(foreign);
+    }
+
+    // The builder's own source ids. A caller's source keyed the same way would replace the
+    // basemap's rather than sit beside it — silently, because custom sources are merged last —
+    // leaving every layer that referenced the id pointed at the wrong data.
+    const reservedSourceIds = [
+      'composite',
+      ...(classic?.imagery ? ['satellite'] : [])
+    ];
+    const collisions = Object.keys(input.custom_sources ?? {}).filter((id) =>
+      reservedSourceIds.includes(id)
+    );
+    if (collisions.length > 0) {
+      return guidance(
+        `**Reserved source id${collisions.length > 1 ? 's' : ''} in \`custom_sources\`: ` +
+          `${collisions.map((id) => `\`${id}\``).join(', ')}.**\n\n` +
+          `This ${target.label} style already declares ${reservedSourceIds
+            .map((id) => `\`${id}\``)
+            .join(' and ')} for the basemap` +
+          `${classic?.imagery ? ' and its satellite imagery' : ''}, and \`custom_sources\` is ` +
+          `merged last — so your source would replace it and every layer built from the ` +
+          `basemap would read your data instead. Rename the entr${collisions.length > 1 ? 'ies' : 'y'} ` +
+          `(and the matching \`source_id\`) to something of your own, such as ` +
+          `${collisions.map((id) => `\`my-${id}\``).join(', ')}. Nothing was generated.`
+      );
     }
 
     // Classic has no import to supply land colour, so it needs its own background layer —
@@ -608,14 +634,15 @@ ${JSON.stringify(style, null, 2)}
     }
 
     // Build each configured layer
-    for (const config of input.layers) {
-      // On Standard this became a config toggle above; on Classic, leaving the layer out is
-      // what hides the feature.
-      if (config.action === 'hide') continue;
-
+    for (const [index, config] of input.layers.entries()) {
       // A layer bound to the caller's own source skips the Streets v8 lookup — the
       // geometry lives in their data, not in the basemap.
       if (config.source_id) {
+        // `hide` on your own data is omission on either target. The layer is yours to leave
+        // out rather than the import's to remove, so none of the Standard config surface
+        // applies — reaching for a `show*` toggle here would be advice about the basemap.
+        if (config.action === 'hide') continue;
+
         const userLayer = this.createUserDataLayer(
           config,
           input,
@@ -623,12 +650,7 @@ ${JSON.stringify(style, null, 2)}
           allCorrections
         );
         if (typeof userLayer === 'string') {
-          return {
-            style: {} as MapboxStyle,
-            corrections: [],
-            layerHelp: userLayer,
-            availableProperties: {}
-          };
+          return guidance(userLayer);
         }
         layers.push(userLayer);
         continue;
@@ -658,15 +680,37 @@ ${JSON.stringify(style, null, 2)}
         }
       }
 
-      // If still no match, return helpful information
+      // If still no match, return helpful information. Reached for a `hide` too: an
+      // unrecognised layer type is an unrecognised layer type whatever the action, and the
+      // suggestion list is the useful answer rather than a verdict about Standard.
       if (!layerDef) {
-        const helpMessage = this.generateLayerHelp(config);
-        return {
-          style: {} as MapboxStyle,
-          corrections: [],
-          layerHelp: helpMessage,
-          availableProperties: {}
-        };
+        return guidance(this.generateLayerHelp(config));
+      }
+
+      // `hide` is answered against the *resolved* source layer, so a name the tool had to
+      // work out from filter_properties gets the same answer as every other action would.
+      if (config.action === 'hide') {
+        if (target.kind === 'standard') {
+          const toggle = STANDARD_HIDE_TOGGLE[sourceLayer];
+          if (!toggle) {
+            return guidance(standardHideGuidance(sourceLayer));
+          }
+          if (standardConfig[toggle] === true) {
+            allCorrections.push(
+              `• \`standard_config.${toggle}\` was set to true and "${sourceLayer}" was also ` +
+                `asked to be hidden. The hide won — the toggle is now false. Drop one of the ` +
+                `two so the intent is unambiguous.`
+            );
+          }
+          standardConfig[toggle] = false;
+          hideToggles.set(index, toggle);
+          allCorrections.push(
+            `• Hiding "${sourceLayer}" on Standard set \`standard_config.${toggle}: false\`. ` +
+              `Omitting the layer would not have hidden it — the basemap draws it through the import.`
+          );
+        }
+        // On Classic, leaving the layer out of the stack is what hides the feature.
+        continue;
       }
 
       // Redrawing a basemap feature on Standard stacks a second copy over the import's own.
@@ -711,14 +755,10 @@ ${JSON.stringify(style, null, 2)}
         );
         if (criticalError) {
           // Return helpful guidance for the model to retry with correct field
-          return {
-            style: {} as MapboxStyle,
-            corrections: [],
-            layerHelp:
-              criticalError +
-              '\n\n**Please retry with the corrected filter_properties.**',
-            availableProperties: {}
-          };
+          return guidance(
+            criticalError +
+              '\n\n**Please retry with the corrected filter_properties.**'
+          );
         }
         allCorrections.push(...result.corrections);
       }
@@ -828,7 +868,9 @@ ${JSON.stringify(style, null, 2)}
       standardConfig:
         target.kind === 'standard' && Object.keys(standardConfig).length > 0
           ? standardConfig
-          : undefined
+          : undefined,
+      hideToggles,
+      classic
     };
   }
 
@@ -1611,18 +1653,26 @@ ${JSON.stringify(style, null, 2)}
   }
 
   /**
-   * `standardConfig` is what was generated rather than what was passed in, so a `hide` that
-   * became a config toggle is reported as the toggle it became. Reporting the input instead is
-   * how "poi_label: Hidden" appeared above a style that hid nothing.
+   * The summary reports what the build produced, not what was passed in.
+   *
+   * Everything here comes from the build result rather than being re-derived from the input:
+   * `standardConfig` carries the toggles `hide` actions resolved to, `hideToggles` says which
+   * toggle each layer got, and `classic` is the already-reconciled Classic appearance.
+   * Re-reading the input instead is how "poi_label: Hidden" appeared above a style that hid
+   * nothing.
    */
   private generateSummary(
     input: StyleBuilderToolInput,
-    standardConfig?: Record<string, unknown>
+    built: {
+      standardConfig?: Record<string, unknown>;
+      hideToggles: Map<number, string>;
+      classic: ClassicSettings | null;
+    }
   ): string {
+    const { standardConfig, hideToggles, classic } = built;
     const parts: string[] = ['**Layer Configurations:**'];
-    const target = resolveTarget(input.base_style || 'standard');
 
-    for (const config of input.layers) {
+    for (const [index, config] of input.layers.entries()) {
       const layerDef = this.createDynamicLayerDefinition(
         config.layer_type,
         config
@@ -1638,24 +1688,24 @@ ${JSON.stringify(style, null, 2)}
             `• ${description}: Highlighted${config.color ? ` in ${config.color}` : ''}`
           );
           break;
-        case 'hide':
+        case 'hide': {
+          // A toggle exists only for a basemap feature on Standard. Your own layer is hidden
+          // by being left out, on either target, so it reports as a plain omission.
+          const toggle = hideToggles.get(index);
           parts.push(
-            target.kind === 'standard'
-              ? `• ${description}: Hidden via \`standard_config.${STANDARD_HIDE_TOGGLE[config.layer_type]}\``
+            toggle
+              ? `• ${description}: Hidden via \`standard_config.${toggle}\``
               : `• ${description}: Hidden`
           );
           break;
+        }
         case 'show':
           parts.push(`• ${description}: Shown`);
           break;
       }
     }
 
-    if (target.kind === 'classic') {
-      const classic = resolveClassicSettings(
-        input.base_style || 'standard',
-        input.global_settings
-      );
+    if (classic) {
       parts.push(`\n**Mode:** ${classic.mode}`);
       parts.push(
         classic.imagery

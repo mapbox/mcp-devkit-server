@@ -222,6 +222,10 @@ Notes:
   nothing to inspect, so it cannot pick between fill, line and circle for you.
 - For `type: "vector"`, also set `source_layer` — the layer name inside the tileset. GeoJSON
   has no source layers.
+- **`composite` is reserved**, as is `satellite` on a satellite base: those are the ids the builder
+  gives the basemap's own sources. Custom sources are merged last, so an entry keyed the same way
+  would replace the basemap rather than sit beside it, and every basemap layer would read your data.
+  The build stops and names the collision instead.
 - **Placement differs from basemap layers on purpose.** A basemap fill (parks, water) goes in
   `bottom`, under the road network. A fill of your own data is an overlay, so it goes in
   `middle` — above roads, behind labels and 3D buildings. Symbols go in `top`.
@@ -297,6 +301,13 @@ remove:
   **rejected** rather than silently doing nothing. Make them recede with `theme: "faded"` or
   `"monochrome"` and the `color*` overrides. (`showRoadLabels` hides road labels and shields;
   `showPedestrianRoads` hides paths — neither removes the carriageways.)
+- **A layer of your own** (`source_id` set) is hidden by omission on either target. It is yours to
+  leave out rather than the import's to remove, so no config toggle is involved.
+
+The toggle is chosen from the source layer the builder resolved, not from the string you passed, so
+`layer_type: "pois"` with `filter_properties: { maki: "restaurant" }` hides POI labels just as
+`layer_type: "poi_label"` does. A layer type it cannot resolve at all is reported as unresolved —
+the same suggestion list any other action gets — rather than as something Standard cannot hide.
 
 ### Recolouring the Basemap on Standard
 
