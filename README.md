@@ -140,7 +140,7 @@ Reference data is exposed as MCP Resources (see [Resources](#resources) section)
 
 Complete set of tools for managing Mapbox styles via the Styles API:
 
-**Style Builder Tool** - Create and modify Mapbox styles programmatically through conversational prompts
+**Style Builder Tool** - Build Mapbox style JSON from structured parameters: a base style, a layer list, the config surface for that base, and your own GeoJSON or tilesets. Defaults to Mapbox Standard, where it configures the basemap through the style import and gives every custom layer a slot and the emissive strength it needs to survive the night preset. Classic bases work differently in every respect — the tool authors the whole layer stack there.
 
 📖 **[See the Style Builder documentation for detailed usage and examples →](./docs/STYLE_BUILDER.md)**
 
@@ -871,9 +871,12 @@ Use conversational AI to build a custom styled map based on a theme description.
 
 **What it does:**
 
-1. Uses the Style Builder tool to create a themed style based on your description
-2. Creates the style in your Mapbox account
-3. Generates a preview link
+1. Translates the theme into Mapbox Standard configuration — `theme`, `lightPreset` (this is how a
+   theme goes dark), `color*` overrides and `show*` toggles — and adds custom layers only for what
+   the config cannot reach
+2. Uses the Style Builder tool to build the style JSON
+3. Creates the style in your Mapbox account
+4. Generates a preview link
 
 **Example usage:**
 

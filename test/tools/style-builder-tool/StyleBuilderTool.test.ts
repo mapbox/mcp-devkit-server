@@ -1007,6 +1007,11 @@ describe('StyleBuilderTool', () => {
 
       // A route hidden behind 3D buildings is the failure this prevents.
       expect(line.paint['line-occlusion-opacity']).toBe(1);
+
+      // The inferred slot is reported here too, not just on basemap layers — and a fill gets
+      // told about `bottom`, the one case the overlay default is usually wrong for.
+      expect(text).toContain('inferred slot "middle"');
+      expect(text).toContain('slot: "bottom"');
     });
 
     it('should require render_type and a known source_id for user data layers', async () => {
@@ -1057,6 +1062,193 @@ describe('StyleBuilderTool', () => {
       } as StyleBuilderToolInput);
       expect(onClassic.content[0].text).toContain('do not apply');
       expect(onClassic.content[0].text).toContain('standard_config');
+    });
+
+    it('should reject a slot on Classic rather than dropping it silently', async () => {
+      // `slot` sits on the layer rather than at the top level, so it was the one wrong-target
+      // option the descriptor's field walk could not see — and a caller carrying a Standard
+      // example over to a Classic base sets it every time.
+      const result = await tool.run({
+        style_name: 'C',
+        base_style: 'streets-v12',
+        layers: [
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#0099ff',
+            slot: 'bottom'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      expect(text).toContain('do not apply to a Classic style');
+      expect(text).toContain('`slot`');
+      expect(text).toContain('layers[0] "water"');
+      // Nothing generated, so the caller cannot mistake it for a working style.
+      expect(text).not.toContain('Style Built Successfully');
+    });
+
+    it('should hide basemap features on Standard through the config toggle', async () => {
+      // Omitting the layer hides nothing on Standard — the import keeps drawing the feature —
+      // yet the summary used to report it hidden.
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [
+          { layer_type: 'poi_label', action: 'hide' },
+          { layer_type: 'building', action: 'hide' }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+
+      expect(style.imports[0].config).toEqual({
+        showPointOfInterestLabels: false,
+        show3dObjects: false
+      });
+      // And the report names the toggle rather than claiming a hidden layer.
+      expect(text).toContain('showPointOfInterestLabels');
+      expect(text).toContain('Hidden via');
+    });
+
+    it('should reject hiding a Standard feature that has no config toggle', async () => {
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [{ layer_type: 'water', action: 'hide' }]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      expect(text).toContain('cannot be hidden on a Standard style');
+      expect(text).toContain('colorWater');
+      expect(text).not.toContain('Style Built Successfully');
+
+      // The road network is the same case, and worth its own pointer: the toggles that exist
+      // cover the labels and the pedestrian paths, not the carriageways.
+      const roads = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [{ layer_type: 'road', action: 'hide' }]
+      } as StyleBuilderToolInput);
+      expect(roads.content[0].text).toContain('showRoadLabels');
+      expect(roads.content[0].text).toContain('showPedestrianRoads');
+    });
+
+    it('should keep hide working by omission on Classic', async () => {
+      // There the tool authors every layer, so leaving one out is what hides the feature.
+      const result = await tool.run({
+        style_name: 'C',
+        base_style: 'streets-v12',
+        layers: [
+          { layer_type: 'poi_label', action: 'hide' },
+          { layer_type: 'water', action: 'color', color: '#0099ff' }
+        ]
+      } as StyleBuilderToolInput);
+
+      const style = JSON.parse(
+        (result.content[0].text as string).match(/```json\n([\s\S]*?)\n```/)![1]
+      );
+      expect(
+        style.layers.some((l: any) => l['source-layer'] === 'poi_label')
+      ).toBe(false);
+      expect(style.layers.some((l: any) => l['source-layer'] === 'water')).toBe(
+        true
+      );
+    });
+
+    it('should point at the config property when recoloring the basemap on Standard', async () => {
+      // The layer is still generated — an overdraw is right when the recolour is filtered to a
+      // subset the config cannot express — but the caller is told it is a second copy.
+      const result = await tool.run({
+        style_name: 'S',
+        base_style: 'standard',
+        layers: [{ layer_type: 'water', action: 'color', color: '#0099ff' }]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      expect(text).toContain('colorWater');
+      expect(text).toContain("second copy over the basemap's own");
+      expect(text).toContain('Style Built Successfully');
+    });
+
+    it('should honour light/dark and imagery from the Classic base name', async () => {
+      const build = async (baseStyle: string) => {
+        const result = await tool.run({
+          style_name: 'C',
+          base_style: baseStyle,
+          layers: [
+            { layer_type: 'place_label', action: 'show', render_type: 'symbol' }
+          ]
+        } as StyleBuilderToolInput);
+        return JSON.parse(
+          (result.content[0].text as string).match(
+            /```json\n([\s\S]*?)\n```/
+          )![1]
+        );
+      };
+
+      // All eight Classic values used to produce byte-identical output, so "dark-v11" was a
+      // light map and "satellite-v9" had no imagery. A Classic base is not an import, so the
+      // builder cannot reproduce the named style — only what the name states outright is
+      // honoured, using the two land colours the tool already had.
+      const light = await build('streets-v12');
+      const dark = await build('dark-v11');
+      expect(light.layers[0].paint['background-color']).toBe('#f8f4f0');
+      expect(dark.layers[0].paint['background-color']).toBe('#1a1a1a');
+
+      // Deliberately equivalent: nothing available to the builder separates these two, and
+      // inventing a difference would attribute made-up cartography to a Mapbox style.
+      const night = await build('navigation-night-v1');
+      expect(night.layers[0].paint['background-color']).toBe('#1a1a1a');
+
+      // A dark base needs a label colour that reads on it, or the text is black on black.
+      const darkLabels = dark.layers.find((l: any) => l.type === 'symbol');
+      expect(darkLabels.paint['text-color']).toBe('#ffffff');
+      expect(darkLabels.paint['text-halo-color']).toBe('#000000');
+
+      // A satellite base is imagery — a flat colour is not a stand-in for it.
+      const satellite = await build('satellite-v9');
+      expect(satellite.sources.satellite).toEqual({
+        type: 'raster',
+        url: 'mapbox://mapbox.satellite',
+        tileSize: 256
+      });
+      expect(satellite.layers[0]).toEqual({
+        id: 'satellite',
+        type: 'raster',
+        source: 'satellite'
+      });
+      expect(satellite.layers.some((l: any) => l.type === 'background')).toBe(
+        false
+      );
+
+      // Still self-contained: a Classic base never becomes a style import.
+      for (const style of [light, dark, night, satellite]) {
+        expect(style.imports).toBeUndefined();
+      }
+    });
+
+    it('should let global_settings override what the Classic base implies', async () => {
+      const result = await tool.run({
+        style_name: 'C',
+        base_style: 'dark-v11',
+        global_settings: { mode: 'light' },
+        layers: [
+          { layer_type: 'place_label', action: 'show', render_type: 'symbol' }
+        ]
+      } as StyleBuilderToolInput);
+
+      const style = JSON.parse(
+        (result.content[0].text as string).match(/```json\n([\s\S]*?)\n```/)![1]
+      );
+      // The base name only decides the default mode, so an explicit mode wins and the land
+      // colour follows it — a dark background under light-mode labels is the state this avoids.
+      expect(style.layers[0].paint['background-color']).toBe('#f8f4f0');
+      expect(
+        style.layers.find((l: any) => l.type === 'symbol').paint['text-color']
+      ).not.toBe('#ffffff');
     });
 
     it('should apply label_color on Classic in precedence order', async () => {

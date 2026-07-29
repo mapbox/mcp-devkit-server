@@ -21,7 +21,7 @@ The codebase organizes into:
 - `src/prompts/` - MCP prompt implementations with `BasePrompt` abstract class and registry
 - `src/resources/` - Static reference data (style specs, token scopes, Streets v8 fields)
 - `src/utils/` - HTTP pipeline, JWT parsing, tracing, and version utilities
-- `skills/` - Agent Skills providing domain expertise (cartography, security, style patterns)
+- `skills/` - Pointer to the Agent Skills, which now live in the `mapbox/mapbox-agent-skills` repository
 
 ## Key Architectural Patterns
 
@@ -39,7 +39,7 @@ The codebase organizes into:
 
 **Prompt Registry:** Prompts are registered in `src/prompts/promptRegistry.ts`. To add a new prompt, create the prompt class and add it to the `ALL_PROMPTS` array. The main server automatically registers all prompts with proper Zod schema conversion.
 
-**Agent Skills:** Domain expertise provided through `skills/` directory. Each skill is a folder with `SKILL.md` containing YAML frontmatter and markdown instructions. Skills teach AI assistants about map design (cartography), security (token management), and implementation (style patterns). Skills are discovered by Claude Code, uploadable to Claude API, or usable in Claude.ai. See `skills/README.md` for details.
+**Agent Skills:** Domain expertise for map design (cartography), security (token management) and implementation (style patterns) is no longer in this repository — the skills moved to [mapbox-agent-skills](https://github.com/mapbox/mapbox-agent-skills), and `skills/README.md` is a pointer with install instructions. This server's own guidance lives in the tool descriptions, the prompts under `src/prompts/`, and the resources under `src/resources/`; keep those in sync with the skills when Standard/Classic guidance changes.
 
 ## Essential Workflows
 

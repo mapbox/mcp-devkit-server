@@ -2,6 +2,11 @@
 
 ### Fixed
 
+- **`style_builder_tool`: `action: "hide"` no longer silently does nothing on Standard.** Hiding worked by omitting the layer, which hides a feature on Classic (where the tool authors the whole stack) but not on Standard, where the basemap draws it through the import — and the summary reported it hidden either way. On Standard the tool now sets the matching config toggle (`poi_label` → `showPointOfInterestLabels`, `place_label` → `showPlaceLabels`, `transit_stop_label` → `showTransitLabels`, `building` → `show3dObjects`, `admin` → `showAdminBoundaries`) and reports which. Standard exposes no toggle for water, landuse or the road network, so `hide` on those is now rejected with a pointer to `theme` and the `color*` overrides rather than quietly producing an unchanged style.
+- **`style_builder_tool`: a dark or satellite Classic `base_style` no longer produces a light vector map.** Only `base_style === 'standard'` was ever branched on, so all eight Classic values produced byte-identical output — `dark-v11` and `navigation-night-v1` were light `#f8f4f0` maps and `satellite-v9` had no imagery. The base name now decides light vs dark (using the two land colours the tool already had) and, for `satellite-v9` and `satellite-streets-v12`, adds a `mapbox.satellite` raster layer in place of the background. A Classic base remains **self-contained — not a style import** — so it cannot reproduce the named style, and bases within a group are deliberately equivalent rather than given invented differences. An explicit `global_settings` value overrides all of it.
+- **`style_builder_tool`: `slot` on a Classic style is rejected instead of dropped.** `slot` lives on the layer rather than at the top level, so it was invisible to the wrong-target check and was the one cross-target option still being ignored in silence — despite the documented promise that they are rejected. Carrying a Standard example over to a Classic base now fails with a pointer to layer ordering.
+- **`style_builder_tool`: layers built from `custom_sources` now report their inferred slot**, as basemap layers already did, and a fill is told about `slot: "bottom"` — the overlay default is right for a zone overlay and wrong for a choropleth, which the docs and the data-driven prompt had always specified as `bottom`.
+
 - **`validate_expression_tool` / `validate_style_tool`**: Both tools now delegate expression and style validation to the official `@mapbox/mapbox-gl-style-spec` package (the same logic mapbox-gl-js runs at runtime) instead of a hand-rolled reimplementation. Fixes two disagreements with real mapbox-gl-js behavior around the `["zoom"]` expression placement rule (#123):
   - `validate_expression_tool` no longer false-positives on ordinary zoom-based `interpolate`/`step` expressions (it previously misidentified the interpolation-type argument, e.g. `["linear"]`, as an unknown operator).
   - `validate_style_tool` now correctly flags `["zoom"]` expressions nested inside e.g. a `case` (invalid per spec — zoom may only be used as the top-level input to `step`/`interpolate`), which it previously missed entirely.
@@ -10,9 +15,20 @@
 
 - **Style ID validation for `style_comparison_tool`**: `before` and `after` inputs are now validated to contain only alphanumeric characters, hyphens, and underscores (after stripping the optional `mapbox://styles/` prefix). Validation is enforced at both the Zod schema layer and inside `processStyleId()`. Malformed style IDs are rejected with a descriptive error before any URL is constructed.
 
+### Changed
+
+- **`style_builder_tool` now names the config property when you recolour the basemap on Standard.** Adding a Streets v8 layer there draws a second copy over the import's own rather than restyling it. The layer is still generated — an overdraw is right when the recolour is filtered to a subset the config cannot express — but the tool points at `colorWater`, `colorGreenspace`, `colorRoads`, `colorAdminBoundaries`, `colorPlaceLabels` or `colorPointOfInterestLabels` instead.
+- **Prompts now branch on the target instead of assuming Standard.** `create-and-preview-style` emitted the Standard import block, `lightPreset` and "every layer needs a `slot`" even when passed a Classic `base_style`, asking for options that base rejects or ignores; it now gives Classic its own instructions. `build-custom-map` and `setup-mapbox-project` translated theme words ("dark", "monochrome", "satellite") as if they were Classic style names, and now map them onto `standard_config`. All three also stop describing `style_builder_tool` as taking a free-text description — it takes structured parameters.
+- **`debug-mapbox-integration` covers the Standard-specific rendering failures.** A new phase, gated on the style having an `imports` array, walks the failures that throw no error and log nothing: a layer invisible for want of emissive strength, a layer over the street labels for want of a `slot`, an occluded route, a "hidden" basemap layer that is still drawn, half-applied dark mode, and `setPaintProperty` on a layer that belongs to the import.
+- **`design-data-driven-style` routes data through `custom_sources`** rather than telling the model to hand-author a `sources` block, which is where slots and emissive strength got lost.
+- **Eval covers the Classic path.** Every case steered at Standard, so nothing checked that an explicit Classic request produces a coherent Classic style; a new case does, alongside one for hiding a basemap feature on Standard.
+
 ### Documentation
 
 - **Engineering standards**: Note that unsolicited third-party directory/discovery listing PRs are out of scope and will be closed without review.
+- **Style Builder docs**: Document what a Classic `base_style` actually contributes (it does not import the named style's layers), how `action: "hide"` differs per target, why recolouring the basemap on Standard overdraws it, and the choropleth slot exception. Removes the stale "custom data sources need to be added separately" limitation, superseded by `custom_sources`.
+- **`resource://mapbox-style-layers`**: The worked example recoloured water and landuse with custom layers over Standard — the anti-pattern the same resource warns against two sections earlier. It now configures the basemap and keeps a layer only for the filtered road highlight, and gains a `custom_sources` example.
+- **CLAUDE.md**: Correct the `skills/` description — the skills moved to `mapbox/mapbox-agent-skills` and the directory is a pointer.
 
 ## 0.8.1 - 2026-06-11
 

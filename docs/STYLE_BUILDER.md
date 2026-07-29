@@ -2,7 +2,9 @@
 
 ## Overview
 
-The Style Builder tool is a powerful utility for creating and modifying Mapbox styles programmatically. It provides a conversational interface to build complex map styles with various customizations for layers, labels, boundaries, roads, POIs, and more.
+The Style Builder tool is a utility for creating and modifying Mapbox styles programmatically. You describe what you want in conversation and the assistant calls the tool with structured parameters — a `base_style`, a `layers` array, the config surface for that base, and `custom_sources` for your own data. It covers layers, labels, boundaries, roads, POIs, and more.
+
+**Mapbox Standard is the default and the right choice for almost every style.** It is configured rather than authored: you set `theme`, `lightPreset`, `show*` toggles and `color*` overrides on the import, and add layers only for data the basemap doesn't carry. Classic bases are for when a classic style is explicitly wanted, and they work differently in every respect — see [Standard and Classic Take Different Options](#standard-and-classic-take-different-options).
 
 ## Important Limitations
 
@@ -223,6 +225,10 @@ Notes:
 - **Placement differs from basemap layers on purpose.** A basemap fill (parks, water) goes in
   `bottom`, under the road network. A fill of your own data is an overlay, so it goes in
   `middle` — above roads, behind labels and 3D buildings. Symbols go in `top`.
+- **A choropleth is the exception: set `slot: "bottom"` explicitly.** The overlay default is right
+  for a zone or geofence but wrong for a fill whose colour encodes a value, which wants the road
+  network reading over it. The builder reports the slot it inferred either way, so the line to check
+  is in the auto-corrections.
 - Lines from your own data get `line-occlusion-opacity`, since the canonical user line is a
   route and a route vanishing behind buildings is a bug. Basemap roads are left alone, where
   being hidden by a building is correct.
@@ -231,18 +237,75 @@ Notes:
 
 The two targets are configured differently, and passing options for the wrong one is
 **rejected rather than ignored** — so a setting that would have done nothing tells you
-immediately instead of shipping a style that looks unchanged.
+immediately instead of shipping a style that looks unchanged. That applies to `slot` too, which
+lives on the layer rather than at the top level: pass it with a Classic `base_style` and the build
+stops.
 
 |                   | Standard                                                      | Classic                                                       |
 | ----------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
 | Appearance        | `standard_config` (`theme`, `lightPreset`, `show*`, `color*`) | `global_settings` (`background_color`, `label_color`, `mode`) |
-| Slots             | yes                                                           | no                                                            |
+| Slots             | yes                                                           | no — order the `layers` array                                 |
 | Emissive strength | yes (lit scene)                                               | no lighting to shadow layers                                  |
+| Style import      | imports `mapbox://styles/mapbox/standard`                     | none — the style is self-contained                            |
 | Background layer  | supplied by the import                                        | authored into the style                                       |
-| Dark mode         | `lightPreset: "night"`                                        | `mode: "dark"`                                                |
+| Dark mode         | `lightPreset: "night"`                                        | `mode: "dark"`, or a dark-named `base_style`                  |
+| Basemap features  | drawn by the import, restyled through config                  | only what you list in `layers` is drawn                       |
+| `action: "hide"`  | sets the matching `show*` config toggle                       | omits the layer from the stack                                |
 
 On Classic, `label_color` sets `text-color` on label layers, and a colour set on an individual
 layer takes precedence over it.
+
+### What a Classic `base_style` Actually Gives You
+
+A Classic base is **not a style import**, by design: the style stays self-contained, with no
+`imports` array and no dependency on another style. The builder authors the stack, so **only the
+layers you list get drawn** — ask for `dark-v11` and pass no layers and you get a dark background
+and nothing else.
+
+The consequence is that the builder cannot reproduce the named style. It has no access to that
+style's palette, and inventing one would mean attributing made-up cartography to a Mapbox style. So
+the base name decides exactly two things:
+
+| From the base name | Bases                                                                      | Effect                                                     |
+| ------------------ | -------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Dark               | `dark-v11`, `navigation-night-v1`, `satellite-v9`, `satellite-streets-v12` | `#1a1a1a` land, white `text-color`, black label halo       |
+| Light              | `streets-v12`, `light-v11`, `outdoors-v12`, `navigation-day-v1`            | `#f8f4f0` land, default label colour                       |
+| Imagery            | `satellite-v9`, `satellite-streets-v12`                                    | `mapbox.satellite` raster layer in place of the background |
+
+**Bases within a group are equivalent.** `dark-v11` and `navigation-night-v1` produce the same
+output, because nothing available to the builder distinguishes them. That is intentional: the
+alternative is a difference invented to look like fidelity it doesn't have.
+
+An explicit `global_settings` value overrides all of it, and the land colour follows the mode you
+set rather than the one the base named.
+
+If you want the real `dark-v11` — its actual palette, road hierarchy and label treatment — reference
+`mapbox://styles/mapbox/dark-v11` directly in your map, or use `base_style: "standard"` with
+`lightPreset: "night"`. This tool builds a new style; it is not a way to fetch an existing one.
+
+### Hiding Things
+
+`action: "hide"` means different things per target, because on Standard the feature is not yours to
+remove:
+
+- **Classic** — the layer is left out of the stack, which is what hides the feature.
+- **Standard** — the basemap draws it through the import, so omitting a layer hides nothing. The
+  builder sets the matching config toggle instead: `poi_label` →
+  `showPointOfInterestLabels`, `place_label` → `showPlaceLabels`, `transit_stop_label` →
+  `showTransitLabels`, `building` → `show3dObjects`, `admin` → `showAdminBoundaries`.
+- Standard exposes no toggle for water, landuse or the road network itself, so `hide` on those is
+  **rejected** rather than silently doing nothing. Make them recede with `theme: "faded"` or
+  `"monochrome"` and the `color*` overrides. (`showRoadLabels` hides road labels and shields;
+  `showPedestrianRoads` hides paths — neither removes the carriageways.)
+
+### Recolouring the Basemap on Standard
+
+Adding a Streets v8 layer over Standard does not restyle the basemap's own layer — it draws a
+second copy on top, which you then keep in sync by hand and which picks up defaults (a fill
+outline, an opacity) the basemap never had. The builder still generates it, because an overdraw is
+the right answer when the recolour is filtered to a subset the config cannot express, but it tells
+you which config property retints the basemap itself: `colorWater`, `colorGreenspace`,
+`colorRoads`, `colorAdminBoundaries`, `colorPlaceLabels`, `colorPointOfInterestLabels`.
 
 ## Best Practices
 
@@ -268,8 +331,14 @@ layer takes precedence over it.
 5. **Route vanishes behind buildings**: Set `line-occlusion-opacity`, which defaults to `0`
 6. **Dark mode looks half-applied**: `global_settings.mode: "dark"` only recolors custom layers.
    On Standard, set `standard_config.lightPreset: "night"` instead
-7. **Performance Issues**: Reduce layer count or simplify filters for better performance
-8. **Zoom Range Problems**: Verify minzoom and maxzoom settings on layers
+7. **A feature you hid is still on the map**: You are on Standard, where the import draws it. Use
+   the matching `show*` config toggle — see [Hiding Things](#hiding-things)
+8. **A Classic style came out nearly empty**: A Classic base authors nothing for you. List every
+   feature you want in `layers`, or use `base_style: "standard"`
+9. **Recolouring the basemap on Standard left the old colour visible underneath**: The custom layer
+   is a second copy, not a replacement. Use the `standard_config` `color*` override
+10. **Performance Issues**: Reduce layer count or simplify filters for better performance
+11. **Zoom Range Problems**: Verify minzoom and maxzoom settings on layers
 
 ### Getting Help
 
@@ -291,9 +360,10 @@ The Style Builder tool:
 ## Limitations and Considerations
 
 - Some advanced Studio-only features may not be available
-- Custom data sources need to be added separately
 - Sprite and font resources must be hosted and accessible
 - Complex expressions may need manual refinement
+- A Classic base does not reproduce the named style's layers — you author every layer you want
+- On Standard the builder cannot reach into the imported basemap: it configures it, or draws over it
 
 ## Integration with Other Tools
 

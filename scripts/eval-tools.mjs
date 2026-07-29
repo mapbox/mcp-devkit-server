@@ -114,7 +114,9 @@ const ownLayers = (style) =>
 
 /** The call that actually ships a style, whichever tool the model routed through. */
 const uploadCall = (calls) =>
-  calls.find((c) => c.name === 'create_style_tool' || c.name === 'update_style_tool');
+  calls.find(
+    (c) => c.name === 'create_style_tool' || c.name === 'update_style_tool'
+  );
 
 const EMISSIVE = {
   fill: 'fill-emissive-strength',
@@ -151,9 +153,8 @@ const CASES = [
     prompt:
       'I have a GeoJSON of delivery zone polygons and a route line. Put them on a Mapbox map. The map needs to work at night as well as during the day.',
     // These checks deliberately inspect the style that would actually be uploaded, not the
-    // tool used to build it. style_builder_tool only restyles Streets v8 basemap layers —
-    // it has no way to add a user's own GeoJSON source — so on this task the model has to
-    // hand-author the layers. What matters is whether the style it ships is correct.
+    // tool used to build it. The model is free to hand-author the layers; what matters is
+    // whether the style it ships is correct.
     checks: {
       // The capability is only worth having if the model finds it. Before custom_sources
       // existed the builder rejected user data outright ("layer not found"), so the model
@@ -223,6 +224,91 @@ const CASES = [
         /RdBu|PuOr|BrBG|#b2182b|#2166ac|#67a9cf|#ef8a62/i.test(
           JSON.stringify(c.calls.map((x) => x.input)) + c.text
         )
+    }
+  },
+  {
+    id: 'explicit-classic',
+    prompt:
+      'I need a classic Mapbox style, not Standard — we are on an old GL JS version that does not support style imports. Build me a dark classic style with water, parks, roads and city labels.',
+    // The counterpart to 'dark-mode': everything else steers hard at Standard, so nothing
+    // checked that a caller who genuinely wants Classic gets a coherent Classic style rather
+    // than Standard advice applied to a base that ignores it.
+    checks: {
+      'honours the explicit Classic request': (c) => {
+        const call = c.first('style_builder_tool');
+        return !!call && (call.input.base_style ?? 'standard') !== 'standard';
+      },
+      // A Classic base authors nothing for you, so an empty layers array is an empty map.
+      'lists the features it wants drawn': (c) => {
+        const layers = c.first('style_builder_tool')?.input?.layers ?? [];
+        const kinds = JSON.stringify(layers);
+        return (
+          layers.length >= 4 &&
+          /water/.test(kinds) &&
+          /landuse|park/.test(kinds) &&
+          /road/.test(kinds) &&
+          /place_label/.test(kinds)
+        );
+      },
+      // slot is Standard-only and now rejected outright on Classic, so reaching for it means
+      // the model carried Standard guidance across the boundary.
+      'does not pass Standard-only options': (c) => {
+        const call = c.first('style_builder_tool');
+        if (!call) return false;
+        const layers = call.input?.layers ?? [];
+        return (
+          !call.input?.standard_config &&
+          !layers.some((l) => l.slot !== undefined)
+        );
+      },
+      'gets dark from the base or global_settings, not lightPreset': (c) => {
+        const call = c.first('style_builder_tool');
+        if (!call) return false;
+        return (
+          /dark-v11|navigation-night/.test(call.input.base_style ?? '') ||
+          call.input?.global_settings?.mode === 'dark'
+        );
+      },
+      'ships a Classic style with no imports': (c) => {
+        const call = c.uploaded();
+        return !!call && !call.input?.style?.imports;
+      }
+    }
+  },
+  {
+    id: 'hide-basemap-feature',
+    prompt:
+      'On my Mapbox Standard style, get rid of the points of interest entirely — I do not want any POI icons or labels on the map.',
+    // Omitting the layer hides nothing on Standard, so the only correct answer is the config
+    // toggle. The failure this guards is a style that looks finished and changed nothing.
+    checks: {
+      'hides POIs through the Standard config toggle': (c) =>
+        /showPointOfInterestLabels/.test(
+          JSON.stringify(c.calls.map((x) => x.input)) + c.text
+        ),
+      'sets the toggle to false': (c) => {
+        const haystack = JSON.stringify(c.calls.map((x) => x.input)) + c.text;
+        return /showPointOfInterestLabels["']?\s*[:=]\s*false/.test(haystack);
+      },
+      'does not claim omitting a layer hides it': (c) => {
+        const call = c.first('style_builder_tool');
+        if (!call) return true;
+        const config = call.input?.standard_config ?? {};
+        // A bare `hide` with no toggle is the misconception; the builder now converts it, so
+        // what matters is that the shipped style carries the toggle.
+        return (
+          config.showPointOfInterestLabels === false ||
+          Array.isArray(call.input?.layers)
+        );
+      },
+      'uploaded style carries the config': (c) => {
+        const call = c.uploaded();
+        if (!call) return true;
+        return (
+          call.input?.style?.imports?.[0]?.config?.showPointOfInterestLabels ===
+          false
+        );
+      }
     }
   },
   {
@@ -316,9 +402,7 @@ console.log(
   `Model: ${MODEL}\nTools exposed: ${tools.map((t) => t.name).join(', ')}\n`
 );
 
-const outcomes = await Promise.all(
-  CASES.map((c) => runCase(client, tools, c))
-);
+const outcomes = await Promise.all(CASES.map((c) => runCase(client, tools, c)));
 
 let passed = 0;
 let total = 0;

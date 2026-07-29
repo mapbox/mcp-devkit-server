@@ -38,15 +38,13 @@ type LayerOrigin = 'basemap' | 'user';
 /**
  * What differs between a Standard style and a Classic one.
  *
- * These two produce structurally different documents. Standard is an import plus your own
- * layers placed in slots on a lit 3D scene, with a config surface for the basemap. Classic
- * is a hand-authored layer stack over a background layer, with no slots and no lighting.
- * Nearly every appearance decision therefore applies to exactly one of them.
+ * Standard is an import plus custom layers in slots on a lit 3D scene, with a config surface
+ * for the basemap. Classic is a hand-authored layer stack over a background layer, with
+ * neither. Most appearance options therefore apply to exactly one of them.
  *
- * Collecting those differences here keeps them in one place. They were previously nine
- * separate `isUsingStandard` checks scattered through the builder, including a positional
- * boolean threaded into layer creation, which is what let wrong-target options like
- * `global_settings.mode` look supported on Standard while doing almost nothing.
+ * Collected here in place of nine scattered `isUsingStandard` checks — including a positional
+ * boolean threaded into layer creation, which is how wrong-target options like
+ * `global_settings.mode` looked supported on Standard while doing almost nothing.
  */
 interface StyleTarget {
   readonly kind: 'standard' | 'classic';
@@ -117,17 +115,149 @@ const resolveTarget = (baseStyle: string): StyleTarget =>
   baseStyle === 'standard' ? STANDARD_TARGET : CLASSIC_TARGET;
 
 /**
+ * What a named Classic base can be taken to mean, given the builder authors the layer stack
+ * rather than importing the named style.
+ *
+ * A Classic base is deliberately NOT an import: the style stays self-contained, and the layers
+ * the caller asks for are the layers there are. That means the builder cannot reproduce the
+ * named style — no per-base palette is available to it, and inventing one would attribute made-up
+ * cartography to a Mapbox style. So only what the base name states outright is honoured, which
+ * is light-vs-dark and whether the base is imagery.
+ *
+ * That is still the fix for the original defect: every Classic value produced the same light
+ * `#f8f4f0` vector map, so `dark-v11` was a light map and `satellite-v9` had no imagery. Bases
+ * within a group are now equivalent, which is honest — the builder has nothing that separates
+ * `dark-v11` from `navigation-night-v1`.
+ */
+const DARK_CLASSIC_BASES = new Set([
+  'dark-v11',
+  'navigation-night-v1',
+  'satellite-v9',
+  'satellite-streets-v12'
+]);
+
+/** Bases where the map is imagery, so raster tiles stand in for the background layer. */
+const IMAGERY_CLASSIC_BASES = new Set([
+  'satellite-v9',
+  'satellite-streets-v12'
+]);
+
+/** The Classic appearance actually in force, once base and caller are reconciled. */
+interface ClassicSettings {
+  readonly mode: 'light' | 'dark';
+  readonly backgroundColor: string;
+  readonly labelColor?: string;
+  readonly imagery: boolean;
+}
+
+/**
+ * The two land colours are the ones the tool has always used for light and dark; the base name
+ * only decides which. An explicit `global_settings` value beats both.
+ */
+function resolveClassicSettings(
+  baseStyle: string,
+  globalSettings: StyleBuilderToolInput['global_settings']
+): ClassicSettings {
+  const mode =
+    globalSettings?.mode ??
+    (DARK_CLASSIC_BASES.has(baseStyle) ? 'dark' : 'light');
+
+  return {
+    mode,
+    backgroundColor:
+      globalSettings?.background_color ??
+      (mode === 'dark' ? '#1a1a1a' : '#f8f4f0'),
+    labelColor: globalSettings?.label_color,
+    imagery: IMAGERY_CLASSIC_BASES.has(baseStyle)
+  };
+}
+
+/**
+ * The Standard config toggle that hides a basemap feature, where one exists.
+ *
+ * `action: "hide"` works on Classic by omitting the layer, because the builder authors the
+ * whole stack there. On Standard the feature belongs to the import and keeps drawing, so
+ * omitting the layer hid nothing while the summary still reported it hidden. Standard's own
+ * toggle is the only thing that does hide it.
+ */
+const STANDARD_HIDE_TOGGLE: Record<string, string> = {
+  poi_label: 'showPointOfInterestLabels',
+  place_label: 'showPlaceLabels',
+  transit_stop_label: 'showTransitLabels',
+  building: 'show3dObjects',
+  admin: 'showAdminBoundaries'
+};
+
+/**
+ * Why a basemap feature cannot be hidden on Standard, and what to reach for instead.
+ *
+ * Returned as a hard stop rather than a warning: a style that silently failed to hide what
+ * was asked looks finished and is not.
+ */
+function standardHideGuidance(layerType: string): string {
+  const alternatives: Record<string, string> = {
+    road:
+      'Standard has no toggle for the road network itself. `showRoadLabels: false` hides the ' +
+      'labels and shields, `showPedestrianRoads: false` hides paths and pedestrian streets, and ' +
+      '`theme: "faded"` with `colorRoads` makes the network recede without removing it.',
+    water:
+      'Water is part of the basemap on Standard. Use `standard_config.colorWater` to recolour ' +
+      'it, or `theme: "faded"`/`"monochrome"` to make it recede.',
+    landuse:
+      'Landuse is part of the basemap on Standard. Use `standard_config.colorGreenspace` to ' +
+      'recolour it, or `theme: "faded"`/`"monochrome"` to make it recede.'
+  };
+
+  return (
+    `**"${layerType}" cannot be hidden on a Standard style.**\n\n` +
+    (alternatives[layerType] ??
+      `Standard exposes no \`show*\` toggle for "${layerType}", and a style importing Standard ` +
+        `cannot remove layers from the import. Configure the basemap instead — \`theme: "faded"\` ` +
+        `or \`"monochrome"\` recedes it as a whole, and the \`color*\` overrides retint individual ` +
+        `features.`) +
+    `\n\nHideable through \`standard_config\`: ${Object.entries(
+      STANDARD_HIDE_TOGGLE
+    )
+      .map(([layer, toggle]) => `${layer} (\`${toggle}\`)`)
+      .join(', ')}.` +
+    `\n\nOn a Classic style \`action: "hide"\` works as you expected, because the builder authors ` +
+    `every layer there. Nothing was generated.`
+  );
+}
+
+/**
+ * The Standard config property that recolours a basemap feature the caller is about to
+ * redraw.
+ *
+ * Adding a Streets v8 layer over Standard does not restyle the basemap's own layer — it draws
+ * a second copy on top, which has to be kept in sync by hand and picks up defaults (a fill
+ * outline, an opacity) the basemap never had. Worth a nudge, not a rejection: an overdraw is
+ * the right answer when the recolour is filtered to a subset the config cannot express.
+ */
+const STANDARD_COLOR_CONFIG: Record<string, string> = {
+  water: 'colorWater',
+  waterway: 'colorWater',
+  landuse: 'colorGreenspace',
+  landuse_overlay: 'colorGreenspace',
+  road: 'colorRoads',
+  admin: 'colorAdminBoundaries',
+  place_label: 'colorPlaceLabels',
+  poi_label: 'colorPointOfInterestLabels'
+};
+
+/**
  * Where a layer belongs in the Standard stack when the caller didn't say.
  *
- * Origin matters as much as geometry. A fill derived from the basemap (parks, water) wants
- * to sit under the road network, but a fill of the user's own data (delivery zones, a
- * choropleth of their values) is an overlay and belongs above roads, behind labels.
- * Getting this wrong is subtle: the layer renders either way, it just reads wrong.
+ * Origin matters as much as geometry: a basemap fill (parks, water) belongs under the road
+ * network, but a fill of the user's own data (zones, a choropleth) is an overlay and belongs
+ * above roads, behind labels. Subtle to get wrong — it renders either way, it just reads wrong.
  */
 function inferSlot(layerType: string, origin: LayerOrigin): Slot | undefined {
   if (origin === 'user') {
-    // The user's own data is an overlay. Markers go above POI labels; everything else
-    // sits above roads but behind labels and 3D buildings.
+    // Overlay placement: markers above POI labels, everything else above roads but
+    // behind labels and 3D buildings. A choropleth is the exception that can't be inferred —
+    // it wants 'bottom' so the road network reads over it — so the inferred slot is reported
+    // and the caller told to set 'bottom' when the fill encodes a data value.
     return layerType === 'symbol' ? 'top' : 'middle';
   }
   switch (layerType) {
@@ -142,8 +272,8 @@ function inferSlot(layerType: string, origin: LayerOrigin): Slot | undefined {
     case 'symbol':
       return 'top';
     default:
-      // fill-extrusion is real 3D geometry that participates in the scene's depth, so it
-      // keeps no slot rather than being forced under the roads.
+      // fill-extrusion is real 3D geometry participating in the scene's depth, so it gets
+      // no slot rather than being forced under the roads.
       return undefined;
   }
 }
@@ -151,10 +281,9 @@ function inferSlot(layerType: string, origin: LayerOrigin): Slot | undefined {
 /**
  * Emissive strength keeps a custom layer at its authored colour on a lit scene.
  *
- * fill/line/circle all default to 0, which lets the scene light them into shadow under the
- * dusk and night presets. Symbol layers are absent deliberately: icon- and
- * text-emissive-strength already default to 1. fill-extrusion is absent because it should
- * be lit by the scene. heatmap has no such property at all.
+ * fill/line/circle default to 0, so the scene lights them into shadow under the dusk and
+ * night presets. Omitted deliberately: symbol (icon/text emissive strength already default
+ * to 1), fill-extrusion (should be lit by the scene), heatmap (no such property).
  */
 const EMISSIVE_PROPERTY: Record<string, string> = {
   fill: 'fill-emissive-strength',
@@ -202,57 +331,76 @@ You don't need exact layer names - the tool automatically finds the correct laye
 
 BASE STYLES:
 • standard: ALWAYS THE DEFAULT - Modern Mapbox Standard with best performance
-• Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/outdoors-v12/satellite-streets-v12/navigation-day-v1/navigation-night-v1
+• Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/satellite-streets-v12/outdoors-v12/
+  navigation-day-v1/navigation-night-v1
   Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
+• A Classic base is NOT an import — this tool authors the layer stack, and the style stays
+  self-contained. It does not reproduce the named style: the base only decides light vs dark
+  (dark-v11, navigation-night-v1 and the satellite bases are dark) and whether mapbox.satellite
+  imagery goes underneath (satellite-v9, satellite-streets-v12). **Anything you want drawn you must
+  list in 'layers'** — pass none and you get a background and nothing else. Bases within a group are
+  equivalent; this tool has nothing that separates dark-v11 from navigation-night-v1.
 
-Standard and Classic are configured through different options, and passing the wrong ones is
-rejected rather than ignored, so you learn immediately instead of shipping a style where a
-setting silently did nothing:
+Each target takes its own options; the wrong ones are rejected, not ignored:
 • Standard takes standard_config (theme, lightPreset, show*, color*) — it has a config surface
 • Classic takes global_settings (background_color, label_color, mode) — it has no config surface
+• slot is Standard-only. On Classic, order layers by their position in 'layers'
 
 YOUR OWN DATA (custom_sources):
-Declare your data in custom_sources, then point a layer at it with source_id. This is how you
-put delivery zones, a route, store locations or choropleth values on the map — the layer_type
-lookup only covers Mapbox Streets v8 basemap features, not your data.
+Declare your data in custom_sources, then point a layer at it with source_id — delivery zones,
+a route, store locations, choropleth values. The layer_type lookup only covers Mapbox Streets v8
+basemap features, not your data.
 • custom_sources: { zones: { type: 'geojson', data: <url or inline FeatureCollection> } }
 • layer: { layer_type: 'Delivery zones', source_id: 'zones', render_type: 'fill', color: '#7b61ff' }
-• render_type is REQUIRED for these layers — geometry can't be inferred from a URL
+• render_type is REQUIRED here — geometry can't be inferred from a URL
 • For type 'vector', also set source_layer (the layer name inside the tileset)
-• These layers are placed as overlays ('middle', or 'top' for symbols) rather than under the
-  road network, get emissive strength so they survive the night preset, and lines get
+• These layers get overlay placement ('middle', or 'top' for symbols) rather than sitting under
+  the road network, emissive strength to survive the night preset, and — on lines —
   line-occlusion-opacity so a route isn't hidden by 3D buildings
+• A choropleth is the exception to that default: set slot:'bottom' on a fill whose color encodes a
+  data value, so the road network still reads over it
 
 STANDARD STYLE CONFIG (try this before adding layers):
 Configuring the basemap is cheaper and more robust than layering over it. Use standard_config:
-• Theme: default/faded/monochrome — 'faded'/'monochrome' is the fastest way to make your own data pop
-• Light: day/night/dawn/dusk — this is how you do dark mode. Do NOT switch to dark-v11 and do NOT
+• Theme: default/faded/monochrome — 'faded'/'monochrome' is the fastest way to make your data pop
+• Light: day/night/dawn/dusk — this is how you do dark mode. Do NOT switch to dark-v11 or
   hand-author dark colors via global_settings.mode
 • Show/hide: labels, POIs, roads, 3D buildings — hide what competes with your data
-• Colors: water, roads, parks, labels, etc. — override basemap colors here rather than re-adding layers
+• Colors: water, roads, parks, labels, etc. — override here rather than re-adding layers
 
-LAYER ORDERING (slots):
-On Standard, Mapbox owns the basemap layer order — you don't hand-order it. Every custom layer goes
-into a slot. Set 'slot' explicitly on EVERY layer; it is the single most common mistake to omit it.
+RESTYLING THE BASEMAP ON STANDARD (config, not layers):
+On Standard the basemap belongs to the import, and this tool cannot reach into it. Adding a Streets
+v8 layer draws a SECOND copy over the basemap's own, which you then have to keep in sync by hand.
+• Recoloring water/roads/parks/labels/boundaries: use the standard_config color* override. Ask for
+  it as a layer and the tool builds the overdraw but tells you which config property to use instead
+• Hiding a feature: action:'hide' on Standard sets the matching standard_config toggle —
+  poi_label→showPointOfInterestLabels, place_label→showPlaceLabels,
+  transit_stop_label→showTransitLabels, building→show3dObjects, admin→showAdminBoundaries
+• Standard has no toggle for water, landuse or the road network itself, so 'hide' on those is
+  rejected rather than silently doing nothing. Use theme:'faded'/'monochrome' and the color*
+  overrides to make them recede
+• On Classic, action:'hide' works by omitting the layer, because there the tool authors every layer
+
+LAYER ORDERING (slots — Standard only):
+Mapbox owns the basemap layer order on Standard, so every custom layer goes into a slot. Set
+'slot' explicitly on EVERY layer; omitting it is the single most common mistake.
   - 'bottom': above land/landuse/water polygons, BELOW roads. Choropleths, rasters, terrain
   - 'middle': above roads and lines, BEHIND 3D buildings and labels. Most data overlays — polygon
     fills, geofences, zone boundaries, heatmaps, routes, custom POI layers
   - 'top':    above POI labels, BEHIND place and transit labels. Markers, active selections
-• Omitting 'slot' does NOT mean "sensible default" — the layer lands above every basemap layer,
-  including street labels, which is almost never what you want. When you omit it on a Standard
-  style this tool infers a slot from the layer type and tells you which one it picked.
+• No 'slot' does NOT mean "sensible default" — the layer lands above every basemap layer,
+  including street labels. Omit it on Standard and this tool infers one and tells you which.
 • Two layers in the same slot keep their insertion order.
 • Slot is a style-spec property, so the same string works on GL JS, Android, iOS and Flutter.
 
 EMISSIVE STRENGTH (why your layer vanishes at night):
-Standard is a lit 3D scene. fill-, line- and circle-emissive-strength default to 0, meaning the
-layer is lit by the scene — so under the dusk/night presets it falls into shadow and goes nearly
-invisible. This tool sets emissive strength to 1 on fill/line/circle layers you add to a Standard
-style so they hold their authored color across all four presets.
-• Symbol layers need nothing: icon-emissive-strength and text-emissive-strength already default to 1.
-• fill-extrusion is genuinely 3D and should be lit by the scene — it is left alone deliberately.
-• Routes should also set line-occlusion-opacity (default 0 hides the occluded part completely),
-  otherwise a route disappears where it passes behind 3D buildings.
+Standard is a lit 3D scene, and fill-, line- and circle-emissive-strength default to 0 — the
+scene lights the layer, so it falls into shadow and goes nearly invisible under dusk/night. This
+tool sets them to 1 on fill/line/circle layers you add, holding their color across all presets.
+• Symbol layers need nothing: icon- and text-emissive-strength already default to 1.
+• fill-extrusion is genuinely 3D and should be lit by the scene — left alone deliberately.
+• Routes should also set line-occlusion-opacity (default 0 completely hides the stretch running
+  behind a 3D building).
 
 LAYER RENDERING:
 • render_type controls HOW to visualize the layer (line, fill, symbol, etc.)
@@ -299,7 +447,13 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
   ): Promise<CallToolResult> {
     try {
       const result = this.buildStyle(input);
-      const { style, corrections, layerHelp, availableProperties } = result;
+      const {
+        style,
+        corrections,
+        layerHelp,
+        availableProperties,
+        standardConfig
+      } = result;
 
       // If we need layer help, return guidance to the model
       if (layerHelp) {
@@ -344,10 +498,10 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
 **Name:** ${input.style_name}
 **Base:** ${input.base_style || 'standard'}
 **Layers Configured:** ${input.layers.length}
-${input.standard_config ? `**Standard Config:** ${Object.keys(input.standard_config).length} properties set` : ''}
+${standardConfig ? `**Standard Config:** ${Object.keys(standardConfig).length} properties set` : ''}
 ${correctionsMessage}
 ${propertiesMessage}
-${this.generateSummary(input)}
+${this.generateSummary(input, standardConfig)}
 
 **Generated Style JSON:**
 \`\`\`json
@@ -380,6 +534,8 @@ ${JSON.stringify(style, null, 2)}
     corrections: string[];
     layerHelp?: string;
     availableProperties?: Record<string, { paint: string[]; layout: string[] }>;
+    /** `standard_config` as generated, including toggles resolved from `hide` actions. */
+    standardConfig?: Record<string, unknown>;
   } {
     const layers: Layer[] = [];
     const allCorrections: string[] = [];
@@ -391,8 +547,8 @@ ${JSON.stringify(style, null, 2)}
     const baseStyle = input.base_style || 'standard';
     const target = resolveTarget(baseStyle);
 
-    // Reject options belonging to the other target before generating anything, so a caller
-    // never walks away believing a setting took effect when it was quietly dropped.
+    // Reject the other target's options before generating anything, so a caller never
+    // walks away believing a setting took effect when it was quietly dropped.
     const foreign = StyleBuilderTool.assertTargetOptions(input, target);
     if (foreign) {
       return {
@@ -403,31 +559,69 @@ ${JSON.stringify(style, null, 2)}
       };
     }
 
-    // Classic has no import to supply land colour, so it needs its own background layer.
-    if (target.needsBackgroundLayer) {
-      const bgColor =
-        input.global_settings?.background_color ||
-        (input.global_settings?.mode === 'dark' ? '#1a1a1a' : '#f8f4f0');
+    // What each Classic base implies, reconciled with anything the caller set explicitly.
+    // Standard takes none of it — the import supplies the basemap.
+    const classic =
+      target.kind === 'classic'
+        ? resolveClassicSettings(baseStyle, input.global_settings)
+        : null;
 
-      const backgroundLayer: Layer = {
-        id: 'background',
-        type: 'background',
-        paint: {
-          'background-color': bgColor
+    // A `hide` on Standard has to become a basemap config toggle, since the feature belongs
+    // to the import. Resolved up front so the toggles land in the import config below.
+    const standardConfig: Record<string, unknown> = {
+      ...(input.standard_config ?? {})
+    };
+    if (target.kind === 'standard') {
+      for (const config of input.layers) {
+        if (config.action !== 'hide') continue;
+        const toggle = STANDARD_HIDE_TOGGLE[config.layer_type];
+        if (!toggle) {
+          return {
+            style: {} as MapboxStyle,
+            corrections: [],
+            layerHelp: standardHideGuidance(config.layer_type),
+            availableProperties: {}
+          };
         }
-      };
+        standardConfig[toggle] = false;
+        allCorrections.push(
+          `• Hiding "${config.layer_type}" on Standard set \`standard_config.${toggle}: false\`. ` +
+            `Omitting the layer would not have hidden it — the basemap draws it through the import.`
+        );
+      }
+    }
 
-      layers.push(backgroundLayer);
+    // Classic has no import to supply land colour, so it needs its own background layer —
+    // unless the base is imagery, where the raster tiles are what the layers sit on.
+    if (target.needsBackgroundLayer && classic) {
+      layers.push(
+        classic.imagery
+          ? { id: 'satellite', type: 'raster', source: 'satellite' }
+          : {
+              id: 'background',
+              type: 'background',
+              paint: {
+                'background-color': classic.backgroundColor
+              }
+            }
+      );
     }
 
     // Build each configured layer
     for (const config of input.layers) {
+      // On Standard this became a config toggle above; on Classic, leaving the layer out is
+      // what hides the feature.
       if (config.action === 'hide') continue;
 
-      // A layer bound to one of the caller's own sources skips the Streets v8 lookup
-      // entirely — the geometry lives in their data, not in the basemap.
+      // A layer bound to the caller's own source skips the Streets v8 lookup — the
+      // geometry lives in their data, not in the basemap.
       if (config.source_id) {
-        const userLayer = this.createUserDataLayer(config, input, target);
+        const userLayer = this.createUserDataLayer(
+          config,
+          input,
+          target,
+          allCorrections
+        );
         if (typeof userLayer === 'string') {
           return {
             style: {} as MapboxStyle,
@@ -475,12 +669,24 @@ ${JSON.stringify(style, null, 2)}
         };
       }
 
-      const result = this.createLayer(
-        layerDef,
-        config,
-        input.global_settings,
-        target
-      );
+      // Redrawing a basemap feature on Standard stacks a second copy over the import's own.
+      // The config property restyles the basemap itself, so point at it before generating.
+      if (
+        target.kind === 'standard' &&
+        (config.action === 'color' || config.action === 'highlight')
+      ) {
+        const colorConfig = STANDARD_COLOR_CONFIG[sourceLayer];
+        if (colorConfig) {
+          allCorrections.push(
+            `• Recolouring "${sourceLayer}" adds a second copy over the basemap's own — Standard ` +
+              `keeps drawing it underneath. \`standard_config.${colorConfig}\` retints the basemap ` +
+              `itself, which stays in sync with it. Keep the custom layer only if the recolour is ` +
+              `filtered to a subset the config cannot express.`
+          );
+        }
+      }
+
+      const result = this.createLayer(layerDef, config, classic, target);
       if (result.layer) {
         layers.push(result.layer);
 
@@ -550,12 +756,10 @@ ${JSON.stringify(style, null, 2)}
         url: 'mapbox://styles/mapbox/standard'
       };
 
-      // Add Standard style configuration if provided
-      if (
-        input.standard_config &&
-        Object.keys(input.standard_config).length > 0
-      ) {
-        importConfig.config = input.standard_config;
+      // Add Standard style configuration if provided, including the toggles that `hide`
+      // actions resolved to.
+      if (Object.keys(standardConfig).length > 0) {
+        importConfig.config = standardConfig;
       }
 
       style.imports = [importConfig];
@@ -565,19 +769,15 @@ ${JSON.stringify(style, null, 2)}
           type: 'vector'
         }
       };
-      // The Streets sprite is deliberate here, not a Classic-style leftover.
+      // The Streets sprite is deliberate here, not a Classic-style leftover: a sprite must
+      // match the icon vocabulary of the *data source*, not the imported basemap. The symbol
+      // layers this tool emits reference maki names — ["get", "maki"] off the Streets v8 maki
+      // field, or a literal like "marker-15" — and the Streets sprite is built for that data.
       //
-      // A sprite has to match the icon vocabulary of the *data source*, not the basemap
-      // being imported. The symbol layers this tool emits reference icons by maki name —
-      // either ["get", "maki"] straight off the Streets v8 maki field (101 names like
-      // "restaurant" and "cafe") or a literal default such as "marker-15". The Streets
-      // sprite is the sprite built for exactly that data, so it resolves those names.
-      //
-      // Standard's own icons are not an option: an import is a separate scope whose
-      // contents are not addressable from the importing style's layers, and Standard
-      // carries its own iconography rather than exposing maki names. Per the style spec,
-      // a sprite is required once any layer uses icon-image or a *-pattern property, and
-      // it is the root style's sprite that serves the root style's layers.
+      // Standard's icons aren't an option: an import is a separate scope, not addressable
+      // from the importing style's layers, and Standard exposes its own iconography rather
+      // than maki names. Per the spec a sprite is required once any layer uses icon-image or
+      // a *-pattern, and the root style's sprite is what serves the root style's layers.
       style.sprite = 'mapbox://sprites/mapbox/streets-v12';
       style.glyphs = 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf';
       style.projection = { name: 'globe' };
@@ -596,14 +796,22 @@ ${JSON.stringify(style, null, 2)}
           url: 'mapbox://mapbox.mapbox-streets-v8,mapbox.mapbox-terrain-v2'
         }
       };
+      // A satellite base is imagery, not a colour: without the raster source the "satellite"
+      // bases were indistinguishable from streets-v12 over a flat background.
+      if (classic?.imagery) {
+        (style.sources as Record<string, unknown>).satellite = {
+          type: 'raster',
+          url: 'mapbox://mapbox.satellite',
+          tileSize: 256
+        };
+      }
       style.sprite = 'mapbox://sprites/mapbox/streets-v12';
       style.glyphs = 'mapbox://fonts/mapbox/{fontstack}/{range}.pbf';
       style.layers = layers;
     }
 
-    // The caller's own sources sit alongside the basemap source, under the ids their
-    // layers reference. Declared after the target-specific block so neither branch can
-    // clobber them.
+    // The caller's own sources sit alongside the basemap source under the ids their layers
+    // reference. Added after the target-specific block so neither branch can clobber them.
     if (input.custom_sources) {
       for (const [id, source] of Object.entries(input.custom_sources)) {
         (style.sources as Record<string, unknown>)[id] =
@@ -613,7 +821,15 @@ ${JSON.stringify(style, null, 2)}
       }
     }
 
-    return { style, corrections: allCorrections, availableProperties };
+    return {
+      style,
+      corrections: allCorrections,
+      availableProperties,
+      standardConfig:
+        target.kind === 'standard' && Object.keys(standardConfig).length > 0
+          ? standardConfig
+          : undefined
+    };
   }
 
   private findSourceLayerByFilterProperties(
@@ -778,7 +994,7 @@ ${JSON.stringify(style, null, 2)}
   private createLayer(
     layerDef: DynamicLayerDefinition,
     config: StyleBuilderToolInput['layers'][0],
-    globalSettings?: StyleBuilderToolInput['global_settings'],
+    classic: ClassicSettings | null,
     target: StyleTarget = STANDARD_TARGET
   ): { layer: Layer | null; corrections: string[] } {
     // Generate a unique ID for the layer based on its properties
@@ -798,10 +1014,9 @@ ${JSON.stringify(style, null, 2)}
       type: layerDef.type as Layer['type']
     };
 
-    // Slots only exist for styles that import Standard. On Standard, Mapbox owns the
-    // basemap layer order, so a layer with no slot is not "unordered" — it lands above
-    // every basemap layer including street labels. That is almost never intended, so
-    // infer a slot from the layer type rather than leaving it off.
+    // Slots only exist on styles that import Standard, where Mapbox owns the basemap order.
+    // A layer with no slot is not "unordered" — it lands above every basemap layer including
+    // street labels, almost never the intent — so infer one rather than leaving it off.
     const slotCorrections: string[] = [];
     if (target.usesSlots) {
       if (config.slot) {
@@ -1080,35 +1295,34 @@ ${JSON.stringify(style, null, 2)}
       // Ensure text has proper halo for readability
       if (!paint['text-halo-color']) {
         paint['text-halo-color'] =
-          globalSettings?.mode === 'dark' ? '#000000' : '#ffffff';
+          classic?.mode === 'dark' ? '#000000' : '#ffffff';
       }
       if (!paint['text-halo-width']) {
         paint['text-halo-width'] = 1.5;
       }
     }
 
-    // label_color and mode are Classic-only controls: Standard recolors and relights its
-    // labels through standard_config, and buildStyle rejects them outright on that target.
-    // Here there is no config surface to defer to, so apply them.
-    if (layer.type === 'symbol' && target.kind === 'classic') {
-      // Precedence, most specific first: a color set on this layer, then label_color for
-      // every label, then the dark-mode default. All three have to beat the generic
-      // per-property default, which has already put a literal text-color in `paint` —
-      // deferring to it is why label_color previously appeared to do nothing.
+    // label_color and mode are Classic-only: Standard does labels through standard_config,
+    // and buildStyle rejects them there. Classic has no config surface, so apply them here.
+    if (layer.type === 'symbol' && classic) {
+      // Precedence, most specific first: this layer's color, then label_color, then the
+      // dark-mode default. All three must beat the generic per-property default, which has
+      // already put a literal text-color in `paint` — deferring to it is why label_color
+      // previously did nothing.
       if (!config.color) {
-        if (globalSettings?.label_color) {
-          paint['text-color'] = globalSettings.label_color;
-        } else if (globalSettings?.mode === 'dark') {
+        if (classic.labelColor) {
+          paint['text-color'] = classic.labelColor;
+        } else if (classic.mode === 'dark') {
           paint['text-color'] = '#ffffff';
         }
       }
-      if (globalSettings?.mode === 'dark') {
+      if (classic.mode === 'dark') {
         paint['text-halo-color'] = '#000000';
       }
     }
 
-    // Keep custom fill/line/circle layers visible under the dusk and night light presets.
-    // These properties default to 0, which lets the scene light the layer into shadow.
+    // Keep custom fill/line/circle layers visible under dusk and night. These default to 0,
+    // which lets the scene light the layer into shadow.
     if (target.usesLighting) {
       const emissiveProp = EMISSIVE_PROPERTY[layer.type as string];
       if (emissiveProp && paint[emissiveProp] === undefined) {
@@ -1129,17 +1343,16 @@ ${JSON.stringify(style, null, 2)}
     ) {
       const layout: Record<string, unknown> = {};
 
-      // These branches are keyed on the Streets v8 source layer names that actually
-      // exist. They were previously keyed on 'transit', 'poi_labels', 'place_labels'
-      // and 'road_labels' — none of which is a valid source layer, so none of them
-      // could ever be reached and every symbol layer fell through to the generic
-      // defaults below and picked up a hardcoded "marker-15" icon.
+      // Keyed on Streets v8 source layer names that actually exist. Previously keyed on
+      // 'transit', 'poi_labels', 'place_labels' and 'road_labels' — none of them a valid
+      // source layer, so every branch was unreachable and every symbol layer fell through
+      // to the generic defaults below and picked up a hardcoded "marker-15" icon.
       const sourceLayerName = layerDef.sourceLayer || config.layer_type;
       const iconField = this.iconField(sourceLayerName);
 
       if (iconField && layerDef.type === 'symbol') {
-        // Any iconified point layer — POIs by maki, transit and airports by their own
-        // field. Driven off the field so each feature gets its own icon.
+        // Any iconified point layer — POIs by maki, transit and airports by their own field.
+        // Driven off the field so each feature gets its own icon.
         layout['text-field'] = ['get', 'name'];
         layout['icon-image'] = ['get', iconField];
         layout['text-anchor'] = 'top';
@@ -1148,8 +1361,8 @@ ${JSON.stringify(style, null, 2)}
         layout['text-font'] = ['DIN Pro Regular', 'Arial Unicode MS Regular'];
         layout['text-size'] = 12;
       } else if (sourceLayerName === 'place_label') {
-        // Deliberately no icon-image: place labels are text only, and the generic
-        // defaults would otherwise pin a marker on every city.
+        // Deliberately no icon-image: place labels are text only, and the generic defaults
+        // would pin a marker on every city.
         layout['text-field'] = ['get', 'name'];
         layout['text-font'] = ['DIN Pro Medium', 'Arial Unicode MS Regular'];
         layout['text-size'] = [
@@ -1172,9 +1385,8 @@ ${JSON.stringify(style, null, 2)}
         // Default layout from definition.
         for (const prop of layerDef.layoutProperties) {
           if (prop.example === undefined) continue;
-          // Never hand a symbol layer an icon it has no icon field for. The example
-          // value here is a literal ("marker-15"), so applying it blindly gives every
-          // symbol layer the same generic pin.
+          // Never hand a symbol layer an icon it has no icon field for: the example value
+          // is a literal ("marker-15"), so applying it gives every layer the same pin.
           if (prop.property === 'icon-image') continue;
           layout[prop.property] = prop.example;
         }
@@ -1194,17 +1406,17 @@ ${JSON.stringify(style, null, 2)}
   /**
    * Build a layer over one of the caller's own sources.
    *
-   * This is the case the tool could not previously express at all: it only restyled Mapbox
-   * Streets v8 basemap layers, so a user's delivery zones, route or store points had to be
-   * hand-authored elsewhere and uploaded raw — which is exactly where slots and emissive
-   * strength got lost.
+   * Previously inexpressible: the tool only restyled Streets v8 basemap layers, so a user's
+   * zones, route or store points had to be hand-authored elsewhere and uploaded raw — which
+   * is exactly where slots and emissive strength got lost.
    *
    * Returns the layer, or a guidance string when the config cannot be honoured.
    */
   private createUserDataLayer(
     config: StyleBuilderToolInput['layers'][0],
     input: StyleBuilderToolInput,
-    target: StyleTarget
+    target: StyleTarget,
+    corrections: string[]
   ): Layer | string {
     const sourceId = config.source_id as string;
     const source = input.custom_sources?.[sourceId];
@@ -1219,8 +1431,8 @@ ${JSON.stringify(style, null, 2)}
       );
     }
 
-    // Geometry cannot be inferred from a URL or a tileset, so "auto" has nothing to work
-    // from here. Ask rather than guess wrong and render nothing visible.
+    // "auto" has nothing to work from: geometry can't be inferred from a URL or tileset.
+    // Ask rather than guess wrong and render nothing visible.
     const renderType =
       config.render_type && config.render_type !== 'auto'
         ? config.render_type
@@ -1251,8 +1463,23 @@ ${JSON.stringify(style, null, 2)}
       layer['source-layer'] = config.source_layer;
     }
 
+    // Reported rather than applied silently, the same as a basemap layer: the inferred slot
+    // is a guess about intent, and for a fill it is the one guess that is often wrong.
     if (target.usesSlots) {
-      layer.slot = config.slot ?? inferSlot(renderType, 'user');
+      if (config.slot) {
+        layer.slot = config.slot;
+      } else {
+        const inferred = inferSlot(renderType, 'user');
+        layer.slot = inferred;
+        corrections.push(
+          `• No slot given for "${layer.id}" — inferred slot "${inferred}" from its ${renderType} ` +
+            `type, the overlay placement for your own data. ` +
+            (renderType === 'fill'
+              ? `Set \`slot: "bottom"\` instead if this fill encodes a data value (a choropleth), ` +
+                `so the road network still reads over it.`
+              : `Set 'slot' explicitly to override.`)
+        );
+      }
     }
 
     const paint: Record<string, unknown> = {};
@@ -1270,9 +1497,9 @@ ${JSON.stringify(style, null, 2)}
       const emissive = EMISSIVE_PROPERTY[renderType];
       if (emissive) paint[emissive] = 1;
 
-      // A route is the canonical user line, and line-occlusion-opacity defaults to 0 —
-      // meaning the stretch running behind a 3D building disappears entirely. Basemap
-      // roads are left alone, since there hiding behind a building is correct.
+      // A route is the canonical user line, and line-occlusion-opacity defaults to 0, so
+      // the stretch behind a 3D building disappears. Basemap roads are left alone — there,
+      // hiding behind a building is correct.
       if (renderType === 'line') {
         paint['line-occlusion-opacity'] = 1;
       }
@@ -1286,16 +1513,13 @@ ${JSON.stringify(style, null, 2)}
   /**
    * Reject options that belong to the other target.
    *
-   * Standard and Classic are different enough that most options apply to exactly one of
-   * them: Standard has a config surface and a lit scene, Classic has a hand-authored
-   * layer stack and no lighting. Silently ignoring a wrong-target option is how a caller
-   * ends up believing they set a dark theme when nothing happened — so reject instead,
-   * naming the option that does work.
+   * Silently ignoring a wrong-target option is how a caller ends up believing they set a
+   * dark theme when nothing happened — so reject, naming the option that does work.
    *
-   * This is enforced here rather than in the schema because tool registration reads
-   * `inputSchema.shape`, which only exists on a plain object schema; a discriminated
-   * union would break registration, and its `oneOf` output is exactly the kind of
-   * complex schema some MCP clients mishandle.
+   * Enforced here rather than in the schema because tool registration reads
+   * `inputSchema.shape`, which only exists on a plain object schema: a discriminated union
+   * would break registration, and its `oneOf` output is the kind of complex schema some
+   * MCP clients mishandle.
    */
   private static assertTargetOptions(
     input: StyleBuilderToolInput,
@@ -1310,6 +1534,27 @@ ${JSON.stringify(style, null, 2)}
       })
       .map((opt) => `\`${opt.path}\` ${opt.instead}`);
 
+    // `slot` lives on the layer rather than at the top level, so the descriptor's field walk
+    // cannot see it. Left out, it was the one wrong-target option still being dropped in
+    // silence — and a caller carrying a Standard example over to Classic sets it every time.
+    if (!target.usesSlots) {
+      const slotted = input.layers
+        .map((layer, index) => ({ layer, index }))
+        .filter(({ layer }) => layer.slot !== undefined);
+      if (slotted.length > 0) {
+        wrong.push(
+          `\`slot\` (on ${slotted
+            .map(({ layer, index }) => `layers[${index}] "${layer.layer_type}"`)
+            .join(
+              ', '
+            )}) only applies to styles that import Standard, where Mapbox owns the ` +
+            `basemap order. A ${target.label} style is a layer stack you order yourself, so ` +
+            `position layers by their order in \`layers\` instead — or set ` +
+            `\`base_style: "standard"\` to use slots.`
+        );
+      }
+    }
+
     if (wrong.length === 0) return null;
     return (
       `**Options that do not apply to a ${target.label} style.**\n\n` +
@@ -1321,21 +1566,19 @@ ${JSON.stringify(style, null, 2)}
   /**
    * The per-feature field a source layer's icons come from, if it has one.
    *
-   * Driving icon-image off the field means each feature gets its own icon — a cafe
-   * gets the cafe glyph, a rail stop gets its network glyph. Falling back to a literal
-   * gives every feature in the layer the same generic pin, which is what happened
-   * before: the layout defaults carry "marker-15" as their example value and it was
-   * being applied to every symbol layer regardless.
+   * Driving icon-image off the field gives each feature its own icon — a cafe gets the cafe
+   * glyph, a rail stop its network glyph. A literal gives every feature the same generic pin,
+   * which is what happened before: the layout defaults carry "marker-15" as their example
+   * value and it was applied to every symbol layer regardless.
    */
   private iconField(sourceLayerName: string): 'maki' | 'network' | null {
     const fields = STREETS_V8_FIELDS[
       sourceLayerName as keyof typeof STREETS_V8_FIELDS
     ] as Record<string, unknown> | undefined;
     if (!fields) return null;
-    // maki is preferred where a layer has both. transit_stop_label carries maki and
-    // network: maki is populated for every stop ("rail", "bus", "entrance"), while
-    // network holds a branded operator icon that is null for most features, so keying
-    // on network would leave the majority of stops with no icon at all.
+    // maki wins where a layer has both. transit_stop_label carries both: maki is populated
+    // for every stop ("rail", "bus", "entrance"), while network holds a branded operator
+    // icon that is null for most features, leaving most stops with no icon at all.
     if ('maki' in fields) return 'maki';
     if ('network' in fields) return 'network';
     return null;
@@ -1367,8 +1610,17 @@ ${JSON.stringify(style, null, 2)}
     return opacityProps[layerType] || null;
   }
 
-  private generateSummary(input: StyleBuilderToolInput): string {
+  /**
+   * `standardConfig` is what was generated rather than what was passed in, so a `hide` that
+   * became a config toggle is reported as the toggle it became. Reporting the input instead is
+   * how "poi_label: Hidden" appeared above a style that hid nothing.
+   */
+  private generateSummary(
+    input: StyleBuilderToolInput,
+    standardConfig?: Record<string, unknown>
+  ): string {
     const parts: string[] = ['**Layer Configurations:**'];
+    const target = resolveTarget(input.base_style || 'standard');
 
     for (const config of input.layers) {
       const layerDef = this.createDynamicLayerDefinition(
@@ -1387,7 +1639,11 @@ ${JSON.stringify(style, null, 2)}
           );
           break;
         case 'hide':
-          parts.push(`• ${description}: Hidden`);
+          parts.push(
+            target.kind === 'standard'
+              ? `• ${description}: Hidden via \`standard_config.${STANDARD_HIDE_TOGGLE[config.layer_type]}\``
+              : `• ${description}: Hidden`
+          );
           break;
         case 'show':
           parts.push(`• ${description}: Shown`);
@@ -1395,17 +1651,25 @@ ${JSON.stringify(style, null, 2)}
       }
     }
 
-    if (input.global_settings?.mode) {
-      parts.push(`\n**Mode:** ${input.global_settings.mode}`);
+    if (target.kind === 'classic') {
+      const classic = resolveClassicSettings(
+        input.base_style || 'standard',
+        input.global_settings
+      );
+      parts.push(`\n**Mode:** ${classic.mode}`);
+      parts.push(
+        classic.imagery
+          ? `**Base imagery:** mapbox.satellite raster`
+          : `**Background:** ${classic.backgroundColor}`
+      );
     }
 
     // Add Standard style configuration summary if present
-    if (
-      input.standard_config &&
-      Object.keys(input.standard_config).length > 0
-    ) {
+    if (standardConfig && Object.keys(standardConfig).length > 0) {
       parts.push(`\n**Standard Style Configuration:**`);
-      const config = input.standard_config;
+      const config = standardConfig as NonNullable<
+        StyleBuilderToolInput['standard_config']
+      >;
 
       // Visibility settings
       const visibilitySettings = [];

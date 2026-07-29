@@ -8,8 +8,8 @@ const LayerConfigSchema = z.object({
     .string()
     .describe(
       'Layer type from the resource (e.g., "water", "railways", "parks"). ' +
-        'Ignored when source_id is set, since the layer then comes from your own data ' +
-        'rather than from Mapbox Streets v8 — use it as a human-readable name in that case.'
+        'When source_id is set the layer comes from your own data rather than Streets v8, ' +
+        'so this is ignored — use it as a human-readable name.'
     ),
 
   source_id: z
@@ -17,10 +17,9 @@ const LayerConfigSchema = z.object({
     .optional()
     .describe(
       'Key of an entry in custom_sources. Set this to style YOUR OWN data — delivery zones, ' +
-        'a route, store locations — instead of a Mapbox Streets v8 basemap layer. When set, ' +
-        'render_type is required (the geometry type cannot be inferred from a URL), the ' +
-        'Streets v8 layer lookup is skipped, and the layer is placed in a slot suited to a ' +
-        'data overlay rather than to a basemap feature.'
+        'a route, store locations — instead of a Streets v8 basemap layer. When set, ' +
+        'render_type is required (geometry cannot be inferred from a URL), the Streets v8 ' +
+        'lookup is skipped, and the layer gets an overlay slot rather than a basemap one.'
     ),
 
   source_layer: z
@@ -28,7 +27,7 @@ const LayerConfigSchema = z.object({
     .optional()
     .describe(
       'Source layer name within a custom vector tile source. Required for custom_sources ' +
-        'entries of type "vector"; ignored for GeoJSON sources, which have no source layers.'
+        'entries of type "vector"; ignored for GeoJSON, which has no source layers.'
     ),
 
   render_type: z
@@ -57,7 +56,14 @@ const LayerConfigSchema = z.object({
 
   action: z
     .enum(['show', 'hide', 'color', 'highlight'])
-    .describe('What to do with this layer'),
+    .describe(
+      'What to do with this layer. "hide" works differently per target: on Classic the layer is ' +
+        'simply left out of the stack, while on Standard the feature belongs to the import and ' +
+        'keeps drawing, so the tool sets the matching standard_config toggle instead ' +
+        '(poi_label, place_label, transit_stop_label, building, admin). Standard exposes no toggle ' +
+        'for water, landuse or the road network, so "hide" on those is rejected — use ' +
+        'standard_config theme and color* overrides to make them recede.'
+    ),
   color: z
     .string()
     .optional()
@@ -140,14 +146,15 @@ const LayerConfigSchema = z.object({
     .enum(['bottom', 'middle', 'top'])
     .optional()
     .describe(
-      'Layer slot for Mapbox Standard styles. Set this on every custom layer — omitting it does not ' +
-        'mean "default placement", it means the layer draws above every basemap layer including street ' +
-        'labels. When omitted on a Standard style the tool infers a slot from the layer type and reports ' +
-        'which one it chose. ' +
+      'Layer slot for Mapbox Standard styles. Set this on every custom layer — omitting it is ' +
+        'not "default placement", it means the layer draws above every basemap layer including ' +
+        'street labels. Omit it on Standard and the tool infers one and reports its choice. ' +
         'bottom: above land/landuse/water polygons but below roads — choropleths, rasters, terrain. ' +
         'middle: above roads and lines but behind 3D buildings and labels — most data overlays, zone ' +
         'fills, heatmaps, routes, custom POI layers. ' +
-        'top: above POI labels but behind place and transit labels — markers, active selections.'
+        'top: above POI labels but behind place and transit labels — markers, active selections. ' +
+        'Standard only: a Classic style is a layer stack you order yourself, so passing slot with a ' +
+        'Classic base_style is rejected rather than ignored — order the layers array instead.'
     )
 });
 
@@ -170,7 +177,12 @@ export const StyleBuilderToolSchema = z.object({
     .describe(
       'Base style template. ALWAYS use "standard" as the default for all new styles. ' +
         'Standard style provides the best performance and modern features. ' +
-        'Only use Classic styles (streets/light/dark/satellite/outdoors/navigation) when explicitly requested with "create a classic style" or when working with an existing Classic style.'
+        'Only use Classic styles (streets/light/dark/satellite/outdoors/navigation) when explicitly requested with "create a classic style" or when working with an existing Classic style. ' +
+        'A Classic base is not an import and does not reproduce the named style — this tool ' +
+        'authors the layer stack, so only the layers you list get drawn. The base decides light ' +
+        'vs dark ("dark-v11", "navigation-night-v1" and the satellite bases are dark) and whether ' +
+        'mapbox.satellite imagery sits underneath ("satellite-v9", "satellite-streets-v12"); ' +
+        'bases within a group are otherwise equivalent.'
     ),
 
   layers: z
@@ -199,11 +211,10 @@ export const StyleBuilderToolSchema = z.object({
     )
     .optional()
     .describe(
-      'Your own data sources, keyed by an id you then reference from a layer via source_id. ' +
-        'This is how you put your own GeoJSON or tilesets on the map — delivery zones, routes, ' +
-        'store locations, choropleth values. Layers built from these sources get a slot suited ' +
-        'to a data overlay, emissive strength so they survive the night light preset, and ' +
-        'line-occlusion-opacity on lines so routes are not hidden by 3D buildings.'
+      'Your own data sources, keyed by an id a layer then references via source_id. This is how ' +
+        'you put your GeoJSON or tilesets on the map — delivery zones, routes, store locations, ' +
+        'choropleth values. Layers built from them get an overlay slot, emissive strength to ' +
+        'survive the night preset, and line-occlusion-opacity so routes are not hidden by 3D buildings.'
     ),
 
   global_settings: z
@@ -212,24 +223,25 @@ export const StyleBuilderToolSchema = z.object({
         .string()
         .optional()
         .describe(
-          'Background/land color. Classic styles only — Standard supplies its own background through the import, so this is ignored there. Use standard_config color overrides instead.'
+          'Background/land color. Classic only — Standard supplies its own background through the import, so this is rejected there. Use standard_config color overrides instead.'
         ),
       label_color: z
         .string()
         .optional()
         .describe(
-          'Default label color. Currently not applied to the generated style — to recolor labels, use the standard_config colorPlaceLabels / colorRoadLabels / colorPointOfInterestLabels overrides on Standard, or set text-color on a symbol layer.'
+          'Default text-color for symbol layers, overridden by a per-layer color. Classic only — on Standard use the standard_config colorPlaceLabels / colorRoadLabels / colorPointOfInterestLabels overrides.'
         ),
       mode: z
         .enum(['light', 'dark'])
         .optional()
         .describe(
-          'Light or dark mode for Classic styles. Do NOT use this for dark mode on Standard — set standard_config.lightPreset to "night" instead, which relights the entire basemap. This flag only recolors the custom layers this tool emits, so on Standard it produces a half-dark map that fights the basemap.'
+          'Light or dark mode for Classic styles. It only recolors the layers this tool emits, so it cannot darken a Standard basemap — use standard_config.lightPreset "night", which relights the whole scene. Defaults to whichever the Classic base_style names ("dark-v11", "navigation-night-v1" and the satellite bases are dark), so set it only to override that.'
         )
     })
     .optional()
     .describe(
-      'Global style settings for Classic styles. For Standard, prefer standard_config.'
+      'Global style settings for Classic styles, overriding what the Classic base_style implies. ' +
+        'Rejected on Standard, which takes standard_config instead.'
     ),
 
   standard_config: z

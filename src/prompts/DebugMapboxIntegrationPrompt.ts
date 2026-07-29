@@ -187,6 +187,8 @@ Analyze the error and provide specific solutions:
 2. **Invalid layer type**: Check layer type matches source geometry
 3. **Missing required property**: Verify all required layer properties are set
 4. **Check style spec**: Read \`resource://mapbox-style-layers\` for layer requirements
+5. **\`beforeId\` targeting a basemap layer fails on Standard**: those layer names belong to the
+   import and are not addressable from your style. Use \`slot\` instead — see Phase 3b
 
 `;
       }
@@ -204,7 +206,8 @@ Analyze the error and provide specific solutions:
 1. Verify style ID is correct
 2. Check if custom layers are properly configured
 3. Ensure zoom/center coordinates are valid
-4. Review layer order and visibility
+4. Review layer order and visibility — on a style that imports Standard this means \`slot\`, not
+   array order or \`beforeId\`; see Phase 3b
 
 **If getting rate limit errors:**
 1. Check token usage in Mapbox dashboard
@@ -215,7 +218,48 @@ Analyze the error and provide specific solutions:
 `;
     }
 
-    instructionText += `## Phase 4: Testing & Validation
+    instructionText += `## Phase 3b: Standard-Specific Rendering Failures
+
+Check whether the style has an \`imports\` array (use retrieve_style_tool if you have the style ID).
+**Skip this phase entirely if it does not** — none of it applies to a Classic style, where you order
+layers yourself and nothing is lit.
+
+Where the style does import Standard, these are the failures that throw no error and log nothing:
+the style is valid, the layer is in the JSON, and the map still looks wrong.
+
+1. **"My layer isn't visible"** — check emissive strength first
+   - \`fill-\`, \`line-\` and \`circle-emissive-strength\` default to \`0\`, so the lit scene shades
+     the layer into shadow. Under \`lightPreset: "dusk"\` or \`"night"\` it goes nearly invisible
+   - Set them to \`1\` on every custom fill, line and circle layer
+   - Tell-tale: it looks right by day and disappears at night. If the app switches presets by clock
+     time, this reproduces only in the evening
+   - \`symbol\` layers are fine (icon/text emissive strength already default to \`1\`);
+     \`fill-extrusion\` is real 3D and should be lit; \`heatmap\` has no such property
+
+2. **"My layer covers the street labels"** — the layer has no \`slot\`
+   - No \`slot\` is not neutral placement: the layer draws above **every** basemap layer, labels
+     included
+   - \`bottom\` (below roads) for choropleths and rasters, \`middle\` (above roads, behind labels and
+     3D buildings) for data overlays, \`top\` (above POI labels) for markers
+
+3. **"Part of my route disappears"** — \`line-occlusion-opacity\` defaults to \`0\`, which hides the
+   stretch running behind a 3D building. Set it to \`1\`
+
+4. **"I hid a basemap layer and it's still there"** — on Standard you cannot remove a layer that
+   belongs to the import. Use the \`show*\` config properties
+   (\`showPointOfInterestLabels\`, \`showPlaceLabels\`, \`showRoadLabels\`, \`show3dObjects\`, …)
+
+5. **"Dark mode only half applied"** — \`lightPreset: "night"\` relights the basemap but does **not**
+   recolor your own layers; they keep the paint colors you gave them. That is what emissive strength
+   is for. Hand-authoring dark colors instead of using the preset produces exactly this split
+
+6. **"\`setPaintProperty\` on a basemap layer does nothing"** — the layer belongs to the import.
+   Use \`setConfigProperty('basemap', 'colorWater', …)\` / \`setStyleImportConfigProperty\` instead
+
+Reproduce at the preset the app actually ships, and at \`night\` as well — items 1 and 3 are
+invisible in a day-time review.
+
+## Phase 4: Testing & Validation
 
 Run these diagnostic checks:
 
