@@ -80,7 +80,7 @@ describe('PrepareStyleForProductionPrompt', () => {
 
     const text = result.messages[0].content.text;
     expect(text).toContain('optimize_style_tool');
-    expect(text).toContain('Step 5: Optimize the Style');
+    expect(text).toContain('Step 6: Optimize the Style');
     expect(text).not.toContain('Skipped per user request');
   });
 
@@ -91,7 +91,7 @@ describe('PrepareStyleForProductionPrompt', () => {
     });
 
     const text = result.messages[0].content.text;
-    expect(text).toContain('Step 5: Style Optimization');
+    expect(text).toContain('Step 6: Style Optimization');
     expect(text).toContain('Skipped per user request');
     expect(text).not.toContain('optimize_style_tool');
   });
@@ -166,12 +166,34 @@ describe('PrepareStyleForProductionPrompt', () => {
     const step2Index = text.indexOf('Step 2: Validate All Expressions');
     const step3Index = text.indexOf('Step 3: Validate GeoJSON Sources');
     const step4Index = text.indexOf('Step 4: Check Color Contrast');
-    const step5Index = text.indexOf('Step 5:');
+    const step5Index = text.indexOf(
+      'Step 5: Check Standard Style Layer Placement and Lighting'
+    );
+    const step6Index = text.indexOf('Step 6:');
 
     expect(step1Index).toBeGreaterThan(-1);
     expect(step2Index).toBeGreaterThan(step1Index);
     expect(step3Index).toBeGreaterThan(step2Index);
     expect(step4Index).toBeGreaterThan(step3Index);
     expect(step5Index).toBeGreaterThan(step4Index);
+    expect(step6Index).toBeGreaterThan(step5Index);
+  });
+
+  it('should check slots and emissive strength for Standard styles', () => {
+    const result = prompt.execute({
+      style_id_or_json: 'test/style'
+    });
+
+    const text = result.messages[0].content.text;
+
+    // The two failures that valid-but-wrong Standard styles ship with.
+    expect(text).toContain('slot');
+    expect(text).toContain('fill-emissive-strength');
+    expect(text).toContain('line-emissive-strength');
+    expect(text).toContain('circle-emissive-strength');
+    expect(text).toContain('line-occlusion-opacity');
+
+    // Symbol and fill-extrusion layers must not be flagged for emissive strength.
+    expect(text).toContain('fill-extrusion');
   });
 });

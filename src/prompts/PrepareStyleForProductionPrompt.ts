@@ -126,17 +126,64 @@ Ensure text is readable (WCAG ${wcagLevel} compliance):
        level: "${wcagLevel}",
        fontSize: "normal" or "large" based on text-size
      }
-   - Note: If no halo color, check against both light (#f0f0f0) and dark (#333333) backgrounds
+   - Note: If no halo color, check against the actual basemap the text sits on:
+     * For a style importing Standard, the background depends on \`config.lightPreset\`: check against
+       a light surface (#f0f0f0) for \`day\`/\`dawn\`, a dark one (#333333) for \`night\`/\`dusk\`. Check the
+       one preset the style ships; if the app switches presets at runtime the text must pass against
+       **both** — a color tuned only for \`day\` will fail at \`night\`.
+     * For a Classic style, check against its \`background\` layer color.
 
 **Report accessibility results:**
 - Total text layers checked
 - Layers that pass WCAG ${wcagLevel}
 - Layers that fail with specific issues
 - Recommendations for failing layers
+- Which light preset(s) the check was performed against
+
+## Step 5: Check Standard Style Layer Placement and Lighting
+
+Skip this step if the style has no \`imports\` array — slots and emissive strength only apply to
+styles built on Mapbox Standard. Where it does import Standard, these checks catch failures that
+expression validation and contrast checking cannot see: the style is valid JSON and still renders
+wrongly.
+
+1. **Every custom layer needs an explicit \`slot\`:**
+   - List every layer in the style's own \`layers\` array (not the imported basemap's layers)
+   - Flag any layer with no \`slot\`. This is a defect, not a preference: it draws above **every**
+     basemap layer including street labels, so data covers the labels that make the map readable
+   - Check the slot is plausible for what the layer is:
+     * \`bottom\` — choropleths, rasters, terrain (below roads)
+     * \`middle\` — data overlays, zone fills, heatmaps, routes, custom POI layers
+     * \`top\` — markers, active selections
+   - A large \`fill\` layer in \`top\` is a likely mistake: it will cover the POI labels
+
+2. **Fill, line and circle layers need emissive strength:**
+   - For each custom \`fill\`, \`line\` or \`circle\` layer, check for
+     \`fill-emissive-strength\` / \`line-emissive-strength\` / \`circle-emissive-strength\`
+   - Flag any missing or \`0\`. They default to \`0\`, letting the scene light the layer, so it falls
+     into shadow and goes nearly invisible under the \`dusk\` and \`night\` presets
+   - The most common way a map that looked correct in review ships broken: it's invisible only at
+     certain times of day, so day-time testing never catches it
+   - Do **not** flag: \`symbol\` layers (icon/text emissive strength already default to \`1\`),
+     \`fill-extrusion\` (real 3D, should be lit by the scene), or \`heatmap\` (no such property)
+
+3. **Routes need occlusion opacity:**
+   - For \`line\` layers representing a route or path, check for \`line-occlusion-opacity\`
+   - Its default of \`0\` completely hides the part of the line behind 3D buildings
+
+4. **Verify at the dark preset:**
+   - If \`preview_style_tool\` is available, preview with \`lightPreset\` set to \`night\`
+   - Confirm custom data layers are visible and legible, not just present in the JSON
+
+**Report layer placement results:**
+- Custom layers checked
+- Layers missing \`slot\` (with the slot each one should have)
+- Layers missing emissive strength
+- Any layer whose slot looks wrong for its type
 
 ${
   !skipOptimization
-    ? `## Step 5: Optimize the Style
+    ? `## Step 6: Optimize the Style
 
 Run optimization to improve performance and reduce file size:
 
@@ -155,7 +202,7 @@ Run optimization to improve performance and reduce file size:
 - Percentage reduction
 - Optimizations applied (unused sources, duplicate layers, etc.)
 - Recommendation to use optimized version`
-    : '## Step 5: Style Optimization\n\nSkipped per user request.'
+    : '## Step 6: Style Optimization\n\nSkipped per user request.'
 }
 
 ## Final Step: Generate Quality Report
@@ -189,7 +236,17 @@ Create a comprehensive deployment checklist:
 - Text layers: <count>
 - Passing: <count>
 - Failing: <count>
+- Checked against light preset(s): <presets>
 <List failing layers with recommendations>
+
+## Standard Layer Placement and Lighting
+<Omit this section entirely if the style does not import Standard>
+✓/✗ All custom layers have an explicit slot
+- Custom layers: <count>
+- Missing slot: <count>
+✓/✗ All fill/line/circle layers set emissive strength
+- Missing emissive strength: <count>
+<List each affected layer, the property it needs, and why>
 
 ${
   !skipOptimization

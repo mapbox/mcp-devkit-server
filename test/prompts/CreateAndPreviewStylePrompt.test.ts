@@ -67,6 +67,41 @@ describe('CreateAndPreviewStylePrompt', () => {
     expect(text).toContain('14');
   });
 
+  it('should default to Mapbox Standard rather than a Classic style', () => {
+    const result = prompt.execute({
+      style_name: 'Test Style'
+    });
+
+    const text = result.messages[0].content.text;
+
+    expect(text).toContain('mapbox://styles/mapbox/standard');
+    expect(text).not.toContain('streets-v12');
+
+    // Standard arrives as an import, not a hand-authored layer list.
+    expect(text).toContain('imports');
+    expect(text).not.toContain('"background-color": "#f0f0f0"');
+  });
+
+  it('should route dark mode through lightPreset instead of a dark base style', () => {
+    const result = prompt.execute({
+      style_name: 'Test Style'
+    });
+
+    const text = result.messages[0].content.text;
+    expect(text).toContain('lightPreset');
+    expect(text).toContain('night');
+  });
+
+  it('should require an explicit slot and emissive strength on custom layers', () => {
+    const result = prompt.execute({
+      style_name: 'Test Style'
+    });
+
+    const text = result.messages[0].content.text;
+    expect(text).toContain('slot');
+    expect(text).toContain('emissive strength');
+  });
+
   it('should throw error if required argument is missing', () => {
     expect(() => {
       prompt.execute({});

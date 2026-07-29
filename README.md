@@ -140,7 +140,7 @@ Reference data is exposed as MCP Resources (see [Resources](#resources) section)
 
 Complete set of tools for managing Mapbox styles via the Styles API:
 
-**Style Builder Tool** - Create and modify Mapbox styles programmatically through conversational prompts
+**Style Builder Tool** - Build Mapbox style JSON from structured parameters: a base style, a layer list, the config surface for that base, and your own GeoJSON or tilesets. Defaults to Mapbox Standard, where it configures the basemap through the style import and gives every custom layer a slot and the emissive strength it needs to survive the night preset. Classic bases work differently in every respect — the tool authors the whole layer stack there.
 
 📖 **[See the Style Builder documentation for detailed usage and examples →](./docs/STYLE_BUILDER.md)**
 
@@ -829,7 +829,7 @@ Create a new Mapbox map style and generate a shareable preview link with automat
 
 - `style_name` (required): Name for the new map style
 - `style_description` (optional): Description of the style theme or purpose
-- `base_style` (optional): Base style to start from (e.g., "streets-v12", "dark-v11")
+- `base_style` (optional): Base style to start from. Defaults to `"standard"` (Mapbox Standard), which is the right choice for almost every new style. Pass a Classic style (`"streets-v12"`, `"dark-v11"`, …) only when a classic style is explicitly wanted.
 - `preview_location` (optional): Location to center the preview map
 - `preview_zoom` (optional): Zoom level for the preview (0-22, default: 12)
 
@@ -839,6 +839,7 @@ Create a new Mapbox map style and generate a shareable preview link with automat
 2. Creates a new public token if needed
 3. Creates the map style
 4. Generates a preview link
+5. Runs the `prepare-style-for-production` validation workflow
 
 **Example usage:**
 
@@ -847,10 +848,15 @@ Use prompt: create-and-preview-style
 Arguments:
   style_name: "My Custom Map"
   style_description: "A dark-themed map for nighttime navigation"
-  base_style: "dark-v11"
+  base_style: "standard"
   preview_location: "San Francisco"
   preview_zoom: "13"
 ```
+
+Note that a dark map keeps `base_style: "standard"` — the workflow sets the Standard style's
+`lightPreset` to `night` rather than switching to `dark-v11`. The light preset relights the whole
+basemap coherently, and it can be changed at runtime without reloading the style. Custom layers do
+not follow the preset, which is why the workflow also gives them emissive strength `1`.
 
 ### build-custom-map
 
@@ -865,9 +871,12 @@ Use conversational AI to build a custom styled map based on a theme description.
 
 **What it does:**
 
-1. Uses the Style Builder tool to create a themed style based on your description
-2. Creates the style in your Mapbox account
-3. Generates a preview link
+1. Translates the theme into Mapbox Standard configuration — `theme`, `lightPreset` (this is how a
+   theme goes dark), `color*` overrides and `show*` toggles — and adds custom layers only for what
+   the config cannot reach
+2. Uses the Style Builder tool to build the style JSON
+3. Creates the style in your Mapbox account
+4. Generates a preview link
 
 **Example usage:**
 

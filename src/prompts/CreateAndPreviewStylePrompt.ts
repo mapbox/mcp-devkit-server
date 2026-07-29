@@ -32,7 +32,7 @@ export class CreateAndPreviewStylePrompt extends BasePrompt {
     {
       name: 'base_style',
       description:
-        'Optional base style to start from (e.g., "streets-v12", "outdoors-v12", "light-v11", "dark-v11")',
+        'Optional base style to start from. Defaults to "standard" (Mapbox Standard), the right choice for almost every new style. Pass a Classic style ("streets-v12", "outdoors-v12", "light-v11", "dark-v11") only when the user explicitly asks for one. For a dark map, keep "standard" and set lightPreset to "night" instead of passing "dark-v11".',
       required: false
     },
     {
@@ -51,7 +51,7 @@ export class CreateAndPreviewStylePrompt extends BasePrompt {
   getMessages(args: Record<string, string>): PromptMessage[] {
     const styleName = args['style_name'];
     const styleDescription = args['style_description'];
-    const baseStyle = args['base_style'] || 'streets-v12';
+    const baseStyle = args['base_style'] || 'standard';
     const previewLocation = args['preview_location'];
     const previewZoom = args['preview_zoom'] || '12';
 
@@ -80,26 +80,62 @@ Follow these steps carefully:
     }
 
     instructionText += `\n   - Base the style on Mapbox ${baseStyle}
-   - You can start with a basic style like:
+   - Build the style JSON with \`style_builder_tool\` (base_style: "${baseStyle}") rather than
+     hand-authoring it.`;
+
+    // The two targets are configured through different surfaces, so guidance for one is at best
+    // noise on the other: slots and lightPreset do nothing on Classic, and a hand-authored
+    // background layer sits on top of the basemap on Standard.
+    if (baseStyle === 'standard') {
+      instructionText += ` Don't hand-write a \`background\` layer and a raw streets-v8
+     source — on Standard the basemap arrives through the import, and a hand-rolled background
+     sits on top of it.
+   - Reach for appearance changes in this order:
+     1. \`standard_config\` (theme, lightPreset, show/hide toggles, color overrides)
+     2. custom layers in an explicit \`slot\`, only for data the basemap doesn't already carry
+   - A Standard style starts out as an import, not a layer list:
      \`\`\`json
      {
        "version": 8,
        "name": "${styleName}",
-       "sources": {
-         "mapbox": {
-           "type": "vector",
-           "url": "mapbox://mapbox.mapbox-streets-v8"
-         }
-       },
-       "layers": [
+       "imports": [
          {
-           "id": "background",
-           "type": "background",
-           "paint": { "background-color": "#f0f0f0" }
+           "id": "basemap",
+           "url": "mapbox://styles/mapbox/standard",
+           "config": { "theme": "default", "lightPreset": "day" }
          }
-       ]
+       ],
+       "sources": {},
+       "layers": []
      }
      \`\`\`
+   - For a dark map, set \`config.lightPreset\` to \`"night"\`. Don't switch to \`dark-v11\` or
+     hand-author dark colors — the preset relights the whole basemap coherently.
+   - Every custom layer needs an explicit \`slot\`, and fill/line/circle layers need
+     emissive strength \`1\`, or they go nearly invisible under the dusk/night presets.
+   - To hide something the basemap draws, use the \`standard_config\` \`show*\` toggle. Leaving
+     the layer out of your own \`layers\` array hides nothing — the import still draws it.`;
+    } else {
+      instructionText += `
+   - This is a **Classic** style, so the Standard advice does not apply here. \`slot\` is
+     rejected, there is no \`imports\` array and no \`lightPreset\`: a Classic style is a layer
+     stack you order yourself over a \`background\` layer.
+   - \`base_style: "${baseStyle}"\` is not a style import and does **not** reproduce that style —
+     the builder authors the stack, and the base name only decides light vs dark and whether
+     satellite imagery goes underneath. **Every feature you want drawn must be listed in
+     \`layers\`**; ask for water, landuse, roads, buildings and labels explicitly or the map will be
+     nearly empty. If the user wanted the real \`${baseStyle}\`, reference
+     \`mapbox://styles/mapbox/${baseStyle}\` in their map directly instead of building a new style.
+   - Appearance is set through \`global_settings\` (\`background_color\`, \`label_color\`, \`mode\`),
+     not \`standard_config\`, which is rejected on Classic.
+   - Layer order is the order of the \`layers\` array: polygons first, then lines, then labels.
+   - Consider whether Standard would serve better before continuing. Standard is configured rather
+     than authored, needs no per-feature layer list, and gets basemap updates for free — for a dark
+     map in particular, \`base_style: "standard"\` with \`lightPreset: "night"\` is less work and
+     more coherent than a hand-authored Classic stack.`;
+    }
+
+    instructionText += `
    - Save the style ID from the response
 
 4. **Generate preview link**

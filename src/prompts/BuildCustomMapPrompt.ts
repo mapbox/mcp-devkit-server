@@ -58,18 +58,31 @@ export class BuildCustomMapPrompt extends BasePrompt {
 Follow these steps to create and preview the styled map:
 
 1. **Use the Style Builder**
-   - Use the style_builder_tool to create the themed map style
-   - Provide this prompt: "${stylePrompt}"
-   - The Style Builder will use AI to interpret your theme and create appropriate:
-     * Color schemes matching the theme
-     * Layer visibility and styling
-     * Typography and symbols
-     * Overall aesthetic
+   - Use the style_builder_tool to create the themed map style, expressing "${stylePrompt}"
+   - The tool takes structured input, not a description: \`base_style\`, a \`layers\` array, and the
+     config surface for whichever base you choose. Translate the theme into those parameters.
+   - **Keep \`base_style: "standard"\`.** Most of a theme is expressible through
+     \`standard_config\` alone, which is cheaper than authoring layers and survives basemap updates:
+     * \`theme\`: \`"faded"\` or \`"monochrome"\` — most of the way to any muted or minimal look
+     * \`lightPreset\`: \`"day"\`/\`"dawn"\`/\`"dusk"\`/\`"night"\` — **this is how a theme goes dark.**
+       Never switch to \`dark-v11\` or hand-author dark colors; the preset relights the whole scene
+     * \`color*\` overrides: \`colorWater\`, \`colorGreenspace\`, \`colorRoads\`, \`colorPlaceLabels\`
+       and the rest — this is how a theme gets its palette onto the basemap
+     * \`show*\` toggles: turn off what the theme doesn't want. On Standard this is the *only* way
+       to hide a basemap feature — omitting a layer hides nothing, because the import still draws it
+   - Add custom \`layers\` only for what the config cannot reach. Each one needs an explicit
+     \`slot\`, and fill/line/circle layers need emissive strength \`1\` or they vanish at
+     \`dusk\`/\`night\`. The tool sets emissive strength for you and reports the slot it inferred.
+   - Only use a Classic base (\`streets-v12\`, \`dark-v11\`, …) if the user explicitly asks for a
+     classic style. There you author every layer yourself: no \`slot\`, no \`lightPreset\`, no
+     config surface — appearance comes from \`global_settings\` and the order of \`layers\`.
 
 2. **Review the generated style**
    - The style_builder_tool will return a complete Mapbox GL JS style specification
    - Review the style to ensure it matches the intended theme
    - Note any specific customizations made (colors, layers emphasized, etc.)
+   - Read the tool's auto-corrections: they name the slot it inferred, and the config property to
+     use when you asked for a layer that only overdraws the basemap
 
 3. **Create the style**
    - Use create_style_tool to save the generated style to your Mapbox account
@@ -111,21 +124,29 @@ Follow these steps to create and preview the styled map:
      * Suggestions for further customization if desired
    - Note: Validation warnings can be ignored for experimental maps
 
-**Theme interpretation tips:**
-- "Dark cyberpunk": Dark backgrounds, neon colors (cyan, magenta, purple), high contrast
-- "Nature-focused": Earth tones, emphasize parks/forests/water, soften urban features
-- "Minimal monochrome": Grayscale palette, simplified geometry, clean lines
-- "Retro 80s neon": Bright colors, high saturation, bold typography`;
+**Theme interpretation tips** (each one starts as \`standard_config\`, not as layers):
+- "Dark cyberpunk": \`lightPreset: "night"\` for the dark scene, then neon \`colorRoads\` /
+  \`colorPlaceLabels\` (cyan, magenta, purple) for the high-contrast accents
+- "Nature-focused": \`colorGreenspace\` and \`colorWater\` in earth tones, and
+  \`showPointOfInterestLabels: false\` to soften the urban clutter
+- "Minimal monochrome": \`theme: "monochrome"\` does most of it; add \`showTransitLabels: false\`
+  and \`show3dObjects: false\` for the clean-lines part
+- "Retro 80s neon": \`lightPreset: "dusk"\` with saturated \`color*\` overrides — and if you add
+  custom glow layers, they need emissive strength \`1\` or the dusk scene swallows them`;
 
     if (emphasis) {
       instructionText += `\n- Custom emphasis on "${emphasis}": Ensure these features are visually prominent`;
     }
 
     instructionText += `\n\n**Important notes:**
-- The style_builder_tool is powered by AI and may need refinement
+- Translating a theme into style parameters is a judgement call and may need refinement
 - Validation runs automatically to catch any issues in generated expressions
 - You can iterate on the style by making additional calls to style_builder_tool
-- If the initial result doesn't match expectations, try refining the theme description
+- If the initial result doesn't match expectations, adjust the config properties before reaching
+  for more layers — a theme that needs many custom layers usually needs a different \`theme\` or
+  \`lightPreset\` instead
+- **Preview a dark or dusk theme at its own light preset.** A missing emissive strength looks
+  correct by day and invisible at night, so a day-time review never catches it
 - Consider the map's use case when choosing zoom levels and preview locations
 - For experimental maps, validation warnings can be addressed later`;
 
