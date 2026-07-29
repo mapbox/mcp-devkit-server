@@ -469,6 +469,64 @@ function normalizeColor(color?: string): string | undefined {
     : color;
 }
 
+/**
+ * A `filter` on one of the caller's own layers, as an expression the style spec accepts.
+ *
+ * The basemap path resolves an object filter against Streets v8 field metadata, which is what
+ * makes `{ class: "park" }` work there. Custom data has no such metadata, so this path used to
+ * assign the object straight to `layer.filter` — producing a style the spec rejects outright
+ * ("array expected, object found"), which surfaced only when `create_style_tool` uploaded it.
+ * Converted rather than rejected: the object form is the shape a caller carries over from a
+ * basemap layer in the same call, and its intent is unambiguous without any field metadata.
+ *
+ * Returns the filter to set, `null` for nothing to set, or a guidance string for a hard stop.
+ */
+function userDataFilter(
+  filter: NonNullable<StyleBuilderToolInput['layers'][0]['filter']>
+): { filter: Filter; correction?: string } | string | null {
+  // Already an expression — the caller wrote the filter the spec wants, so leave it alone.
+  if (Array.isArray(filter)) {
+    return { filter: filter as Filter };
+  }
+
+  if (typeof filter !== 'object' || filter === null) {
+    return (
+      `**\`filter\` must be an expression or a property object, not ${typeof filter} ` +
+      `(\`${JSON.stringify(filter)}\`).**\n\n` +
+      `A filter selects features, so it needs a property to test against. Either pass a style ` +
+      `expression — \`["==", ["get", "status"], "active"]\` — or the object shorthand, ` +
+      `\`{ "status": "active" }\`, which this tool converts to one. Nothing was generated.`
+    );
+  }
+
+  const clauses: unknown[] = [];
+  for (const [key, value] of Object.entries(filter)) {
+    if (value === undefined || value === null) continue;
+    clauses.push(
+      Array.isArray(value)
+        ? // Any of several values. `match` rather than a chain of `==` under `any`, matching the
+          // shape the basemap path emits so both kinds of layer read the same way.
+          ['match', ['get', key], value, true, false]
+        : ['==', ['get', key], value]
+    );
+  }
+
+  if (clauses.length === 0) return null;
+
+  const expression = (
+    clauses.length === 1 ? clauses[0] : ['all', ...clauses]
+  ) as Filter;
+
+  return {
+    filter: expression,
+    correction:
+      `\`filter\` was given as a property object and converted to ` +
+      `\`${JSON.stringify(expression)}\`. The spec takes an expression, not an object — passing ` +
+      `one through would have produced a style that fails validation on upload. Values are ` +
+      `compared exactly; pass an expression yourself for anything else (ranges, \`has\`, \`!\`).`
+  };
+}
+
 // Geometry types from Mapbox tilestats API for Streets v8
 // This maps actual source-layer names to their geometry types
 const SOURCE_LAYER_GEOMETRY: Record<
@@ -1790,7 +1848,19 @@ ${JSON.stringify(style, null, 2)}
     // Normalised through the same helper as a basemap layer: bare hex reaches this path just as
     // readily, and it was the one path that passed it straight into the style.
     const literalColor = normalizeColor(config.color);
-    if (colorProp) {
+    if (renderType === 'heatmap') {
+      // A heatmap colours by density, not by feature, so `heatmap-color` takes a ramp over
+      // ["heatmap-density"] and cannot hold a literal. It is therefore absent from
+      // getColorProperty — which meant `color`, `expression` and `property_based` were all
+      // dropped here in silence, along with `opacity`, since heatmap-opacity was missing too.
+      this.applyHeatmapColor(
+        layer.id,
+        config,
+        literalColor,
+        paint,
+        corrections
+      );
+    } else if (colorProp) {
       const dataDriven =
         config.expression !== undefined ||
         (config.property_based !== undefined &&
@@ -1844,6 +1914,17 @@ ${JSON.stringify(style, null, 2)}
     }
     if (renderType === 'line' && config.width !== undefined) {
       paint['line-width'] = ramped(config.width, 'width');
+    } else if (config.width !== undefined) {
+      // `width` is a line width, and the schema says so, but it is accepted on every layer — so
+      // on a circle or a fill it was taken and dropped. Named rather than mapped to something
+      // adjacent: guessing `circle-radius` from a field called width is a different property.
+      corrections.push(
+        `• \`width\` was ignored on "${layer.id}": it sets \`line-width\`, and this is a ` +
+          `${renderType} layer. ` +
+          (renderType === 'circle'
+            ? `For dot size edit \`paint.circle-radius\` in the JSON below.`
+            : `Drop it, or use \`render_type: "line"\` if you wanted a stroke.`)
+      );
     }
 
     // `zoom_based` ramps opacity and width, and a colour ramp is what `expression` is for. With
@@ -1909,7 +1990,16 @@ ${JSON.stringify(style, null, 2)}
       );
     }
 
-    if (config.filter) layer.filter = config.filter as Filter;
+    if (config.filter !== undefined) {
+      const converted = userDataFilter(config.filter);
+      if (typeof converted === 'string') {
+        return converted;
+      }
+      if (converted) {
+        layer.filter = converted.filter;
+        if (converted.correction) corrections.push(`• ${converted.correction}`);
+      }
+    }
     if (Object.keys(paint).length > 0) layer.paint = paint;
     return layer;
   }
@@ -2008,10 +2098,67 @@ ${JSON.stringify(style, null, 2)}
       symbol: 'text-opacity',
       circle: 'circle-opacity',
       background: 'background-opacity',
+      // heatmap-opacity is an ordinary number like the rest, unlike heatmap-color. Its absence
+      // here is why `opacity` was dropped on every heatmap layer.
+      heatmap: 'heatmap-opacity',
       'fill-extrusion': 'fill-extrusion-opacity'
     };
 
     return opacityProps[layerType] || null;
+  }
+
+  /**
+   * Colour a heatmap built from the caller's own data.
+   *
+   * `heatmap-color` is the one colour property that is a ramp rather than a colour: the spec
+   * expects an expression over `["heatmap-density"]`, so a literal is invalid and a `match` on a
+   * feature property is meaningless — density is computed from the points, not read off one. That
+   * mismatch is why this path used to drop `color`, `expression` and `property_based` outright.
+   *
+   * Left unset the layer still draws, using the spec's blue-to-red default ramp, so nothing here
+   * is a hard stop: `color` becomes a single-hue ramp, `expression` passes through as the ramp
+   * itself, and the per-feature options are reported as belonging to `heatmap-weight` instead.
+   */
+  private applyHeatmapColor(
+    layerId: string,
+    config: StyleBuilderToolInput['layers'][0],
+    literalColor: string | undefined,
+    paint: Record<string, unknown>,
+    corrections: string[]
+  ): void {
+    if (config.expression !== undefined) {
+      // The caller supplying their own ramp is the escape hatch for everything this helper
+      // cannot express, so it goes through untouched.
+      paint['heatmap-color'] = config.expression;
+    } else if (literalColor) {
+      // Transparent at zero density so the basemap reads through where there are no points —
+      // the spec default starts transparent for the same reason, and an opaque stop at 0 would
+      // wash the whole layer in one colour.
+      paint['heatmap-color'] = [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0,
+        'rgba(0, 0, 0, 0)',
+        1,
+        literalColor
+      ];
+      corrections.push(
+        `• "${layerId}" ramps from transparent to ${literalColor} by density. \`heatmap-color\` ` +
+          `takes an expression over \`["heatmap-density"]\` rather than a colour, so a single-hue ` +
+          `ramp was built from the \`color\` you gave. Pass \`expression\` with your own ` +
+          `\`["interpolate", ["linear"], ["heatmap-density"], …]\` for a multi-stop ramp.`
+      );
+    }
+
+    if (config.property_based !== undefined) {
+      corrections.push(
+        `• \`property_based: "${config.property_based}"\` does not colour a heatmap: the colour ` +
+          `comes from point density, not from a feature property. To weight features by ` +
+          `\`${config.property_based}\`, edit \`paint.heatmap-weight\` in the JSON below — e.g. ` +
+          `\`["get", "${config.property_based}"]\`. \`expression\` sets the density ramp itself.`
+      );
+    }
   }
 
   /**

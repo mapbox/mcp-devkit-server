@@ -1103,6 +1103,193 @@ describe('StyleBuilderTool', () => {
       expect(text).toContain('Fueling station POI mode: default');
     });
 
+    it('should convert an object filter on your own data into an expression', async () => {
+      const result = await tool.run({
+        style_name: 'Zones',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Active zones',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'color',
+            color: '#7b61ff',
+            filter: { status: ['active', 'pending'], tier: 2 }
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const fill = style.layers.find((l: any) => l.type === 'fill');
+
+      // The object shape carries over from a basemap layer, where field metadata resolves it.
+      // Custom data has none, so this used to be assigned raw — a style the spec rejects with
+      // "array expected, object found", surfacing only once create_style_tool uploaded it.
+      expect(fill.filter).toEqual([
+        'all',
+        ['match', ['get', 'status'], ['active', 'pending'], true, false],
+        ['==', ['get', 'tier'], 2]
+      ]);
+      expect(text).toContain('converted to');
+    });
+
+    it('should reject a filter with nothing to test against', async () => {
+      const result = await tool.run({
+        style_name: 'Zones',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Zones',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'color',
+            color: '#7b61ff',
+            filter: 'active'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      expect(text).toContain('must be an expression or a property object');
+      expect(text).not.toContain('Style Built Successfully');
+    });
+
+    it('should keep an expression filter on your own data untouched', async () => {
+      const result = await tool.run({
+        style_name: 'Zones',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Big zones',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'color',
+            color: '#7b61ff',
+            filter: ['>', ['get', 'area'], 500]
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const fill = style.layers.find((l: any) => l.type === 'fill');
+
+      expect(fill.filter).toEqual(['>', ['get', 'area'], 500]);
+    });
+
+    it('should honour colour and opacity on a heatmap of your own data', async () => {
+      const result = await tool.run({
+        style_name: 'Incidents',
+        base_style: 'standard',
+        custom_sources: {
+          pts: { type: 'geojson', data: 'https://example.com/p.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Incident density',
+            source_id: 'pts',
+            render_type: 'heatmap',
+            action: 'color',
+            color: '#ff0000',
+            opacity: 0.5
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const heatmap = style.layers.find((l: any) => l.type === 'heatmap');
+
+      // heatmap-color takes a ramp over heatmap-density rather than a colour, and heatmap-opacity
+      // was missing from the opacity table — so both of these used to be dropped in silence,
+      // leaving a layer with no paint at all reported as built successfully.
+      expect(heatmap.paint['heatmap-color']).toEqual([
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0,
+        'rgba(0, 0, 0, 0)',
+        1,
+        '#ff0000'
+      ]);
+      expect(heatmap.paint['heatmap-opacity']).toBe(0.5);
+      expect(text).toContain('ramps from transparent to #ff0000');
+    });
+
+    it('should pass a caller ramp straight through to heatmap-color', async () => {
+      const ramp = [
+        'interpolate',
+        ['linear'],
+        ['heatmap-density'],
+        0,
+        'rgba(0, 0, 0, 0)',
+        1,
+        '#08519c'
+      ];
+      const result = await tool.run({
+        style_name: 'Incidents',
+        base_style: 'standard',
+        custom_sources: {
+          pts: { type: 'geojson', data: 'https://example.com/p.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Incident density',
+            source_id: 'pts',
+            render_type: 'heatmap',
+            action: 'color',
+            property_based: 'weight',
+            property_values: { high: 1 },
+            expression: ramp
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const heatmap = style.layers.find((l: any) => l.type === 'heatmap');
+
+      expect(heatmap.paint['heatmap-color']).toEqual(ramp);
+      // Density is computed from the points, so a per-feature match cannot colour a heatmap.
+      // Pointed at heatmap-weight instead of being accepted and ignored.
+      expect(text).toContain('does not colour a heatmap');
+      expect(text).toContain('heatmap-weight');
+    });
+
+    it('should report width it cannot apply instead of dropping it', async () => {
+      const result = await tool.run({
+        style_name: 'Stores',
+        base_style: 'standard',
+        custom_sources: {
+          pts: { type: 'geojson', data: 'https://example.com/p.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Stores',
+            source_id: 'pts',
+            render_type: 'circle',
+            action: 'color',
+            color: '#7b61ff',
+            width: 8
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      expect(text).toContain('`width` was ignored');
+      expect(text).toContain('circle-radius');
+    });
+
     it('should colour your own data by value rather than dropping the expression', async () => {
       const result = await tool.run({
         style_name: 'Anomaly',

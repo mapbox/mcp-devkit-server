@@ -21,7 +21,8 @@
  *
  * Usage:
  *   npm run build && npm run eval:tools
- *   EVAL_MODEL=claude-sonnet-5 npm run eval:tools
+ *   EVAL_MODEL=claude-opus-5 npm run eval:tools
+ *   EVAL_EFFORT=low npm run eval:tools
  *   npm run eval:tools -- --json out.json
  */
 
@@ -41,7 +42,10 @@ if (existsSync('.env')) {
 }
 
 const MODEL = process.env.EVAL_MODEL || 'claude-sonnet-5';
-const MAX_TURNS = 4;
+const EFFORT = process.env.EVAL_EFFORT || '';
+// Enough for build → create → preview plus a closing turn. Exhausting it is reported rather than
+// scored quietly: a truncated conversation fails checks for a reason that is not a behavior change.
+const MAX_TURNS = 5;
 
 // Resolved against cwd rather than this file, so the script works from an npm script.
 const REGISTRY = resolve(process.cwd(), 'dist/esm/tools/toolRegistry.js');
@@ -80,10 +84,20 @@ function toolDefinitions() {
         unrepresentable: 'any'
       });
       delete input_schema.$schema;
-    } catch {
+    } catch (error) {
+      // Loudly: the fallback hands the model a tool with no parameters, so the eval would go on
+      // measuring a surface that is not the one we ship, and the score would drop with no clue why.
+      console.warn(
+        `WARNING: could not convert ${tool.name} input schema (${error.message}). ` +
+          `Exposing it with no parameters — checks touching this tool are not meaningful.`
+      );
       input_schema = { type: 'object', properties: {} };
     }
     if (input_schema.type !== 'object') {
+      console.warn(
+        `WARNING: ${tool.name} input schema converted to type "${input_schema.type}", not ` +
+          `"object". Exposing it with no parameters.`
+      );
       input_schema = { type: 'object', properties: {} };
     }
     defs.push({
@@ -331,15 +345,21 @@ async function runCase(client, tools, testCase) {
   const messages = [{ role: 'user', content: testCase.prompt }];
   const calls = [];
   let text = '';
+  let truncated = false;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
+    // Thinking is left at each model's default (adaptive on every current model) rather than
+    // disabled. Disabling it made the eval both narrower and wrong-headed: `thinking:
+    // {type: "disabled"}` is rejected outright on Claude Fable 5, and on the Sonnet/Opus models
+    // it measurably reduces how readily the model reaches for tools — which is the only thing
+    // this eval scores. Set EVAL_EFFORT to trade thoroughness for cost.
     const response = await client.messages.create({
       model: MODEL,
       max_tokens: 4096,
-      thinking: { type: 'disabled' },
       system: SYSTEM,
       tools,
-      messages
+      messages,
+      ...(EFFORT ? { output_config: { effort: EFFORT } } : {})
     });
 
     for (const block of response.content) {
@@ -350,6 +370,12 @@ async function runCase(client, tools, testCase) {
     }
 
     if (response.stop_reason !== 'tool_use') break;
+    // Still mid-conversation with no turns left: the checks below are about to score a partial
+    // transcript, so say so rather than let a turn-limit artifact read as a regression.
+    if (turn === MAX_TURNS - 1) {
+      truncated = true;
+      break;
+    }
 
     messages.push({ role: 'assistant', content: response.content });
     const results = [];
@@ -384,7 +410,12 @@ async function runCase(client, tools, testCase) {
       results[label] = false;
     }
   }
-  return { id: testCase.id, results, toolsUsed: calls.map((c) => c.name) };
+  return {
+    id: testCase.id,
+    results,
+    truncated,
+    toolsUsed: calls.map((c) => c.name)
+  };
 }
 
 const client = new Anthropic();
@@ -393,17 +424,44 @@ console.log(
   `Model: ${MODEL}\nTools exposed: ${tools.map((t) => t.name).join(', ')}\n`
 );
 
-const outcomes = await Promise.all(CASES.map((c) => runCase(client, tools, c)));
+// allSettled, not all: cases run concurrently, and one rate limit or transport error would
+// otherwise reject the whole run and discard every other case's results with it.
+const settled = await Promise.allSettled(
+  CASES.map((c) => runCase(client, tools, c))
+);
+const outcomes = settled.map((result, i) =>
+  result.status === 'fulfilled'
+    ? result.value
+    : {
+        id: CASES[i].id,
+        results: {},
+        toolsUsed: [],
+        error: result.reason?.message || String(result.reason)
+      }
+);
 
 let passed = 0;
 let total = 0;
+let errored = 0;
 for (const outcome of outcomes) {
+  if (outcome.error) {
+    errored++;
+    // Its checks still count against the total, so a case that never ran cannot raise the score.
+    const testCase = CASES.find((c) => c.id === outcome.id);
+    total += Object.keys(testCase.checks).length;
+    console.log(`! ${outcome.id}  did not run`);
+    console.log(`    error: ${outcome.error}\n`);
+    continue;
+  }
   const entries = Object.entries(outcome.results);
   const casePassed = entries.filter(([, ok]) => ok).length;
   passed += casePassed;
   total += entries.length;
   const mark = casePassed === entries.length ? '✓' : '✗';
-  console.log(`${mark} ${outcome.id}  ${casePassed}/${entries.length}`);
+  console.log(
+    `${mark} ${outcome.id}  ${casePassed}/${entries.length}` +
+      (outcome.truncated ? `  (TRUNCATED at ${MAX_TURNS} turns)` : '')
+  );
   for (const [label, ok] of entries) {
     console.log(`    ${ok ? 'pass' : 'FAIL'}  ${label}`);
   }
@@ -411,7 +469,10 @@ for (const outcome of outcomes) {
 }
 
 const pct = total ? ((passed / total) * 100).toFixed(1) : '0.0';
-console.log(`Total: ${passed}/${total} checks (${pct}%)`);
+console.log(
+  `Total: ${passed}/${total} checks (${pct}%)` +
+    (errored ? ` — ${errored} case(s) failed to run` : '')
+);
 
 const jsonFlag = process.argv.indexOf('--json');
 if (jsonFlag !== -1 && process.argv[jsonFlag + 1]) {
