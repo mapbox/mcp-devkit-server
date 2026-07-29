@@ -3,7 +3,10 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { StyleBuilderTool } from '../../../src/tools/style-builder-tool/StyleBuilderTool.js';
-import type { StyleBuilderToolInput } from '../../../src/tools/style-builder-tool/StyleBuilderTool.input.schema.js';
+import {
+  StyleBuilderToolSchema,
+  type StyleBuilderToolInput
+} from '../../../src/tools/style-builder-tool/StyleBuilderTool.input.schema.js';
 
 describe('StyleBuilderTool', () => {
   let tool: StyleBuilderTool;
@@ -1012,6 +1015,335 @@ describe('StyleBuilderTool', () => {
       // told about `bottom`, the one case the overlay default is usually wrong for.
       expect(text).toContain('inferred slot "middle"');
       expect(text).toContain('slot: "bottom"');
+    });
+
+    it('should expose every documented Mapbox Standard config property', () => {
+      // Every property documented at docs.mapbox.com/map-styles/reference/standard/ as of
+      // 2026-07. The schema strips unknown keys, so a property missing here is one a caller can
+      // set and never be told was dropped — the same silence the target check exists to end.
+      const documented = [
+        'showPedestrianRoads',
+        'showPlaceLabels',
+        'showPointOfInterestLabels',
+        'showRoadLabels',
+        'showTransitLabels',
+        'show3dObjects',
+        'show3dBuildings',
+        'show3dTrees',
+        'show3dLandmarks',
+        'show3dFacades',
+        'showLandmarkIcons',
+        'showLandmarkIconLabels',
+        'showAdminBoundaries',
+        'showIndoor',
+        'showIndoorLabels',
+        'theme',
+        'theme-data',
+        'lightPreset',
+        'font',
+        'colorModePointOfInterestLabels',
+        'backgroundPointOfInterestLabels',
+        'densityPointOfInterestLabels',
+        'fuelingStationModePointOfInterestLabels',
+        'colorPlaceLabels',
+        'colorRoadLabels',
+        'colorPointOfInterestLabels',
+        'colorCommercial',
+        'colorEducation',
+        'colorMedical',
+        'colorIndustrial',
+        'colorGreenspace',
+        'colorWater',
+        'colorLand',
+        'colorAdminBoundaries',
+        'colorMotorways',
+        'colorTrunks',
+        'colorRoads',
+        'colorBuildings',
+        'colorBuildingHighlight',
+        'colorBuildingSelect',
+        'colorPlaceLabelHighlight',
+        'colorPlaceLabelSelect',
+        'colorIndoorLabelSelect',
+        'colorIndoorLabelHighlight'
+      ];
+
+      const shape = (
+        StyleBuilderToolSchema.shape.standard_config as any
+      ).unwrap().shape;
+      const keys = Object.keys(shape);
+
+      expect(documented.filter((p) => !keys.includes(p))).toEqual([]);
+      // showRoadsAndTransit is the one deliberate extra: a Standard *Satellite* property, kept
+      // in the schema so passing it is an error rather than a silently dropped key.
+      expect(keys.filter((k) => !documented.includes(k))).toEqual([
+        'showRoadsAndTransit'
+      ]);
+    });
+
+    it('should report every config property it set, not a hand-picked subset', async () => {
+      const result = await tool.run({
+        style_name: 'Full config',
+        base_style: 'standard',
+        layers: [],
+        standard_config: {
+          // None of these five appeared in the summary before: the report walked a written-out
+          // list covering 8 of the 15 show* toggles and 6 of the 22 color* overrides.
+          showIndoorLabels: false,
+          show3dTrees: false,
+          colorIndustrial: '#b0a08f',
+          colorPlaceLabels: '#222222',
+          fuelingStationModePointOfInterestLabels: 'default'
+        }
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+
+      expect(text).toContain('Indoor labels: hidden');
+      expect(text).toContain('3D trees: hidden');
+      expect(text).toContain('industrial: #b0a08f');
+      expect(text).toContain('place labels: #222222');
+      expect(text).toContain('Fueling station POI mode: default');
+    });
+
+    it('should colour your own data by value rather than dropping the expression', async () => {
+      const result = await tool.run({
+        style_name: 'Anomaly',
+        base_style: 'standard',
+        custom_sources: {
+          counties: { type: 'geojson', data: 'https://example.com/c.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Counties by anomaly',
+            source_id: 'counties',
+            render_type: 'fill',
+            action: 'color',
+            slot: 'bottom',
+            expression: [
+              'interpolate',
+              ['linear'],
+              ['get', 'anomaly'],
+              -5,
+              '#b2182b',
+              0,
+              '#f7f7f7',
+              5,
+              '#2166ac'
+            ]
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const fill = style.layers.find((l: any) => l.type === 'fill');
+
+      // Dropped, this left a fill with no fill-color at all — which the spec draws as opaque
+      // black over the whole map, for the single most common thing you'd bring your own data for.
+      expect(fill.paint['fill-color'][0]).toBe('interpolate');
+      expect(fill.paint['fill-color']).toContain('#2166ac');
+    });
+
+    it('should build a category match for your own data, always with a fallback arm', async () => {
+      const result = await tool.run({
+        style_name: 'Tiers',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Zones by tier',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'color',
+            slot: 'middle',
+            property_based: 'tier',
+            property_values: { high: '#e41a1c', low: '#377eb8' }
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const fillColor = style.layers.find((l: any) => l.type === 'fill').paint[
+        'fill-color'
+      ];
+
+      expect(fillColor[0]).toBe('match');
+      expect(fillColor[1]).toEqual(['get', 'tier']);
+      // A match with no fallback draws nothing for an unlisted value, so there is always one.
+      expect(fillColor[fillColor.length - 1]).toBe('#999999');
+      // And the caller is told which colour it got, rather than finding out from the JSON.
+      expect(text).toContain('fallback');
+    });
+
+    it('should not put a colour expression into a numeric paint property', async () => {
+      const result = await tool.run({
+        style_name: 'Heights',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'building',
+            action: 'color',
+            color: '#808080',
+            opacity: 0.5,
+            render_type: 'fill',
+            slot: 'bottom',
+            expression: [
+              'case',
+              ['>', ['get', 'height'], 100],
+              '#ff0000',
+              '#808080'
+            ]
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const paint = style.layers.find((l: any) => l.type === 'fill').paint;
+
+      // The expression describes the colour. Returned for every property type, it also landed
+      // the same colour ramp in fill-opacity, where the spec expects a number.
+      expect(paint['fill-color'][0]).toBe('case');
+      expect(paint['fill-opacity']).toBe(0.5);
+    });
+
+    it('should give every layer a distinct id, including two off one custom source', async () => {
+      const result = await tool.run({
+        style_name: 'Split zones',
+        base_style: 'standard',
+        custom_sources: {
+          zones: { type: 'geojson', data: 'https://example.com/z.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'High tier',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'color',
+            color: '#e41a1c',
+            slot: 'middle',
+            filter: ['==', ['get', 'tier'], 'high']
+          },
+          {
+            layer_type: 'Low tier',
+            source_id: 'zones',
+            render_type: 'fill',
+            action: 'color',
+            color: '#377eb8',
+            slot: 'middle',
+            filter: ['==', ['get', 'tier'], 'low']
+          },
+          // Same basemap feature twice with no filter derives the same name too.
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#0af',
+            slot: 'bottom'
+          },
+          {
+            layer_type: 'water',
+            action: 'color',
+            color: '#08f',
+            slot: 'bottom'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const ids = style.layers.map((l: any) => l.id);
+
+      // Duplicate ids are invalid per the style spec, and the collision was silent.
+      expect(new Set(ids).size).toBe(ids.length);
+      expect(ids).toContain('zones-fill');
+      expect(ids).toContain('zones-fill-2');
+    });
+
+    it('should give a symbol layer over your own data something to draw', async () => {
+      const result = await tool.run({
+        style_name: 'Stores',
+        base_style: 'standard',
+        custom_sources: {
+          stores: { type: 'geojson', data: 'https://example.com/s.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'Stores',
+            source_id: 'stores',
+            render_type: 'symbol',
+            action: 'show',
+            slot: 'top'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+      const symbol = style.layers.find((l: any) => l.type === 'symbol');
+
+      // With neither text-field nor icon-image a symbol layer renders nothing at all, so this
+      // was a layer that was present, valid and invisible.
+      expect(symbol.layout['text-field']).toEqual(['get', 'name']);
+      // No icon-image: a literal would resolve against the Streets sprite and put the same
+      // generic pin on every feature.
+      expect(symbol.layout['icon-image']).toBeUndefined();
+      // The assumed property is named, since the tool cannot see the data to check it.
+      expect(text).toContain('`name` property');
+    });
+
+    it('should say a fill-extrusion is unslotted on purpose, not report a slot of undefined', async () => {
+      const result = await tool.run({
+        style_name: '3D',
+        base_style: 'standard',
+        layers: [
+          {
+            layer_type: 'building',
+            render_type: 'fill-extrusion',
+            action: 'color',
+            color: '#cccccc'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+      const style = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
+
+      // Real 3D geometry is left unslotted deliberately, so the message must not read as a
+      // failed inference — nor claim the layer will draw over the street labels.
+      expect(style.layers[0].slot).toBeUndefined();
+      expect(text).not.toContain('"undefined"');
+      expect(text).toContain('left without a slot deliberately');
+    });
+
+    it('should describe a custom-source layer by the name you gave it', async () => {
+      const result = await tool.run({
+        style_name: 'Hydrology',
+        base_style: 'standard',
+        custom_sources: {
+          water: { type: 'geojson', data: 'https://example.com/w.geojson' }
+        },
+        layers: [
+          {
+            layer_type: 'water',
+            source_id: 'water',
+            render_type: 'fill',
+            action: 'color',
+            color: '#123456',
+            slot: 'bottom'
+          }
+        ]
+      } as StyleBuilderToolInput);
+
+      const text = result.content[0].text as string;
+
+      // layer_type is free text on a custom-source layer, so looking it up reported the
+      // caller's GeoJSON as Streets v8 metadata it has nothing to do with.
+      expect(text).toContain('• water: Set to #123456');
+      expect(text).not.toContain('water layer (Polygon geometry)');
     });
 
     it('should require render_type and a known source_id for user data layers', async () => {

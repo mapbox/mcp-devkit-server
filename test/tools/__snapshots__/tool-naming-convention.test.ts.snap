@@ -31,24 +31,15 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
     "className": "CreateStyleTool",
     "description": "Create a new Mapbox style from a complete style JSON.
 
-This tool uploads whatever JSON it is given — it does not build a style. Prefer building the JSON
-with style_builder_tool first: it defaults to Mapbox Standard and supplies what hand-authored
-styles usually miss — an explicit slot on every custom layer, and emissive strength on fill/line/
-circle layers so they stay visible under the dusk and night light presets.
+Uploads whatever JSON it is given — it does not build a style. Prefer style_builder_tool for that:
+it defaults to Mapbox Standard and supplies what hand-authored styles miss, an explicit slot on
+every custom layer and emissive strength so they survive the dusk/night presets.
 
-Before creating a style at all, check whether Standard's config expresses the intent. theme,
-lightPreset, the show* toggles and the color* overrides need no style to create or maintain, and
-they keep working as the basemap is updated. A dark map is lightPreset:'night', not a new style
-and not dark-v11.
+First check whether Standard's config already expresses the intent — theme, lightPreset, show* and
+color* need no style to create or maintain. A dark map is lightPreset:'night', not a new style.
 
-A Standard-based style is an import, not a layer stack:
-  {
-    "version": 8,
-    "imports": [{ "id": "basemap", "url": "mapbox://styles/mapbox/standard",
-                  "config": { "theme": "faded", "lightPreset": "night" } }],
-    "sources": {},
-    "layers": []
-  }",
+A Standard style is an 'imports' entry, not a layer stack: no background layer, no basemap layers
+copied in, and 'sources'/'layers' hold only your own data. Omitting imports makes a Classic style.",
     "toolName": "create_style_tool",
   },
   {
@@ -103,124 +94,41 @@ A Standard-based style is an import, not a layer stack:
   },
   {
     "className": "StyleBuilderTool",
-    "description": "Generate Mapbox style JSON for creating new styles or updating existing ones.
+    "description": "Generate Mapbox style JSON. Resolves layer types and filters against Streets v8, so
+approximate layer names work — { class: 'park' } finds 'landuse', { maki: 'cafe' } finds 'poi_label'.
+Use "admin" for all boundaries, "building" (singular), "road" for all streets. Unrecognized types
+come back with the available layers and fields. See resource://mapbox-style-layers for slots,
+emissive strength, layer properties and worked examples.
 
-The tool intelligently resolves layer types and filter properties using Streets v8 data.
-You don't need exact layer names - the tool automatically finds the correct layer based on your filters.
+TARGET — base_style decides which options apply, and the wrong ones are REJECTED, not ignored:
+• 'standard' is the default and almost always right. Takes standard_config; slots; lit scene
+• Classic (streets-v12/light-v11/dark-v11/satellite-*/outdoors-v12/navigation-*) only when a
+  classic style is explicitly asked for. Takes global_settings; no config surface, no slots
+• A Classic base is NOT an import and does not reproduce the named style — this tool authors the
+  stack, so EVERYTHING you want drawn must be listed in 'layers'. Pass none and you get a
+  background and nothing else. The base name only sets light vs dark and whether satellite imagery
+  goes underneath; bases within a group are equivalent
 
-BASE STYLES:
-• standard: ALWAYS THE DEFAULT - Modern Mapbox Standard with best performance
-• Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/satellite-streets-v12/outdoors-v12/
-  navigation-day-v1/navigation-night-v1
-  Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
-• A Classic base is NOT an import — this tool authors the layer stack, and the style stays
-  self-contained. It does not reproduce the named style: the base only decides light vs dark
-  (dark-v11, navigation-night-v1 and the satellite bases are dark) and whether mapbox.satellite
-  imagery goes underneath (satellite-v9, satellite-streets-v12). **Anything you want drawn you must
-  list in 'layers'** — pass none and you get a background and nothing else. Bases within a group are
-  equivalent; this tool has nothing that separates dark-v11 from navigation-night-v1.
+ON STANDARD, CONFIGURE BEFORE YOU LAYER:
+The basemap belongs to the import and this tool cannot reach into it, so a Streets v8 layer draws a
+SECOND copy over the basemap's own. standard_config restyles the basemap itself:
+• theme 'faded'/'monochrome' — fastest way to make your data pop
+• lightPreset 'night' — THIS is dark mode. Not dark-v11, not global_settings.mode
+• show* toggles to hide what competes with your data; color* to retint water/roads/parks/labels
+• action:'hide' on Standard sets the matching toggle (poi_label→showPointOfInterestLabels,
+  place_label, transit_stop_label, building→show3dBuildings, admin→showAdminBoundaries). Water,
+  landuse and the road network have no toggle, so 'hide' on those is rejected — make them recede
+  with theme and color* instead. On Classic, 'hide' just omits the layer
 
-Each target takes its own options; the wrong ones are rejected, not ignored:
-• Standard takes standard_config (theme, lightPreset, show*, color*) — it has a config surface
-• Classic takes global_settings (background_color, label_color, mode) — it has no config surface
-• slot is Standard-only. On Classic, order layers by their position in 'layers'
-
-YOUR OWN DATA (custom_sources):
-Declare your data in custom_sources, then point a layer at it with source_id — delivery zones,
-a route, store locations, choropleth values. The layer_type lookup only covers Mapbox Streets v8
-basemap features, not your data.
-• custom_sources: { zones: { type: 'geojson', data: <url or inline FeatureCollection> } }
-• layer: { layer_type: 'Delivery zones', source_id: 'zones', render_type: 'fill', color: '#7b61ff' }
-• render_type is REQUIRED here — geometry can't be inferred from a URL
-• For type 'vector', also set source_layer (the layer name inside the tileset)
-• Don't key one 'composite' (or 'satellite' on a satellite base) — those are the basemap's own
-  source ids, and yours would replace the basemap rather than join it. The tool rejects it
-• These layers get overlay placement ('middle', or 'top' for symbols) rather than sitting under
-  the road network, emissive strength to survive the night preset, and — on lines —
-  line-occlusion-opacity so a route isn't hidden by 3D buildings
-• A choropleth is the exception to that default: set slot:'bottom' on a fill whose color encodes a
-  data value, so the road network still reads over it
-
-STANDARD STYLE CONFIG (try this before adding layers):
-Configuring the basemap is cheaper and more robust than layering over it. Use standard_config:
-• Theme: default/faded/monochrome — 'faded'/'monochrome' is the fastest way to make your data pop
-• Light: day/night/dawn/dusk — this is how you do dark mode. Do NOT switch to dark-v11 or
-  hand-author dark colors via global_settings.mode
-• Show/hide: labels, POIs, roads, 3D buildings — hide what competes with your data
-• Colors: water, roads, parks, labels, etc. — override here rather than re-adding layers
-
-RESTYLING THE BASEMAP ON STANDARD (config, not layers):
-On Standard the basemap belongs to the import, and this tool cannot reach into it. Adding a Streets
-v8 layer draws a SECOND copy over the basemap's own, which you then have to keep in sync by hand.
-• Recoloring water/roads/parks/labels/boundaries: use the standard_config color* override. Ask for
-  it as a layer and the tool builds the overdraw but tells you which config property to use instead
-• Hiding a basemap feature: action:'hide' on Standard sets the matching standard_config toggle —
-  poi_label→showPointOfInterestLabels, place_label→showPlaceLabels,
-  transit_stop_label→showTransitLabels, building→show3dBuildings, admin→showAdminBoundaries
-  (show3dBuildings, not show3dObjects — that one takes the 3D trees and landmarks with it)
-• Standard has no toggle for water, landuse or the road network itself, so 'hide' on those is
-  rejected rather than silently doing nothing. Use theme:'faded'/'monochrome' and the color*
-  overrides to make them recede
-• Hiding a layer of YOUR OWN (source_id set) is omission on either target — it is yours to leave
-  out, not the import's to remove, so no config toggle is involved
-• On Classic, action:'hide' works by omitting the layer, because there the tool authors every layer
-
-LAYER ORDERING (slots — Standard only):
-Mapbox owns the basemap layer order on Standard, so every custom layer goes into a slot. Set
-'slot' explicitly on EVERY layer; omitting it is the single most common mistake.
-  - 'bottom': above land/landuse/water polygons, BELOW roads. Choropleths, rasters, terrain
-  - 'middle': above roads and lines, BEHIND 3D buildings and labels. Most data overlays — polygon
-    fills, geofences, zone boundaries, heatmaps, routes, custom POI layers
-  - 'top':    above POI labels, BEHIND place and transit labels. Markers, active selections
-• No 'slot' does NOT mean "sensible default" — the layer lands above every basemap layer,
-  including street labels. Omit it on Standard and this tool infers one and tells you which.
-• Two layers in the same slot keep their insertion order.
-• Slot is a style-spec property, so the same string works on GL JS, Android, iOS and Flutter.
-
-EMISSIVE STRENGTH (why your layer vanishes at night):
-Standard is a lit 3D scene, and fill-, line- and circle-emissive-strength default to 0 — the
-scene lights the layer, so it falls into shadow and goes nearly invisible under dusk/night. This
-tool sets them to 1 on fill/line/circle layers you add, holding their color across all presets.
-• Symbol layers need nothing: icon- and text-emissive-strength already default to 1.
-• fill-extrusion is genuinely 3D and should be lit by the scene — left alone deliberately.
-• Routes should also set line-occlusion-opacity (default 0 completely hides the stretch running
-  behind a 3D building).
-
-LAYER RENDERING:
-• render_type controls HOW to visualize the layer (line, fill, symbol, etc.)
-• Most important: Use render_type:"line" for outlines/borders even on polygon features
-• Default "auto" picks based on geometry, but override for specific effects:
-  - Building outlines → render_type:"line" (not fill!)
-  - Solid buildings → render_type:"fill" or "fill-extrusion" (3D)
-  - Road lines → render_type:"line" (auto works too)
-  - POI dots → render_type:"circle"
-  - Labels → render_type:"symbol"
-
-LAYER ACTIONS:
-• color: Apply a specific color
-• highlight: Make prominent
-• hide: Remove from view
-• show: Display with defaults
-
-AUTO-DETECTION:
-The tool automatically finds the correct layer from your filter_properties.
-Examples:
-• { class: 'park' } → finds 'landuse' layer
-• { type: 'wetland' } → finds 'landuse_overlay' layer
-• { maki: 'restaurant' } → finds 'poi_label' layer
-• { toll: true } → finds 'road' layer
-• { admin_level: 0 } → finds 'admin' layer (for country boundaries)
-• { admin_level: 1 } → finds 'admin' layer (for state/province boundaries)
-
-IMPORTANT LAYER NAMES:
-• Use "admin" for all boundaries (countries, states, etc.)
-• Use "building" (singular, not "buildings")
-• Use "road" for all streets, highways, paths
-
-If a layer type is not recognized, the tool will provide helpful suggestions showing:
-• All available source layers from Streets v8
-• Which fields are available in each layer
-• Examples of how to properly specify layers and filters",
+YOUR OWN DATA — custom_sources (the layer_type lookup covers Streets v8 only, not your data):
+• custom_sources: { zones: { type: 'geojson', data: <url or FeatureCollection> } }, then
+  layer: { layer_type: 'Zones', source_id: 'zones', render_type: 'fill', color: '#7b61ff' }
+• render_type is REQUIRED here; for type 'vector' also set source_layer. 'composite' (and
+  'satellite' on a satellite base) are reserved and rejected
+• Color by value as on any layer: 'expression' for a ramp, or property_based + property_values
+  for a category match ('color' becomes the fallback arm)
+• These get overlay placement, emissive strength and line-occlusion-opacity set for you. Override
+  with slot:'bottom' on a choropleth, so the road network reads over it",
     "toolName": "style_builder_tool",
   },
   {

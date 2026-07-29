@@ -83,7 +83,7 @@ const STANDARD_TARGET: StyleTarget = {
       key: 'background_color',
       path: 'global_settings.background_color',
       instead:
-        'has no effect: Standard supplies its own background through the import. Use `standard_config` colour overrides such as `colorWater` or `colorGreenspace`.'
+        'has no effect: Standard supplies its own background through the import. `standard_config.colorLand` is the land colour on Standard; `colorWater`, `colorGreenspace` and `colorBuildings` retint the features drawn over it.'
     },
     {
       field: 'global_settings',
@@ -312,6 +312,74 @@ const EMISSIVE_PROPERTY: Record<string, string> = {
   circle: 'circle-emissive-strength'
 };
 
+/**
+ * Readable names for `standard_config` properties in the build summary.
+ *
+ * Only where the property name doesn't already read well — anything absent falls back to the key
+ * itself, so a property added to the schema shows up in the summary without needing a line here.
+ */
+const STANDARD_CONFIG_LABEL: Record<string, string> = {
+  showPlaceLabels: 'Place labels',
+  showRoadLabels: 'Road labels',
+  showPointOfInterestLabels: 'POI labels',
+  showTransitLabels: 'Transit labels',
+  showPedestrianRoads: 'Pedestrian roads',
+  show3dObjects: '3D objects',
+  show3dBuildings: '3D buildings',
+  show3dTrees: '3D trees',
+  show3dLandmarks: '3D landmarks',
+  show3dFacades: '3D facades',
+  showLandmarkIcons: 'Landmark icons',
+  showLandmarkIconLabels: 'Landmark icon labels',
+  showAdminBoundaries: 'Admin boundaries',
+  showIndoor: 'Indoor maps',
+  showIndoorLabels: 'Indoor labels',
+  colorMotorways: 'motorways',
+  colorTrunks: 'trunks',
+  colorRoads: 'roads',
+  colorWater: 'water',
+  colorLand: 'land',
+  colorGreenspace: 'greenspace',
+  colorBuildings: 'buildings',
+  colorCommercial: 'commercial',
+  colorEducation: 'education',
+  colorMedical: 'medical',
+  colorIndustrial: 'industrial',
+  colorAdminBoundaries: 'admin boundaries',
+  colorPlaceLabels: 'place labels',
+  colorRoadLabels: 'road labels',
+  colorPointOfInterestLabels: 'POI labels',
+  colorBuildingHighlight: 'building highlight',
+  colorBuildingSelect: 'building select',
+  colorPlaceLabelHighlight: 'place label highlight',
+  colorPlaceLabelSelect: 'place label select',
+  colorIndoorLabelHighlight: 'indoor label highlight',
+  colorIndoorLabelSelect: 'indoor label select',
+  densityPointOfInterestLabels: 'POI density',
+  colorModePointOfInterestLabels: 'POI label color mode',
+  backgroundPointOfInterestLabels: 'POI label background',
+  fuelingStationModePointOfInterestLabels: 'Fueling station POI mode',
+  'theme-data': 'Custom theme LUT',
+  font: 'Font'
+};
+
+/**
+ * `standard_config` properties that start with "color" but are not colours.
+ *
+ * `colorModePointOfInterestLabels` names a mode, not a value, so grouping it with the colour
+ * overrides by prefix alone would report a mode as a colour.
+ */
+const NON_COLOR_CONFIG = new Set(['colorModePointOfInterestLabels']);
+
+/**
+ * The default arm of a data-driven colour on one of the caller's own layers.
+ *
+ * A `match` without a fallback drops every feature whose value wasn't listed, so one is always
+ * emitted. Neutral grey rather than anything from the palette, so an unhandled category reads as
+ * "not classified" instead of blending in with a real class.
+ */
+const UNCLASSIFIED_COLOR = '#999999';
+
 // Geometry types from Mapbox tilestats API for Streets v8
 // This maps actual source-layer names to their geometry types
 const SOURCE_LAYER_GEOMETRY: Record<
@@ -345,124 +413,46 @@ export class StyleBuilderTool extends BaseTool<typeof StyleBuilderToolSchema> {
     openWorldHint: false,
     title: 'Build Mapbox Style JSON Tool'
   };
-  description = `Generate Mapbox style JSON for creating new styles or updating existing ones.
+  // Kept to the rules that change the shape of a call. Everything reference-shaped — the slot
+  // table, the emissive-strength explanation, the Streets v8 field lists, worked examples — lives
+  // in resource://mapbox-style-layers, and the per-field detail in this tool's input schema, which
+  // the model is given alongside this text. Repeating it here cost ~5k characters on every
+  // request to this server, styling task or not.
+  description = `Generate Mapbox style JSON. Resolves layer types and filters against Streets v8, so
+approximate layer names work — { class: 'park' } finds 'landuse', { maki: 'cafe' } finds 'poi_label'.
+Use "admin" for all boundaries, "building" (singular), "road" for all streets. Unrecognized types
+come back with the available layers and fields. See resource://mapbox-style-layers for slots,
+emissive strength, layer properties and worked examples.
 
-The tool intelligently resolves layer types and filter properties using Streets v8 data.
-You don't need exact layer names - the tool automatically finds the correct layer based on your filters.
+TARGET — base_style decides which options apply, and the wrong ones are REJECTED, not ignored:
+• 'standard' is the default and almost always right. Takes standard_config; slots; lit scene
+• Classic (streets-v12/light-v11/dark-v11/satellite-*/outdoors-v12/navigation-*) only when a
+  classic style is explicitly asked for. Takes global_settings; no config surface, no slots
+• A Classic base is NOT an import and does not reproduce the named style — this tool authors the
+  stack, so EVERYTHING you want drawn must be listed in 'layers'. Pass none and you get a
+  background and nothing else. The base name only sets light vs dark and whether satellite imagery
+  goes underneath; bases within a group are equivalent
 
-BASE STYLES:
-• standard: ALWAYS THE DEFAULT - Modern Mapbox Standard with best performance
-• Classic styles: streets-v12/light-v11/dark-v11/satellite-v9/satellite-streets-v12/outdoors-v12/
-  navigation-day-v1/navigation-night-v1
-  Only use Classic when user explicitly says "create a classic style" or working with existing Classic style
-• A Classic base is NOT an import — this tool authors the layer stack, and the style stays
-  self-contained. It does not reproduce the named style: the base only decides light vs dark
-  (dark-v11, navigation-night-v1 and the satellite bases are dark) and whether mapbox.satellite
-  imagery goes underneath (satellite-v9, satellite-streets-v12). **Anything you want drawn you must
-  list in 'layers'** — pass none and you get a background and nothing else. Bases within a group are
-  equivalent; this tool has nothing that separates dark-v11 from navigation-night-v1.
+ON STANDARD, CONFIGURE BEFORE YOU LAYER:
+The basemap belongs to the import and this tool cannot reach into it, so a Streets v8 layer draws a
+SECOND copy over the basemap's own. standard_config restyles the basemap itself:
+• theme 'faded'/'monochrome' — fastest way to make your data pop
+• lightPreset 'night' — THIS is dark mode. Not dark-v11, not global_settings.mode
+• show* toggles to hide what competes with your data; color* to retint water/roads/parks/labels
+• action:'hide' on Standard sets the matching toggle (poi_label→showPointOfInterestLabels,
+  place_label, transit_stop_label, building→show3dBuildings, admin→showAdminBoundaries). Water,
+  landuse and the road network have no toggle, so 'hide' on those is rejected — make them recede
+  with theme and color* instead. On Classic, 'hide' just omits the layer
 
-Each target takes its own options; the wrong ones are rejected, not ignored:
-• Standard takes standard_config (theme, lightPreset, show*, color*) — it has a config surface
-• Classic takes global_settings (background_color, label_color, mode) — it has no config surface
-• slot is Standard-only. On Classic, order layers by their position in 'layers'
-
-YOUR OWN DATA (custom_sources):
-Declare your data in custom_sources, then point a layer at it with source_id — delivery zones,
-a route, store locations, choropleth values. The layer_type lookup only covers Mapbox Streets v8
-basemap features, not your data.
-• custom_sources: { zones: { type: 'geojson', data: <url or inline FeatureCollection> } }
-• layer: { layer_type: 'Delivery zones', source_id: 'zones', render_type: 'fill', color: '#7b61ff' }
-• render_type is REQUIRED here — geometry can't be inferred from a URL
-• For type 'vector', also set source_layer (the layer name inside the tileset)
-• Don't key one 'composite' (or 'satellite' on a satellite base) — those are the basemap's own
-  source ids, and yours would replace the basemap rather than join it. The tool rejects it
-• These layers get overlay placement ('middle', or 'top' for symbols) rather than sitting under
-  the road network, emissive strength to survive the night preset, and — on lines —
-  line-occlusion-opacity so a route isn't hidden by 3D buildings
-• A choropleth is the exception to that default: set slot:'bottom' on a fill whose color encodes a
-  data value, so the road network still reads over it
-
-STANDARD STYLE CONFIG (try this before adding layers):
-Configuring the basemap is cheaper and more robust than layering over it. Use standard_config:
-• Theme: default/faded/monochrome — 'faded'/'monochrome' is the fastest way to make your data pop
-• Light: day/night/dawn/dusk — this is how you do dark mode. Do NOT switch to dark-v11 or
-  hand-author dark colors via global_settings.mode
-• Show/hide: labels, POIs, roads, 3D buildings — hide what competes with your data
-• Colors: water, roads, parks, labels, etc. — override here rather than re-adding layers
-
-RESTYLING THE BASEMAP ON STANDARD (config, not layers):
-On Standard the basemap belongs to the import, and this tool cannot reach into it. Adding a Streets
-v8 layer draws a SECOND copy over the basemap's own, which you then have to keep in sync by hand.
-• Recoloring water/roads/parks/labels/boundaries: use the standard_config color* override. Ask for
-  it as a layer and the tool builds the overdraw but tells you which config property to use instead
-• Hiding a basemap feature: action:'hide' on Standard sets the matching standard_config toggle —
-  poi_label→showPointOfInterestLabels, place_label→showPlaceLabels,
-  transit_stop_label→showTransitLabels, building→show3dBuildings, admin→showAdminBoundaries
-  (show3dBuildings, not show3dObjects — that one takes the 3D trees and landmarks with it)
-• Standard has no toggle for water, landuse or the road network itself, so 'hide' on those is
-  rejected rather than silently doing nothing. Use theme:'faded'/'monochrome' and the color*
-  overrides to make them recede
-• Hiding a layer of YOUR OWN (source_id set) is omission on either target — it is yours to leave
-  out, not the import's to remove, so no config toggle is involved
-• On Classic, action:'hide' works by omitting the layer, because there the tool authors every layer
-
-LAYER ORDERING (slots — Standard only):
-Mapbox owns the basemap layer order on Standard, so every custom layer goes into a slot. Set
-'slot' explicitly on EVERY layer; omitting it is the single most common mistake.
-  - 'bottom': above land/landuse/water polygons, BELOW roads. Choropleths, rasters, terrain
-  - 'middle': above roads and lines, BEHIND 3D buildings and labels. Most data overlays — polygon
-    fills, geofences, zone boundaries, heatmaps, routes, custom POI layers
-  - 'top':    above POI labels, BEHIND place and transit labels. Markers, active selections
-• No 'slot' does NOT mean "sensible default" — the layer lands above every basemap layer,
-  including street labels. Omit it on Standard and this tool infers one and tells you which.
-• Two layers in the same slot keep their insertion order.
-• Slot is a style-spec property, so the same string works on GL JS, Android, iOS and Flutter.
-
-EMISSIVE STRENGTH (why your layer vanishes at night):
-Standard is a lit 3D scene, and fill-, line- and circle-emissive-strength default to 0 — the
-scene lights the layer, so it falls into shadow and goes nearly invisible under dusk/night. This
-tool sets them to 1 on fill/line/circle layers you add, holding their color across all presets.
-• Symbol layers need nothing: icon- and text-emissive-strength already default to 1.
-• fill-extrusion is genuinely 3D and should be lit by the scene — left alone deliberately.
-• Routes should also set line-occlusion-opacity (default 0 completely hides the stretch running
-  behind a 3D building).
-
-LAYER RENDERING:
-• render_type controls HOW to visualize the layer (line, fill, symbol, etc.)
-• Most important: Use render_type:"line" for outlines/borders even on polygon features
-• Default "auto" picks based on geometry, but override for specific effects:
-  - Building outlines → render_type:"line" (not fill!)
-  - Solid buildings → render_type:"fill" or "fill-extrusion" (3D)
-  - Road lines → render_type:"line" (auto works too)
-  - POI dots → render_type:"circle"
-  - Labels → render_type:"symbol"
-
-LAYER ACTIONS:
-• color: Apply a specific color
-• highlight: Make prominent
-• hide: Remove from view
-• show: Display with defaults
-
-AUTO-DETECTION:
-The tool automatically finds the correct layer from your filter_properties.
-Examples:
-• { class: 'park' } → finds 'landuse' layer
-• { type: 'wetland' } → finds 'landuse_overlay' layer
-• { maki: 'restaurant' } → finds 'poi_label' layer
-• { toll: true } → finds 'road' layer
-• { admin_level: 0 } → finds 'admin' layer (for country boundaries)
-• { admin_level: 1 } → finds 'admin' layer (for state/province boundaries)
-
-IMPORTANT LAYER NAMES:
-• Use "admin" for all boundaries (countries, states, etc.)
-• Use "building" (singular, not "buildings")
-• Use "road" for all streets, highways, paths
-
-If a layer type is not recognized, the tool will provide helpful suggestions showing:
-• All available source layers from Streets v8
-• Which fields are available in each layer
-• Examples of how to properly specify layers and filters`;
+YOUR OWN DATA — custom_sources (the layer_type lookup covers Streets v8 only, not your data):
+• custom_sources: { zones: { type: 'geojson', data: <url or FeatureCollection> } }, then
+  layer: { layer_type: 'Zones', source_id: 'zones', render_type: 'fill', color: '#7b61ff' }
+• render_type is REQUIRED here; for type 'vector' also set source_layer. 'composite' (and
+  'satellite' on a satellite base) are reserved and rejected
+• Color by value as on any layer: 'expression' for a ramp, or property_based + property_values
+  for a category match ('color' becomes the fallback arm)
+• These get overlay placement, emissive strength and line-occlusion-opacity set for you. Override
+  with slot:'bottom' on a choropleth, so the road network reads over it`;
 
   constructor() {
     super({ inputSchema: StyleBuilderToolSchema });
@@ -598,6 +588,23 @@ ${JSON.stringify(style, null, 2)}
     const resolvedSourceLayers = new Map<number, string>();
     const reportedHideToggles = new Set<string>();
 
+    // Layer ids are derived from what the layer draws — the source layer plus its filter, or the
+    // custom source id plus its render type — so two layers over the same feature collide: a
+    // filtered pair off one GeoJSON source, or two unfiltered layers of the same basemap feature.
+    // Duplicate ids are invalid per the style spec, and the collision was silent.
+    const usedLayerIds = new Set<string>();
+    const uniqueLayerId = (id: string): string => {
+      if (!usedLayerIds.has(id)) {
+        usedLayerIds.add(id);
+        return id;
+      }
+      let suffix = 2;
+      while (usedLayerIds.has(`${id}-${suffix}`)) suffix++;
+      const unique = `${id}-${suffix}`;
+      usedLayerIds.add(unique);
+      return unique;
+    };
+
     /**
      * A build that stopped with guidance instead of a style.
      *
@@ -672,9 +679,13 @@ ${JSON.stringify(style, null, 2)}
     if (target.needsBackgroundLayer && classic) {
       layers.push(
         classic.imagery
-          ? { id: 'satellite', type: 'raster', source: 'satellite' }
+          ? {
+              id: uniqueLayerId('satellite'),
+              type: 'raster',
+              source: 'satellite'
+            }
           : {
-              id: 'background',
+              id: uniqueLayerId('background'),
               type: 'background',
               paint: {
                 'background-color': classic.backgroundColor
@@ -697,7 +708,8 @@ ${JSON.stringify(style, null, 2)}
           config,
           input,
           target,
-          allCorrections
+          allCorrections,
+          uniqueLayerId
         );
         if (typeof userLayer === 'string') {
           return guidance(userLayer);
@@ -787,7 +799,13 @@ ${JSON.stringify(style, null, 2)}
         }
       }
 
-      const result = this.createLayer(layerDef, config, classic, target);
+      const result = this.createLayer(
+        layerDef,
+        config,
+        classic,
+        target,
+        uniqueLayerId
+      );
       if (result.layer) {
         layers.push(result.layer);
 
@@ -1129,7 +1147,8 @@ ${JSON.stringify(style, null, 2)}
     layerDef: DynamicLayerDefinition,
     config: StyleBuilderToolInput['layers'][0],
     classic: ClassicSettings | null,
-    target: StyleTarget = STANDARD_TARGET
+    target: StyleTarget,
+    uniqueLayerId: (id: string) => string
   ): { layer: Layer | null; corrections: string[] } {
     // Generate a unique ID for the layer based on its properties
     let layerId = `${layerDef.id || config.layer_type}-custom`;
@@ -1142,6 +1161,10 @@ ${JSON.stringify(style, null, 2)}
         .join('-');
       layerId = `${layerDef.id}-${filterKeys}`;
     }
+
+    // Two layers over the same feature with the same filter derive the same name, which is not
+    // a valid style. Suffixed rather than rejected: asking for the feature twice is legitimate.
+    layerId = uniqueLayerId(layerId);
 
     const layer: Layer = {
       id: layerId,
@@ -1158,11 +1181,22 @@ ${JSON.stringify(style, null, 2)}
         layer.slot = config.slot;
       } else {
         const inferred = inferSlot(layerDef.type, 'basemap');
-        layer.slot = inferred;
-        slotCorrections.push(
-          `• No slot given for "${layerId}" — inferred slot "${inferred}" from its ${layerDef.type} type. ` +
-            `Without a slot the layer would draw above the street labels. Set 'slot' explicitly to override.`
-        );
+        if (inferred) {
+          layer.slot = inferred;
+          slotCorrections.push(
+            `• No slot given for "${layerId}" — inferred slot "${inferred}" from its ${layerDef.type} type. ` +
+              `Without a slot the layer would draw above the street labels. Set 'slot' explicitly to override.`
+          );
+        } else {
+          // Not a gap in the inference: a fill-extrusion is real 3D geometry taking part in the
+          // scene's depth, so it is left unslotted on purpose. Reported all the same, because a
+          // layer coming back without the slot the docs insist on otherwise looks like a bug.
+          slotCorrections.push(
+            `• "${layerId}" was left without a slot deliberately — a ${layerDef.type} layer is 3D ` +
+              `geometry that the scene depth-sorts against the buildings around it, and a slot would ` +
+              `flatten it into the 2D stack. Set 'slot' explicitly only if you want that.`
+          );
+        }
       }
     }
 
@@ -1550,7 +1584,8 @@ ${JSON.stringify(style, null, 2)}
     config: StyleBuilderToolInput['layers'][0],
     input: StyleBuilderToolInput,
     target: StyleTarget,
-    corrections: string[]
+    corrections: string[],
+    uniqueLayerId: (id: string) => string
   ): Layer | string {
     const sourceId = config.source_id as string;
     const source = input.custom_sources?.[sourceId];
@@ -1588,8 +1623,10 @@ ${JSON.stringify(style, null, 2)}
       );
     }
 
+    // Two layers off one source with the same render type derive the same name — a filtered pair
+    // of zone fills, say — which is not a valid style. Suffixed rather than rejected.
     const layer: Layer = {
-      id: `${sourceId}-${renderType}`,
+      id: uniqueLayerId(`${sourceId}-${renderType}`),
       type: renderType as Layer['type'],
       source: sourceId
     };
@@ -1616,15 +1653,54 @@ ${JSON.stringify(style, null, 2)}
       }
     }
 
+    // Data-driven colour is the whole point of putting your own data on a map, and this path
+    // wrote the literal `color` only: `expression` and `property_based`/`property_values` were
+    // accepted by the schema and dropped. A choropleth therefore came out as a fill with no
+    // `fill-color` at all, which the spec renders as opaque black over the whole map.
     const paint: Record<string, unknown> = {};
     const colorProp = this.getColorProperty(renderType);
-    if (colorProp && config.color) paint[colorProp] = config.color;
+    if (colorProp) {
+      const dataDriven =
+        config.expression !== undefined ||
+        (config.property_based !== undefined &&
+          config.property_values !== undefined);
+      if (dataDriven) {
+        if (config.expression === undefined && config.color === undefined) {
+          corrections.push(
+            `• "${layer.id}" colours by \`${config.property_based}\`, and \`color\` sets the ` +
+              `fallback for values not listed in \`property_values\` — ${UNCLASSIFIED_COLOR} was ` +
+              `used. A \`match\` with no fallback draws nothing at all for an unlisted value, so ` +
+              `there is always one; set \`color\` to choose it.`
+          );
+        }
+        paint[colorProp] = this.generateExpression(
+          config.color ?? UNCLASSIFIED_COLOR,
+          config,
+          'color'
+        );
+      } else if (config.color) {
+        paint[colorProp] = config.color;
+      }
+    }
+
+    // Zoom ramps go through the shared helper rather than `generateExpression`, which would hand
+    // a numeric property the colour expression above.
+    const ramped = (value: number, kind: 'opacity' | 'width'): unknown =>
+      config.zoom_based
+        ? this.zoomRamp(
+            value,
+            kind,
+            config.min_zoom ?? 10,
+            config.max_zoom ?? 18
+          )
+        : value;
+
     const opacityProp = this.getOpacityProperty(renderType);
     if (opacityProp && config.opacity !== undefined) {
-      paint[opacityProp] = config.opacity;
+      paint[opacityProp] = ramped(config.opacity, 'opacity');
     }
     if (renderType === 'line' && config.width !== undefined) {
-      paint['line-width'] = config.width;
+      paint['line-width'] = ramped(config.width, 'width');
     }
 
     if (target.usesLighting) {
@@ -1637,6 +1713,27 @@ ${JSON.stringify(style, null, 2)}
       if (renderType === 'line') {
         paint['line-occlusion-opacity'] = 1;
       }
+    }
+
+    // A symbol layer with neither text-field nor icon-image draws nothing whatsoever, so
+    // render_type: "symbol" produced a layer that was present, valid and invisible. The property
+    // holding the label cannot be read out of a URL or a tileset, so "name" is assumed — by far
+    // the most common — and the assumption is reported rather than left to be discovered.
+    //
+    // No icon-image: the sprite here is the Streets one, so a literal would resolve, but it would
+    // put the same generic pin on every feature. That is the defect the basemap path just lost.
+    if (renderType === 'symbol') {
+      layer.layout = {
+        'text-field': ['get', 'name'],
+        'text-font': ['DIN Pro Regular', 'Arial Unicode MS Regular'],
+        'text-size': 12
+      };
+      corrections.push(
+        `• "${layer.id}" labels each feature from its \`name\` property. A symbol layer with no ` +
+          `\`text-field\` renders nothing at all, and the tool cannot see your data to find the ` +
+          `right property — edit \`layout.text-field\` in the JSON below if your features name it ` +
+          `differently, or use \`render_type: "circle"\` for plain points.`
+      );
     }
 
     if (config.filter) layer.filter = config.filter as Filter;
@@ -1775,7 +1872,12 @@ ${JSON.stringify(style, null, 2)}
       // as what it became. Falls back to the input only for a layer that never resolved —
       // one of the caller's own, which has no Streets v8 definition to describe.
       const resolved = resolvedSourceLayers.get(index) ?? config.layer_type;
-      const layerDef = this.createDynamicLayerDefinition(resolved, config);
+      // A layer bound to a custom source is described by the name the caller gave it. Its
+      // layer_type is free text, so looking it up reported a GeoJSON layer named "water" as
+      // "water layer (Polygon geometry)" — Streets v8 metadata for data that isn't Streets v8.
+      const layerDef = config.source_id
+        ? null
+        : this.createDynamicLayerDefinition(resolved, config);
       const description = layerDef?.description || resolved;
 
       switch (config.action) {
@@ -1813,79 +1915,54 @@ ${JSON.stringify(style, null, 2)}
       );
     }
 
-    // Add Standard style configuration summary if present
+    // Add Standard style configuration summary if present.
+    //
+    // Derived from what `standardConfig` actually holds rather than from a hand-written list of
+    // properties. The list only ever covered 8 of the 15 `show*` toggles and 6 of the 22 `color*`
+    // overrides, so most of the config surface — and every property added to the schema after the
+    // list was written — was set on the import and then left out of the summary. Reporting the
+    // build accurately is the whole reason the summary reads from the build result.
     if (standardConfig && Object.keys(standardConfig).length > 0) {
       parts.push(`\n**Standard Style Configuration:**`);
-      const config = standardConfig as NonNullable<
-        StyleBuilderToolInput['standard_config']
-      >;
 
-      // Visibility settings
-      const visibilitySettings = [];
-      if (config.showPlaceLabels !== undefined)
-        visibilitySettings.push(
-          `Place labels: ${config.showPlaceLabels ? 'shown' : 'hidden'}`
-        );
-      if (config.showRoadLabels !== undefined)
-        visibilitySettings.push(
-          `Road labels: ${config.showRoadLabels ? 'shown' : 'hidden'}`
-        );
-      if (config.showPointOfInterestLabels !== undefined)
-        visibilitySettings.push(
-          `POI labels: ${config.showPointOfInterestLabels ? 'shown' : 'hidden'}`
-        );
-      if (config.showTransitLabels !== undefined)
-        visibilitySettings.push(
-          `Transit labels: ${config.showTransitLabels ? 'shown' : 'hidden'}`
-        );
-      if (config.showPedestrianRoads !== undefined)
-        visibilitySettings.push(
-          `Pedestrian roads: ${config.showPedestrianRoads ? 'shown' : 'hidden'}`
-        );
-      if (config.show3dObjects !== undefined)
-        visibilitySettings.push(
-          `3D objects: ${config.show3dObjects ? 'shown' : 'hidden'}`
-        );
-      // Reported separately from show3dObjects, since hiding buildings and hiding every 3D
-      // object are different requests and this is the one `hide` on a building layer sets.
-      if (config.show3dBuildings !== undefined)
-        visibilitySettings.push(
-          `3D buildings: ${config.show3dBuildings ? 'shown' : 'hidden'}`
-        );
-      if (config.showAdminBoundaries !== undefined)
-        visibilitySettings.push(
-          `Admin boundaries: ${config.showAdminBoundaries ? 'shown' : 'hidden'}`
-        );
+      const visibility: string[] = [];
+      const colorOverrides: string[] = [];
+      const other: string[] = [];
 
-      if (visibilitySettings.length > 0) {
-        parts.push(`• Visibility: ${visibilitySettings.join(', ')}`);
+      for (const [key, value] of Object.entries(standardConfig)) {
+        if (value === undefined) continue;
+
+        // Its own line, since these are the two that change the whole basemap.
+        if (key === 'theme') {
+          parts.push(`• Theme: ${value}`);
+          continue;
+        }
+        if (key === 'lightPreset') {
+          parts.push(`• Light preset: ${value}`);
+          continue;
+        }
+
+        if (typeof value === 'boolean') {
+          // Includes show3dBuildings alongside show3dObjects: hiding buildings and hiding every
+          // 3D object are different requests, and the former is what `hide` on a building sets.
+          visibility.push(
+            `${STANDARD_CONFIG_LABEL[key] ?? key}: ${value ? 'shown' : 'hidden'}`
+          );
+        } else if (key.startsWith('color') && !NON_COLOR_CONFIG.has(key)) {
+          colorOverrides.push(`${STANDARD_CONFIG_LABEL[key] ?? key}: ${value}`);
+        } else {
+          other.push(`${STANDARD_CONFIG_LABEL[key] ?? key}: ${value}`);
+        }
       }
 
-      // Theme settings
-      if (config.theme) parts.push(`• Theme: ${config.theme}`);
-      if (config.lightPreset)
-        parts.push(`• Light preset: ${config.lightPreset}`);
-
-      // Color overrides
-      const colorOverrides = [];
-      if (config.colorMotorways)
-        colorOverrides.push(`motorways: ${config.colorMotorways}`);
-      if (config.colorTrunks)
-        colorOverrides.push(`trunks: ${config.colorTrunks}`);
-      if (config.colorRoads) colorOverrides.push(`roads: ${config.colorRoads}`);
-      if (config.colorWater) colorOverrides.push(`water: ${config.colorWater}`);
-      if (config.colorGreenspace)
-        colorOverrides.push(`greenspace: ${config.colorGreenspace}`);
-      if (config.colorAdminBoundaries)
-        colorOverrides.push(`admin boundaries: ${config.colorAdminBoundaries}`);
-
+      if (visibility.length > 0) {
+        parts.push(`• Visibility: ${visibility.join(', ')}`);
+      }
       if (colorOverrides.length > 0) {
         parts.push(`• Color overrides: ${colorOverrides.join(', ')}`);
       }
-
-      // Other settings
-      if (config.densityPointOfInterestLabels !== undefined) {
-        parts.push(`• POI density: ${config.densityPointOfInterestLabels}`);
+      if (other.length > 0) {
+        parts.push(`• Other: ${other.join(', ')}`);
       }
     }
 
@@ -1897,13 +1974,20 @@ ${JSON.stringify(style, null, 2)}
     config: StyleBuilderToolInput['layers'][0],
     propertyType: 'color' | 'opacity' | 'width'
   ): unknown {
-    // If custom expression is provided, use it
-    if (config.expression) {
+    // A caller-supplied expression describes the *colour* — that is what `action: "color"` and
+    // every documented example use it for. Returned for every property type, it also landed the
+    // same colour ramp in `fill-opacity` and `line-width`, where the spec expects a number.
+    if (config.expression && propertyType === 'color') {
       return config.expression;
     }
 
-    // Generate property-based styling (data-driven)
-    if (config.property_based && config.property_values) {
+    // Generate property-based styling (data-driven). `property_values` holds colours, so this
+    // is a colour expression too — feeding it to opacity or width produced the same mismatch.
+    if (
+      config.property_based &&
+      config.property_values &&
+      propertyType === 'color'
+    ) {
       const entries = Object.entries(config.property_values);
       const expression: unknown[] = ['match', ['get', config.property_based]];
 
@@ -1919,53 +2003,72 @@ ${JSON.stringify(style, null, 2)}
 
     // Generate zoom-based interpolation
     if (config.zoom_based) {
-      const minZoom = config.min_zoom ?? 10;
-      const maxZoom = config.max_zoom ?? 18;
-
-      if (propertyType === 'width') {
-        // For width, interpolate from smaller to larger
-        const minWidth = typeof value === 'number' ? value * 0.5 : 1;
-        const maxWidth = typeof value === 'number' ? value * 2 : 6;
-
-        return [
-          'interpolate',
-          ['exponential', 1.5],
-          ['zoom'],
-          minZoom,
-          minWidth,
-          maxZoom,
-          maxWidth
-        ];
-      } else if (propertyType === 'opacity') {
-        // For opacity, can fade in/out with zoom
-        const minOpacity =
-          typeof value === 'number' ? Math.max(0, value - 0.3) : 0.3;
-        const maxOpacity = typeof value === 'number' ? value : 1;
-
-        return [
-          'interpolate',
-          ['linear'],
-          ['zoom'],
-          minZoom,
-          minOpacity,
-          maxZoom,
-          maxOpacity
-        ];
-      } else if (propertyType === 'color') {
-        // For color, use step function for discrete changes
-        const midZoom = (minZoom + maxZoom) / 2;
-        return [
-          'step',
-          ['zoom'],
-          value, // Default color
-          midZoom,
-          value // Could be enhanced to transition between colors
-        ];
-      }
+      return this.zoomRamp(
+        value,
+        propertyType,
+        config.min_zoom ?? 10,
+        config.max_zoom ?? 18
+      );
     }
 
     // Return static value if no expression needed
     return value;
+  }
+
+  /**
+   * A zoom interpolation for one paint value.
+   *
+   * Split out of `generateExpression` so the custom-source path can ask for a zoom ramp without
+   * also inheriting the colour-expression escape hatches, which do not apply to a number.
+   */
+  private zoomRamp(
+    value: string | number,
+    propertyType: 'color' | 'opacity' | 'width',
+    minZoom: number,
+    maxZoom: number
+  ): unknown {
+    if (propertyType === 'width') {
+      // For width, interpolate from smaller to larger
+      const minWidth = typeof value === 'number' ? value * 0.5 : 1;
+      const maxWidth = typeof value === 'number' ? value * 2 : 6;
+
+      return [
+        'interpolate',
+        ['exponential', 1.5],
+        ['zoom'],
+        minZoom,
+        minWidth,
+        maxZoom,
+        maxWidth
+      ];
+    }
+
+    if (propertyType === 'opacity') {
+      // For opacity, can fade in/out with zoom
+      const minOpacity =
+        typeof value === 'number' ? Math.max(0, value - 0.3) : 0.3;
+      const maxOpacity = typeof value === 'number' ? value : 1;
+
+      return [
+        'interpolate',
+        ['linear'],
+        ['zoom'],
+        minZoom,
+        minOpacity,
+        maxZoom,
+        maxOpacity
+      ];
+    }
+
+    // For color, use step function for discrete changes
+    const midZoom = (minZoom + maxZoom) / 2;
+    return [
+      'step',
+      ['zoom'],
+      value, // Default color
+      midZoom,
+      value // Could be enhanced to transition between colors
+    ];
   }
 
   /**

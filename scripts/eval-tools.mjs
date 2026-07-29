@@ -50,10 +50,11 @@ if (!existsSync(REGISTRY)) {
   process.exit(1);
 }
 
-const { CORE_TOOLS, TOOLS_WITH_UI } = await import(
-  pathToFileURL(REGISTRY).href
-);
-const allTools = [...CORE_TOOLS, ...(TOOLS_WITH_UI || [])];
+// ALL_TOOLS rather than CORE_TOOLS so a tool moved into a capability-gated group stays visible
+// here — the eval measures the surface an agent sees, and silently dropping one would read as a
+// behavior change in the score.
+const { ALL_TOOLS } = await import(pathToFileURL(REGISTRY).href);
+const allTools = [...ALL_TOOLS];
 
 // The style/design surface. Narrowed so the model isn't picking between 25 tools for a
 // task about map appearance, and so the eval stays cheap.
@@ -74,7 +75,7 @@ function toolDefinitions() {
     if (!SURFACE.includes(tool.name)) continue;
     let input_schema;
     try {
-      input_schema = z.toJSONSchema(tool.inputSchema ?? tool._inputSchema, {
+      input_schema = z.toJSONSchema(tool.inputSchema, {
         io: 'input',
         unrepresentable: 'any'
       });
@@ -95,18 +96,6 @@ function toolDefinitions() {
 }
 
 const styleBuilder = allTools.find((t) => t.name === 'style_builder_tool');
-
-/** Run style_builder_tool for real and return the style JSON it produced. */
-async function buildStyle(input) {
-  try {
-    const result = await styleBuilder.run(input);
-    const text = result.content?.[0]?.text ?? '';
-    const match = text.match(/```json\n([\s\S]*?)\n```/);
-    return match ? JSON.parse(match[1]) : null;
-  } catch {
-    return null;
-  }
-}
 
 /** Layers a style declares itself, i.e. excluding anything the import supplies. */
 const ownLayers = (style) =>

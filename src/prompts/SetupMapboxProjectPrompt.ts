@@ -129,7 +129,7 @@ Create a secret token for server-side operations:
       outdoors:
         'base_style: "standard", standard_config: { theme: "default", showPedestrianRoads: true }, plus terrain in the app if the project needs it',
       satellite:
-        'base_style: "standard" with an imagery layer, or — if the project is imagery-first — the one case for a Classic base: base_style: "satellite-streets-v12", where you author every vector layer yourself'
+        'base_style: "satellite-streets-v12" — the one theme that is genuinely a different base rather than a configuration, because style_builder_tool cannot add a raster imagery source to a Standard style (custom_sources takes GeoJSON and vector tilesets only). It is a Classic base, so you author every vector layer you want over the imagery. If the project wants imagery under an otherwise-Standard map, reference mapbox://styles/mapbox/standard-satellite in the app instead of building a style here'
     };
     const themeRecipe =
       themeRecipes[styleTheme] ??

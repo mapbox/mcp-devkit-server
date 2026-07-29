@@ -21,26 +21,19 @@ export class CreateStyleTool extends MapboxApiBasedTool<
   typeof MapboxStyleOutputSchema
 > {
   name = 'create_style_tool';
+  // The Standard import example lives on the `style` field's own description rather than being
+  // repeated here; the model gets both.
   description = `Create a new Mapbox style from a complete style JSON.
 
-This tool uploads whatever JSON it is given — it does not build a style. Prefer building the JSON
-with style_builder_tool first: it defaults to Mapbox Standard and supplies what hand-authored
-styles usually miss — an explicit slot on every custom layer, and emissive strength on fill/line/
-circle layers so they stay visible under the dusk and night light presets.
+Uploads whatever JSON it is given — it does not build a style. Prefer style_builder_tool for that:
+it defaults to Mapbox Standard and supplies what hand-authored styles miss, an explicit slot on
+every custom layer and emissive strength so they survive the dusk/night presets.
 
-Before creating a style at all, check whether Standard's config expresses the intent. theme,
-lightPreset, the show* toggles and the color* overrides need no style to create or maintain, and
-they keep working as the basemap is updated. A dark map is lightPreset:'night', not a new style
-and not dark-v11.
+First check whether Standard's config already expresses the intent — theme, lightPreset, show* and
+color* need no style to create or maintain. A dark map is lightPreset:'night', not a new style.
 
-A Standard-based style is an import, not a layer stack:
-  {
-    "version": 8,
-    "imports": [{ "id": "basemap", "url": "mapbox://styles/mapbox/standard",
-                  "config": { "theme": "faded", "lightPreset": "night" } }],
-    "sources": {},
-    "layers": []
-  }`;
+A Standard style is an 'imports' entry, not a layer stack: no background layer, no basemap layers
+copied in, and 'sources'/'layers' hold only your own data. Omitting imports makes a Classic style.`;
   readonly annotations = {
     readOnlyHint: false,
     destructiveHint: false,

@@ -220,6 +220,15 @@ Notes:
 
 - **`render_type` is required** for these layers. A GeoJSON URL or a tileset gives the builder
   nothing to inspect, so it cannot pick between fill, line and circle for you.
+- **Colour by value the same way as any other layer.** `expression` takes a ramp
+  (`["interpolate", ["linear"], ["get", "anomaly"], …]`) and `property_based` +
+  `property_values` builds a category `match`, where `color` becomes the fallback arm — a `match`
+  without one draws nothing at all for a value you didn't list, so the builder always emits one
+  and tells you which colour it used. `zoom_based` ramps `opacity` and `width` with zoom.
+- **A `symbol` layer is labelled from the `name` property.** A symbol layer with neither
+  `text-field` nor `icon-image` renders nothing, and the builder cannot read your source to find
+  the right field, so it assumes `name` and says so. Edit `layout.text-field` in the generated
+  JSON if your features name it differently, or use `render_type: "circle"` for plain points.
 - For `type: "vector"`, also set `source_layer` — the layer name inside the tileset. GeoJSON
   has no source layers.
 - **`composite` is reserved**, as is `satellite` on a satellite base: those are the ids the builder
@@ -253,6 +262,7 @@ stops.
 | Style import      | imports `mapbox://styles/mapbox/standard`                     | none — the style is self-contained                            |
 | Background layer  | supplied by the import                                        | authored into the style                                       |
 | Dark mode         | `lightPreset: "night"`                                        | `mode: "dark"`, or a dark-named `base_style`                  |
+| Land colour       | `standard_config.colorLand`                                   | `global_settings.background_color`                            |
 | Basemap features  | drawn by the import, restyled through config                  | only what you list in `layers` is drawn                       |
 | `action: "hide"`  | sets the matching `show*` config toggle                       | omits the layer from the stack                                |
 
