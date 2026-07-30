@@ -37,7 +37,7 @@ Console output is incompatible with stdio and will corrupt JSON-RPC communicatio
 
 ### Security & Performance
 
-- **Sensitive Data Protection**: Input parameters logged by size only, not content
+- **Sensitive Data Protection**: Input parameters logged by size only, not content; access token signatures are stripped from span attributes before export
 - **Minimal Overhead**: <1% CPU impact, ~10MB memory for trace buffers
 - **Configurable Sampling**: Support for production trace volume management
 - **Graceful Fallback**: No impact on functionality when tracing is disabled
@@ -369,6 +369,15 @@ getNodeAutoInstrumentations({
 ### Data Privacy
 
 - **Input sanitization**: Only input/output sizes are logged, not content
+- **Access tokens**: Mapbox APIs take the access token as a URL query parameter, and HTTP
+  auto-instrumentation records request URLs on client spans (`url.full`, `url.query`). Every
+  span passes through a redacting exporter that strips the token signature from all string
+  attributes before anything is sent to your OTLP endpoint, so usable credentials are not
+  copied into your telemetry backend. The token prefix and account name are kept, so a span
+  shows `access_token=pk.your-account.redacted` — enough to tell a public token from a secret
+  one and see which account a request billed to, without the part that authenticates it.
+  Tokens that do not parse as `<prefix>.<payload>.<signature>` with a `pk`/`sk`/`tk` prefix
+  and an account name in the payload are replaced wholesale with `access_token=***`
 - **JWT validation**: Basic format validation only, no secret verification
 - **Error messages**: Error details are logged but sensitive data is protected
 
