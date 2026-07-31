@@ -165,7 +165,7 @@ describe('createPreviewToken', () => {
     expect(result.error).toContain('non-public token');
   });
 
-  it('surfaces API errors', async () => {
+  it('surfaces API errors with a scope hint on 403', async () => {
     const { httpRequest } = setupHttpRequest({
       ok: false,
       status: 403,
@@ -181,6 +181,26 @@ describe('createPreviewToken', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('insufficient scopes');
+    expect(result.error).toContain('tokens:write');
+  });
+
+  it('does not add a scope hint for unrelated server errors', async () => {
+    const { httpRequest } = setupHttpRequest({
+      ok: false,
+      status: 500,
+      text: async () => 'internal server error'
+    });
+
+    const result = await createPreviewToken(
+      httpRequest,
+      MAPBOX_API_ENDPOINT,
+      'sk.eyJ1IjoidGVzdCJ9.sig',
+      'test-user'
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('internal server error');
+    expect(result.error).not.toContain('tokens:write');
   });
 });
 

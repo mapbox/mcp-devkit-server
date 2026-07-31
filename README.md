@@ -69,7 +69,7 @@ Get started by integrating with your preferred AI development environment:
 - **Claude Desktop**: ⚠️ Not yet supported (Claude will fall back to creating tokens via chat)
 - **Claude Code**: ⚠️ Not yet supported (provide `accessToken` parameter directly)
 
-**Note on the hosted MCP endpoint**: even on a client with full elicitation support, the [hosted endpoint](#hosted-mcp-endpoint) only offers **"I have a token to provide"** — see below for why.
+**Note on the hosted MCP endpoint**: even on a client with full elicitation support, "create a new token" and "auto-create" will fail on the [hosted endpoint](#hosted-mcp-endpoint) — see below for why.
 
 ### DXT Package Distribution
 
@@ -107,12 +107,12 @@ For quick access, you can use our hosted MCP endpoint:
 
 For detailed setup instructions for different clients and API usage, see the [Hosted MCP Server Guide](https://github.com/mapbox/mcp-server/blob/main/docs/hosted-mcp-guide.md). Note: This guide references the standard MCP endpoint - you'll need to update the endpoint URL to use the devkit endpoint above.
 
-**Token creation is unavailable on the hosted endpoint**: the hosted server authenticates each request with a short-lived, per-session token (`tk.*`), not your own Mapbox account token. Mapbox's Tokens API never grants `tokens:write` to a `tk.*` token, so it cannot be used to create new tokens. As a result, on the hosted endpoint:
+**Token creation is unavailable on the hosted endpoint**: the hosted deployment authenticates each request with its own access token rather than your personal Mapbox account token, and that token is not granted `tokens:write`. As a result, on the hosted endpoint:
 
-- `preview_style_tool` / `style_comparison_tool`'s elicitation dialog only offers **"I have a token to provide"** — the "create a new token" and "auto-create" options are hidden automatically, rather than being offered and then failing.
-- `create_token_tool` will fail with a permissions error if called directly.
+- `preview_style_tool` / `style_comparison_tool`'s elicitation dialog still offers all three options, but choosing "create a new token" or "auto-create" fails against the Mapbox Tokens API with a scope/permission error (the dialog can't know ahead of time that this particular deployment's token lacks `tokens:write` — see the `isTemporaryServerToken` caveat in `src/utils/tokenElicitation.ts` for tokens where it can tell).
+- `create_token_tool` is not exposed on the hosted endpoint at all.
 
-Paste an existing public token (`pk.*`, with `styles:read` scope) when prompted, or create one ahead of time from your [Mapbox Account page](https://account.mapbox.com/). Running this server **locally** with your own `pk.*`/`sk.*` access token (which can carry `tokens:write`) restores all three elicitation options, including create and auto-create.
+Choose **"I have a token to provide"** and paste an existing public token (`pk.*`, with `styles:read` scope), or provide `accessToken` directly. Create a token ahead of time from your [Mapbox Account page](https://account.mapbox.com/) if you don't have one. Running this server **locally** with your own `pk.*`/`sk.*` access token (which can carry `tokens:write`) also enables create and auto-create.
 
 ### Getting Your Mapbox Access Token
 
@@ -203,7 +203,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
     3. **Auto-create a basic token** - Let the tool create a simple preview token for you
   - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
   - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool`
-  - **Hosted MCP endpoint**: ⚠️ Only "provide an existing token" is offered, regardless of client — see [Token creation is unavailable on the hosted endpoint](#hosted-mcp-endpoint)
+  - **Hosted MCP endpoint**: ⚠️ "Create" and "auto-create" will fail regardless of client — see [Token creation is unavailable on the hosted endpoint](#hosted-mcp-endpoint)
   - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
 - **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
 - **Best Practice**: Use URL-restricted tokens to further limit token usage to specific domains. While public tokens in URLs are read-only, URL restrictions add an extra layer of security by ensuring tokens only work on your specified domains
@@ -226,7 +226,7 @@ Complete set of tools for managing Mapbox styles via the Styles API:
     3. **Auto-create a basic token** - Let the tool create a simple preview token for you
   - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
   - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool`
-  - **Hosted MCP endpoint**: ⚠️ Only "provide an existing token" is offered, regardless of client — see [Token creation is unavailable on the hosted endpoint](#hosted-mcp-endpoint)
+  - **Hosted MCP endpoint**: ⚠️ "Create" and "auto-create" will fail regardless of client — see [Token creation is unavailable on the hosted endpoint](#hosted-mcp-endpoint)
   - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
 - **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
 - **Best Practice**: Use URL-restricted tokens to further limit token usage to specific domains. While public tokens in URLs are read-only, URL restrictions add an extra layer of security by ensuring tokens only work on your specified domains

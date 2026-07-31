@@ -10,13 +10,20 @@ import type { HttpRequest } from './types.js';
 export type TokenChoice = 'provide' | 'create' | 'auto';
 
 /**
- * Mapbox's Tokens API rejects requests to create a token when the caller is
- * authenticated with a temporary token (`tk.*`) — temporary tokens are scoped
- * to a single short-lived session and are never granted `tokens:write`. This
- * is the case for the hosted MCP DevKit Server, which authenticates each
- * request with a per-session `tk.*` token rather than the caller's own
- * pk./sk. token. Detecting this upfront lets callers skip a doomed API round
- * trip and steer the user straight to "provide an existing token" instead.
+ * A literal Mapbox temporary token (`tk.*`) is scoped to a single short-lived
+ * session and is not granted `tokens:write`, so attempting to create a new
+ * token with one is a guaranteed API rejection. This is a narrow, string-shape
+ * check on the server's own access token (e.g. `MAPBOX_ACCESS_TOKEN=tk...`) —
+ * it lets callers skip a doomed round trip to the Tokens API in that specific
+ * case.
+ *
+ * It is not a general test for "can this token create tokens". Servers that
+ * embed this package behind their own auth (for example, an OAuth-based
+ * hosted deployment) may pass through a bearer that isn't shaped like a
+ * Mapbox token at all yet still lacks `tokens:write` for its own reasons —
+ * this check can't see that, and the create/auto-create paths fall through to
+ * the Tokens API and surface whatever error it returns (see
+ * {@link createPreviewToken}).
  */
 export function isTemporaryServerToken(accessToken: string): boolean {
   return accessToken.startsWith('tk.');
@@ -253,10 +260,13 @@ export async function listPublicPreviewTokens(
  * public scopes, so the API is guaranteed to hand back a `pk.*` token rather than `sk.*`;
  * `styles:download` in particular is a secret-only scope and must not be requested here).
  *
- * Returns a structured failure instead of throwing when the server's own access token is
- * a temporary `tk.*` token (see {@link isTemporaryServerToken}) — the Tokens API rejects
- * token-creation requests from those, so this is checked before making the request rather
- * than surfacing whatever generic error the API happens to return for it.
+ * Skips the request and returns a structured failure immediately when the server's own
+ * access token is a literal Mapbox temporary token (`tk.*`, see
+ * {@link isTemporaryServerToken}) — that shape is a guaranteed rejection. Any other
+ * caller that lacks `tokens:write` (for instance a hosted deployment's own auth bearer,
+ * which isn't shaped like a Mapbox token at all) isn't detectable ahead of time, so that
+ * case falls through to the API call below and gets a scope-shortage hint appended to
+ * whatever error the Tokens API returns.
  */
 export async function createPreviewToken(
   httpRequest: HttpRequest,
@@ -307,9 +317,28 @@ export async function createPreviewToken(
 
     if (!response.ok) {
       const errorText = await response.text();
+      let message = `Failed to create token: ${response.status} ${errorText}`;
+
+      // Creating a token always requires `tokens:write` on the caller's own access
+      // token, so a 401/403 here is a permission problem — surface the same
+      // scope-shortage hint MapboxApiBasedTool#handleApiError gives other tools,
+      // rather than leaving the caller to guess from a bare status code and body.
+      const looksLikePermissionError =
+        response.status === 401 ||
+        response.status === 403 ||
+        /scope|permission/i.test(errorText);
+      if (looksLikePermissionError) {
+        message +=
+          '\n\nThis looks like a scope/permission issue: creating a token requires ' +
+          "`tokens:write` on the caller's own access token. If you're running behind a " +
+          'hosted or proxied deployment, that token may not carry it even though it ' +
+          'works for other operations. Use "I have a token to provide" with an ' +
+          'existing public token instead.';
+      }
+
       return {
         success: false,
-        error: `Failed to create token: ${response.status} ${errorText}`
+        error: message
       };
     }
 
