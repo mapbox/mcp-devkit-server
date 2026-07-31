@@ -110,7 +110,7 @@ function startHarness(
 
   const sessions = new Map<string, StreamableHTTPServerTransport>();
 
-  function buildTransport(): StreamableHTTPServerTransport {
+  async function buildTransport(): Promise<StreamableHTTPServerTransport> {
     const mcpServer = new McpServer(
       { name: 'elicitation-http-test', version: '1.0.0' },
       { capabilities: { tools: { listChanged: true } } }
@@ -130,7 +130,12 @@ function startHarness(
     transport.onclose = () => {
       if (transport.sessionId) sessions.delete(transport.sessionId);
     };
-    void mcpServer.connect(transport);
+    // Must resolve before handleRequest is called on this transport, or the
+    // first request (the client's `initialize`) races the server's own
+    // connect/wiring — harmless most of the time locally, but a real
+    // intermittent hang under CI's different scheduling/timing (surfaced as
+    // an MCP "Request timed out" on whichever test happened to lose the race).
+    await mcpServer.connect(transport);
     return transport;
   }
 
@@ -156,7 +161,7 @@ function startHarness(
         typeof sessionIdHeader === 'string'
           ? sessions.get(sessionIdHeader)
           : undefined;
-      const transport = existing ?? buildTransport();
+      const transport = existing ?? (await buildTransport());
 
       try {
         await transport.handleRequest(reqWithAuth, res);
