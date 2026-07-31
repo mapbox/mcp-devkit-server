@@ -75,9 +75,9 @@ export async function elicitPreviewToken(
         .join('\n')
     : 'No existing public tokens found.';
 
-  const choices = canCreateTokens
-    ? (['provide', 'create', 'auto'] as const)
-    : (['provide'] as const);
+  const choices: TokenChoice[] = canCreateTokens
+    ? ['provide', 'create', 'auto']
+    : ['provide'];
   const choiceNames = canCreateTokens
     ? [
         'I have a token to provide',

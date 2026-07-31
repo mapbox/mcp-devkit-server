@@ -1,5 +1,14 @@
 ## Unreleased
 
+### New Features
+
+- **Secure token elicitation for `preview_style_tool` / `style_comparison_tool`** (#57): `accessToken` is now optional on both tools. When omitted, the tool uses MCP elicitation to ask for a public token instead — either pasting an existing `pk.*` token, creating a new one with optional URL restrictions, or auto-creating a minimally-scoped one (`styles:read`, `styles:tiles`, `fonts:read`). This keeps your server's `sk.*`/`pk.*` access token out of chat history and preview URLs. Falls back to requiring `accessToken` directly on clients without elicitation support (Claude Desktop, Claude Code). A chosen/created token is cached in memory per account for the session; pass `useCustomToken: true` to force re-selection.
+  - On servers authenticated with a temporary `tk.*` token — notably the hosted MCP endpoint — Mapbox's Tokens API cannot create new tokens, so the "create a new token" and "auto-create" options are automatically omitted from the elicitation dialog rather than being offered and failing.
+
+### Changed
+
+- **`preview_style_tool` / `style_comparison_tool`**: token-listing and token-creation HTTP calls now go through the shared `HttpPipeline` (constructor-injected `httpRequest`) instead of a bare `fetch`, consistent with the rest of the API-calling tools.
+
 ## 0.8.2 - 2026-07-30
 
 ### Fixed
