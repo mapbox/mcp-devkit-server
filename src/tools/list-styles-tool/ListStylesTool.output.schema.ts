@@ -30,7 +30,10 @@ const StyleMetadataSchema = z.object({
   pitch: z.number().optional().describe('Default pitch in degrees'),
 
   // Sources and layers may or may not be included in list responses
-  sources: z.record(z.any()).optional().describe('Style data sources'),
+  sources: z
+    .record(z.string(), z.any())
+    .optional()
+    .describe('Style data sources'),
   layers: z.array(z.any()).optional().describe('Style layers'),
 
   // Additional metadata fields

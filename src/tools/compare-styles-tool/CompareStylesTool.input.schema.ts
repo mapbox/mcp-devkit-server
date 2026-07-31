@@ -5,10 +5,10 @@ import { z } from 'zod';
 
 export const CompareStylesInputSchema = z.object({
   styleA: z
-    .union([z.string(), z.record(z.unknown())])
+    .union([z.string(), z.record(z.string(), z.unknown())])
     .describe('First Mapbox style (JSON string or style object)'),
   styleB: z
-    .union([z.string(), z.record(z.unknown())])
+    .union([z.string(), z.record(z.string(), z.unknown())])
     .describe('Second Mapbox style (JSON string or style object)'),
   ignoreMetadata: z
     .boolean()

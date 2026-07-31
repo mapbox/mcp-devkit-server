@@ -150,9 +150,8 @@ describe('CountryBoundingBoxTool', () => {
     });
 
     it('should have correct input schema', async () => {
-      const { CountryBoundingBoxSchema } = await import(
-        '../../../src/tools/bounding-box-tool/CountryBoundingBoxTool.input.schema.js'
-      );
+      const { CountryBoundingBoxSchema } =
+        await import('../../../src/tools/bounding-box-tool/CountryBoundingBoxTool.input.schema.js');
       expect(CountryBoundingBoxSchema).toBeDefined();
     });
   });

@@ -12,8 +12,6 @@ import { DeleteStyleTool } from './delete-style-tool/DeleteStyleTool.js';
 import { GetFeedbackTool } from './get-feedback-tool/GetFeedbackTool.js';
 import { ListFeedbackTool } from './list-feedback-tool/ListFeedbackTool.js';
 import { GeojsonPreviewTool } from './geojson-preview-tool/GeojsonPreviewTool.js';
-import { GetMapboxDocSourceTool } from './get-mapbox-doc-source-tool/GetMapboxDocSourceTool.js';
-import { GetReferenceTool } from './get-reference-tool/GetReferenceTool.js';
 import { ListStylesTool } from './list-styles-tool/ListStylesTool.js';
 import { ListTokensTool } from './list-tokens-tool/ListTokensTool.js';
 import { OptimizeStyleTool } from './optimize-style-tool/OptimizeStyleTool.js';
@@ -28,19 +26,23 @@ import { ValidateGeojsonTool } from './validate-geojson-tool/ValidateGeojsonTool
 import { ValidateStyleTool } from './validate-style-tool/ValidateStyleTool.js';
 import { httpRequest } from '../utils/httpPipeline.js';
 
-// Central registry of all tools
-export const ALL_TOOLS = [
+/**
+ * Core tools that work in all MCP clients without requiring special capabilities
+ * These tools are registered immediately during server startup
+ */
+export const CORE_TOOLS = [
   new ListStylesTool({ httpRequest }),
   new CreateStyleTool({ httpRequest }),
   new RetrieveStyleTool({ httpRequest }),
   new UpdateStyleTool({ httpRequest }),
   new DeleteStyleTool({ httpRequest }),
-  new PreviewStyleTool(),
+  new PreviewStyleTool({ httpRequest }),
   new StyleBuilderTool(),
   new GeojsonPreviewTool(),
   new CheckColorContrastTool(),
   new CompareStylesTool(),
   new OptimizeStyleTool(),
+  new StyleComparisonTool({ httpRequest }),
   new CreateTokenTool({ httpRequest }),
   new ListTokensTool({ httpRequest }),
   new BoundingBoxTool(),
@@ -48,19 +50,49 @@ export const ALL_TOOLS = [
   new CoordinateConversionTool(),
   new GetFeedbackTool({ httpRequest }),
   new ListFeedbackTool({ httpRequest }),
-  new GetMapboxDocSourceTool({ httpRequest }),
-  new GetReferenceTool(),
-  new StyleComparisonTool(),
   new TilequeryTool({ httpRequest }),
   new ValidateExpressionTool(),
   new ValidateGeojsonTool(),
   new ValidateStyleTool()
 ] as const;
 
+/**
+ * Tools that require elicitation capability for optimal functionality
+ * These tools use elicitInput() for secure token management
+ * Registered only if client supports elicitation
+ *
+ * Currently empty - elicitation support will be added in a future PR.
+ * This category is ready for tools that require the elicitation capability.
+ */
+export const ELICITATION_TOOLS = [] as const;
+
+/**
+ * All tools combined (for backward compatibility and testing)
+ */
+export const ALL_TOOLS = [...CORE_TOOLS, ...ELICITATION_TOOLS] as const;
+
 export type ToolInstance = (typeof ALL_TOOLS)[number];
 
+/**
+ * Get all tools (for backward compatibility)
+ * @deprecated Use getCoreTools(), getElicitationTools() instead for capability-aware registration
+ */
 export function getAllTools(): readonly ToolInstance[] {
   return ALL_TOOLS;
+}
+
+/**
+ * Get tools that work in all MCP clients
+ */
+export function getCoreTools(): readonly ToolInstance[] {
+  return CORE_TOOLS;
+}
+
+/**
+ * Get tools that require elicitation capability
+ */
+export function getElicitationTools(): readonly ToolInstance[] {
+  return ELICITATION_TOOLS;
 }
 
 export function getToolByName(name: string): ToolInstance | undefined {

@@ -28,7 +28,7 @@ const LightsSchema = z.array(
   z.object({
     id: z.string(),
     type: z.enum(['ambient', 'directional']),
-    properties: z.record(z.any()).optional()
+    properties: z.record(z.string(), z.any()).optional()
   })
 );
 
@@ -48,7 +48,7 @@ const VectorSourceSchema = z.object({
   minzoom: z.number().min(0).max(22).optional(),
   maxzoom: z.number().min(0).max(22).optional(),
   attribution: z.string().optional(),
-  promoteId: z.union([z.string(), z.record(z.string())]).optional(),
+  promoteId: z.union([z.string(), z.record(z.string(), z.string())]).optional(),
   volatile: z.boolean().optional()
 });
 
@@ -88,10 +88,10 @@ const GeoJSONSourceSchema = z.object({
   cluster: z.boolean().optional(),
   clusterRadius: z.number().optional(),
   clusterMaxZoom: z.number().optional(),
-  clusterProperties: z.record(z.any()).optional(),
+  clusterProperties: z.record(z.string(), z.any()).optional(),
   lineMetrics: z.boolean().optional(),
   generateId: z.boolean().optional(),
-  promoteId: z.union([z.string(), z.record(z.string())]).optional()
+  promoteId: z.union([z.string(), z.record(z.string(), z.string())]).optional()
 });
 
 const ImageSourceSchema = z.object({
@@ -156,9 +156,9 @@ const LayerSchema = z.object({
   minzoom: z.number().min(0).max(24).optional(),
   maxzoom: z.number().min(0).max(24).optional(),
   filter: z.any().optional().describe('Expression for filtering features'),
-  layout: z.record(z.any()).optional(),
-  paint: z.record(z.any()).optional(),
-  metadata: z.record(z.any()).optional(),
+  layout: z.record(z.string(), z.any()).optional(),
+  paint: z.record(z.string(), z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   slot: z.string().optional().describe('Slot this layer is assigned to')
 });
 
@@ -166,7 +166,7 @@ const LayerSchema = z.object({
 const StyleImportSchema = z.object({
   id: z.string(),
   url: z.string(),
-  config: z.record(z.any()).optional()
+  config: z.record(z.string(), z.any()).optional()
 });
 
 // Base Style properties (shared between input and output)
@@ -175,12 +175,14 @@ export const BaseStylePropertiesSchema = z.object({
   version: z
     .literal(8)
     .describe('Style specification version number. Must be 8'),
-  sources: z.record(SourceSchema).describe('Data source specifications'),
+  sources: z
+    .record(z.string(), SourceSchema)
+    .describe('Data source specifications'),
   layers: z.array(LayerSchema).describe('Layers in draw order'),
 
   // Optional Style Spec properties
   metadata: z
-    .record(z.any())
+    .record(z.string(), z.any())
     .optional()
     .describe('Arbitrary properties for tracking'),
   center: CoordinatesSchema.optional().describe(
@@ -203,9 +205,13 @@ export const BaseStylePropertiesSchema = z.object({
   terrain: TerrainSchema.optional()
     .nullable()
     .describe('Global terrain elevation'),
-  fog: z.record(z.any()).optional().nullable().describe('Fog properties'),
+  fog: z
+    .record(z.string(), z.any())
+    .optional()
+    .nullable()
+    .describe('Fog properties'),
   projection: z
-    .record(z.any())
+    .record(z.string(), z.any())
     .optional()
     .nullable()
     .describe('Map projection'),

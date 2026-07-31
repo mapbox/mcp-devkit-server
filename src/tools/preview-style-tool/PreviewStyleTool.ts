@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { createUIResource } from '@mcp-ui/server';
 import { BaseTool } from '../BaseTool.js';
@@ -7,12 +8,14 @@ import {
   PreviewStyleInput
 } from './PreviewStyleTool.input.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
-import { isMcpUiEnabled } from '../../config/toolConfig.js';
 import {
+  createPreviewToken,
   elicitPreviewToken,
-  previewTokenStorage,
-  type ExistingTokenInfo
+  isTemporaryServerToken,
+  listPublicPreviewTokens,
+  previewTokenStorage
 } from '../../utils/tokenElicitation.js';
+import type { HttpRequest } from '../../utils/types.js';
 
 export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   readonly name = 'preview_style_tool';
@@ -26,8 +29,22 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     title: 'Preview Mapbox Style Tool'
   };
 
-  constructor() {
+  readonly meta = {
+    ui: {
+      resourceUri: 'ui://mapbox/preview-style/index.html',
+      csp: {
+        connectDomains: ['https://*.mapbox.com'],
+        resourceDomains: ['https://*.mapbox.com'],
+        frameDomains: ['https://*.mapbox.com']
+      }
+    }
+  };
+
+  private readonly httpRequest: HttpRequest;
+
+  constructor(params: { httpRequest: HttpRequest }) {
     super({ inputSchema: PreviewStyleSchema });
+    this.httpRequest = params.httpRequest;
   }
 
   protected async execute(
@@ -94,13 +111,26 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
           };
         }
 
+        // A server authenticated with a temporary tk.* token (e.g. the hosted MCP
+        // DevKit Server) can never call the Tokens API to create a new token, so
+        // the "create"/"auto" options are dropped from the dialog before asking.
+        const canCreateTokens = !isTemporaryServerToken(serverAccessToken!);
+
         // Get existing public tokens to show user
-        const existingTokens = await this.listPublicTokens(serverAccessToken);
+        const existingTokens = canCreateTokens
+          ? await listPublicPreviewTokens(
+              this.httpRequest,
+              MapboxApiBasedTool.mapboxApiEndpoint,
+              serverAccessToken!,
+              userName
+            )
+          : [];
 
         // Elicit token choice from user
         const elicited = await elicitPreviewToken(
           this.server.server,
-          existingTokens
+          existingTokens,
+          canCreateTokens
         );
 
         // Handle user's choice
@@ -119,8 +149,11 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
           publicToken = elicited.token;
         } else if (elicited.choice === 'create') {
           // Create new token with user's specifications
-          const created = await this.createPreviewToken(
-            serverAccessToken,
+          const created = await createPreviewToken(
+            this.httpRequest,
+            MapboxApiBasedTool.mapboxApiEndpoint,
+            serverAccessToken!,
+            userName,
             elicited.tokenNote,
             elicited.urlRestrictions
           );
@@ -138,7 +171,12 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
           publicToken = created.token!;
         } else {
           // auto - create basic preview token
-          const created = await this.createPreviewToken(serverAccessToken);
+          const created = await createPreviewToken(
+            this.httpRequest,
+            MapboxApiBasedTool.mapboxApiEndpoint,
+            serverAccessToken!,
+            userName
+          );
           if (!created.success) {
             return {
               isError: true,
@@ -192,7 +230,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     const hashFragment =
       hashParams.length > 0 ? `#${hashParams.join('/')}` : '';
 
-    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${userName}/${input.styleId}.html?${params.toString()}${hashFragment}`;
+    const url = `${MapboxApiBasedTool.mapboxApiEndpoint}styles/v1/${encodeURIComponent(userName)}/${encodeURIComponent(input.styleId)}.html?${params.toString()}${hashFragment}`;
 
     // Build content array with URL
     const content: CallToolResult['content'] = [
@@ -202,149 +240,26 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
       }
     ];
 
-    // Conditionally add MCP-UI resource if enabled
-    if (isMcpUiEnabled()) {
-      const uiResource = createUIResource({
-        uri: `ui://mapbox/preview-style/${userName}/${input.styleId}`,
-        content: {
-          type: 'externalUrl',
-          iframeUrl: url
-        },
-        encoding: 'text',
-        uiMetadata: {
-          'preferred-frame-size': ['1000px', '700px']
-        }
-      });
-      content.push(uiResource);
-    }
+    // Add MCP-UI resource (for legacy MCP-UI clients)
+    const uiResource = createUIResource({
+      uri: `ui://mapbox/preview-style/${encodeURIComponent(userName)}/${encodeURIComponent(input.styleId)}`,
+      content: {
+        type: 'externalUrl',
+        iframeUrl: url
+      },
+      encoding: 'text',
+      uiMetadata: {
+        'preferred-frame-size': ['1000px', '700px']
+      }
+    });
+    content.push(uiResource);
 
     return {
       content,
-      isError: false
+      isError: false,
+      _meta: {
+        viewUUID: randomUUID()
+      }
     };
-  }
-
-  /**
-   * List existing public tokens from the user's Mapbox account
-   */
-  private async listPublicTokens(
-    accessToken?: string
-  ): Promise<ExistingTokenInfo[]> {
-    if (!accessToken) {
-      return [];
-    }
-
-    try {
-      const userName = getUserNameFromToken(accessToken);
-      const response = await fetch(
-        `${MapboxApiBasedTool.mapboxApiEndpoint}tokens/v2/${userName}?access_token=${accessToken}`
-      );
-
-      if (!response.ok) {
-        // If we can't list tokens, return empty array (non-fatal)
-        return [];
-      }
-
-      const data = await response.json();
-      const tokens = data as Array<{
-        id: string;
-        note: string;
-        scopes: string[];
-        token?: string;
-      }>;
-
-      // Filter to public tokens with styles:read scope
-      return tokens
-        .filter(
-          (t) => t.token?.startsWith('pk.') && t.scopes.includes('styles:read')
-        )
-        .map((t) => ({
-          id: t.id,
-          note: t.note || t.id,
-          scopes: t.scopes
-        }));
-    } catch {
-      // Non-fatal error - return empty array
-      return [];
-    }
-  }
-
-  /**
-   * Create a new preview token via Mapbox API
-   */
-  private async createPreviewToken(
-    accessToken?: string,
-    note?: string,
-    urlRestrictions?: string[]
-  ): Promise<{ success: boolean; token?: string; error?: string }> {
-    if (!accessToken) {
-      return {
-        success: false,
-        error: 'Server access token is required to create preview tokens'
-      };
-    }
-
-    try {
-      const userName = getUserNameFromToken(accessToken);
-      const tokenNote =
-        note || `MCP Preview Token - ${new Date().toISOString().split('T')[0]}`;
-
-      const body: {
-        note: string;
-        scopes: string[];
-        allowedUrls?: string[];
-      } = {
-        note: tokenNote,
-        // CRITICAL: Only use public scopes to get a public token (pk.*)
-        // styles:download is a secret scope and would create sk.* token
-        scopes: ['styles:read', 'styles:tiles', 'fonts:read']
-      };
-
-      if (urlRestrictions && urlRestrictions.length > 0) {
-        body.allowedUrls = urlRestrictions;
-      }
-
-      const response = await fetch(
-        `${MapboxApiBasedTool.mapboxApiEndpoint}tokens/v2/${userName}?access_token=${accessToken}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(body)
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        return {
-          success: false,
-          error: `Failed to create token: ${response.status} ${errorText}`
-        };
-      }
-
-      const data = (await response.json()) as { token: string };
-
-      // Validate that we got a public token (starts with pk.)
-      if (!data.token.startsWith('pk.')) {
-        return {
-          success: false,
-          error: `API returned a non-public token (${data.token.substring(0, 3)}...). Preview tokens must be public tokens (pk.*) that can be safely exposed in URLs.`
-        };
-      }
-
-      return {
-        success: true,
-        token: data.token
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Unknown error creating token'
-      };
-    }
   }
 }

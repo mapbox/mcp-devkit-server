@@ -1,10 +1,15 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { TilequeryTool } from '../../../src/tools/tilequery-tool/TilequeryTool.js';
 import { TilequeryInput } from '../../../src/tools/tilequery-tool/TilequeryTool.input.schema.js';
 import { setupHttpRequest } from '../../utils/httpPipelineUtils.js';
+
+beforeAll(() => {
+  process.env.MAPBOX_ACCESS_TOKEN =
+    'eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+});
 
 describe('TilequeryTool', () => {
   let tool: TilequeryTool;
@@ -97,6 +102,25 @@ describe('TilequeryTool', () => {
 
       const result = tool.inputSchema.safeParse(input);
       expect(result.success).toBe(false);
+    });
+  });
+
+  describe('execute', () => {
+    it('returns error with validation details when API response does not match schema', async () => {
+      const { httpRequest } = setupHttpRequest({
+        ok: true,
+        json: async () => ({ unexpected: 'format' })
+      });
+
+      const result = await new TilequeryTool({ httpRequest }).run({
+        longitude: -122.4194,
+        latitude: 37.7749
+      });
+
+      expect(result.isError).toBe(true);
+      const text = (result.content[0] as { type: string; text: string }).text;
+      expect(text).toMatch(/Unexpected API response format from Mapbox API:/);
+      expect(text).toContain('"code"');
     });
   });
 });

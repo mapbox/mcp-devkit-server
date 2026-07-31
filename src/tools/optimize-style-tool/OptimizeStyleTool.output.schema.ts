@@ -10,7 +10,9 @@ const OptimizationSchema = z.object({
 });
 
 export const OptimizeStyleOutputSchema = z.object({
-  optimizedStyle: z.record(z.unknown()).describe('The optimized Mapbox style'),
+  optimizedStyle: z
+    .record(z.string(), z.unknown())
+    .describe('The optimized Mapbox style'),
   optimizations: z
     .array(OptimizationSchema)
     .describe('List of optimizations that were applied'),

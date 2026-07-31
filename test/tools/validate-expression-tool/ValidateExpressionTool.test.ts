@@ -252,9 +252,7 @@ describe('ValidateExpressionTool', () => {
 
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.valid).toBe(false);
-      expect(parsed.errors[0].message).toContain(
-        'requires at least 1 argument'
-      );
+      expect(parsed.errors[0].message).toContain('Expected arguments of type');
     });
 
     it('should detect too many arguments', async () => {
@@ -267,7 +265,110 @@ describe('ValidateExpressionTool', () => {
 
       const parsed = JSON.parse(result.content[0].text);
       expect(parsed.valid).toBe(false);
-      expect(parsed.errors[0].message).toContain('accepts at most 0 argument');
+      expect(parsed.errors[0].message).toContain('Expected arguments of type');
+    });
+  });
+
+  describe('regression: issue #123 - zoom expression placement', () => {
+    it('should accept a top-level zoom interpolation (previously a false positive)', async () => {
+      const input = {
+        expression: [
+          'interpolate',
+          ['linear'],
+          ['zoom'],
+          4,
+          0.4,
+          6,
+          0.28,
+          8,
+          0
+        ],
+        context: 'paint'
+      };
+
+      const result = await tool.run(input);
+      expect(result.isError).toBe(false);
+
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.valid).toBe(true);
+      expect(parsed.errors).toHaveLength(0);
+    });
+
+    it('should reject zoom interpolations nested inside a case (previously a false negative)', async () => {
+      const input = {
+        expression: [
+          'case',
+          ['==', ['get', 'inside'], true],
+          ['interpolate', ['linear'], ['zoom'], 4, 0.4, 6, 0.28, 8, 0],
+          ['interpolate', ['linear'], ['zoom'], 4, 0.2, 6, 0.14, 8, 0]
+        ]
+      };
+
+      const result = await tool.run(input);
+      expect(result.isError).toBe(false);
+
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.valid).toBe(false);
+      expect(
+        parsed.errors.some((e: any) =>
+          e.message.includes(
+            '"zoom" expression may only be used as input to a top-level'
+          )
+        )
+      ).toBe(true);
+    });
+  });
+
+  describe('deeply nested (adversarial) expressions', () => {
+    it('should reject an expression exceeding the max nesting depth instead of recursing unbounded', async () => {
+      let expression: any = ['get', 'value'];
+      for (let i = 0; i < 5000; i++) {
+        expression = ['+', expression, 1];
+      }
+
+      const start = Date.now();
+      const result = await tool.run({ expression });
+      expect(Date.now() - start).toBeLessThan(1000);
+
+      expect(result.isError).toBe(false);
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.valid).toBe(false);
+      expect(
+        parsed.errors.some((e: any) =>
+          e.message.includes('exceeds maximum nesting depth')
+        )
+      ).toBe(true);
+    });
+
+    it('should reject a wide (shallow but huge) expression instead of exhausting memory', async () => {
+      // Depth stays ~1 here - this is the vector the depth cap alone does not catch.
+      const expression: any = ['match', ['get', 'x']];
+      for (let i = 0; i < 20_000; i++) {
+        expression.push(i, 'red');
+      }
+      expression.push('blue');
+
+      const start = Date.now();
+      const result = await tool.run({ expression });
+      expect(Date.now() - start).toBeLessThan(1000);
+
+      expect(result.isError).toBe(false);
+      const parsed = JSON.parse(result.content[0].text);
+      expect(parsed.valid).toBe(false);
+      expect(
+        parsed.errors.some((e: any) =>
+          e.message.includes('exceeds maximum size')
+        )
+      ).toBe(true);
+    });
+
+    it('should reject a JSON string expression exceeding the maximum length', async () => {
+      const expression = JSON.stringify(['get', 'x'.repeat(300_000)]);
+
+      const result = await tool.run({ expression });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('exceeds maximum length');
     });
   });
 

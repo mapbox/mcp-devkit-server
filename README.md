@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server that provides AI assistants with direct access to Mapbox developer APIs. This server enables AI models to interact with Mapbox services, helping developers build Mapbox applications more efficiently.
 
+> **Looking for Mapbox documentation access?** Use [mcp-docs-server](https://github.com/mapbox/mcp-docs-server) alongside this server — it provides AI assistants with access to Mapbox documentation, guides, and API references from docs.mapbox.com.
+
 https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
 
 ## Table of Contents
@@ -15,7 +17,6 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Hosted MCP Endpoint](#hosted-mcp-endpoint)
     - [Getting Your Mapbox Access Token](#getting-your-mapbox-access-token)
   - [Tools](#tools)
-    - [Documentation Tools](#documentation-tools)
     - [Reference Tools](#reference-tools)
     - [Style Management Tools](#style-management-tools)
     - [Token Management Tools](#token-management-tools)
@@ -45,6 +46,7 @@ https://github.com/user-attachments/assets/8b1b8ef2-9fba-4951-bc9a-beaed4f6aff6
     - [Environment Variables](#environment-variables-1)
       - [VERBOSE_ERRORS](#verbose_errors)
   - [Troubleshooting](#troubleshooting)
+  - [Release Process](#release-process)
   - [Contributing](#contributing)
 
 ## Quick Start
@@ -124,27 +126,9 @@ The `MAPBOX_ACCESS_TOKEN` environment variable is required. **Each tool requires
 
 ## Tools
 
-### Documentation Tools
-
-**get_latest_mapbox_docs_tool** - Access the latest official Mapbox documentation directly from the source. This tool fetches comprehensive, up-to-date information about all Mapbox APIs, SDKs, and developer resources from docs.mapbox.com/llms.txt.
-
-**Example prompts:**
-
-- "What are the latest Mapbox APIs available for developers?"
-- "Show me all current Mapbox services and SDKs"
-- "I need up-to-date Mapbox documentation for my project"
-- "What mapping solutions does Mapbox offer for my tech stack?"
-- "Give me an overview of Mapbox's navigation and routing capabilities"
-- "Compare Mapbox web SDKs versus mobile SDKs"
-- "What's new in the Mapbox ecosystem?"
-
-📖 **[See more examples and interactive demo →](./docs/mapbox-docs-tool-demo.md)**
-
 ### Reference Tools
 
-**get_reference_tool** - Access static Mapbox reference documentation and schemas. This tool provides essential reference information that helps AI assistants understand Mapbox concepts and build correct styles and tokens.
-
-> **Note:** This tool exists as a workaround for Claude Desktop's current limitation with MCP resources. Claude Desktop can see resources (via `resources/list`) but doesn't automatically call `resources/read` to fetch their content. This tool provides the same reference data through the tool interface, which Claude Desktop does support. Other MCP clients that fully support the resources protocol can access this data directly as MCP Resources (see [Resources](#resources) section below).
+Reference data is exposed as MCP Resources (see [Resources](#resources) section). MCP clients that support the resources protocol can access them directly.
 
 **Available References:**
 
@@ -1098,7 +1082,7 @@ See the [mapbox-style-quality skill](skills/mapbox-style-quality/SKILL.md) for d
 
 ## Resources
 
-This server exposes static reference documentation as MCP Resources. While these are primarily accessed through the `get_reference_tool`, MCP clients that fully support the resources protocol can access them directly.
+This server exposes static reference documentation as MCP Resources. MCP clients that support the resources protocol can access them directly.
 
 **Available Resources:**
 
@@ -1124,11 +1108,6 @@ This server exposes static reference documentation as MCP Resources. While these
    - Organized by geometry type (polygon, line, point)
    - Includes common usage patterns and examples
    - Helps avoid incompatible layer type/source layer combinations
-
-**Accessing Resources:**
-
-- **Claude Desktop & Most MCP Clients**: Use the `get_reference_tool` to access these references
-- **Future MCP Clients**: May support direct resource access via the MCP resources protocol
 
 **Note:** Resources provide static reference data that doesn't change frequently, while tools provide dynamic, user-specific data (like listing your styles or tokens) and perform actions (like creating styles or tokens).
 
@@ -1316,25 +1295,31 @@ By default, the server returns generic error messages. With verbose errors enabl
 
 #### ENABLE_MCP_UI
 
-**MCP-UI Support (Enabled by Default)**
+**Interactive Previews: MCP Apps (primary) & MCP-UI (compatibility)**
 
-MCP-UI allows tools that return URLs to also return interactive iframe resources that can be embedded directly in supporting MCP clients. **This is enabled by default** and is fully backwards compatible with all MCP clients.
+This server actively invests in **MCP Apps** as its primary interactive preview protocol, delivering self-contained HTML app panels directly inside the chat. MCP Apps is supported by Claude Desktop, VS Code with GitHub Copilot, and Claude Code — no configuration needed.
+
+**MCP-UI** (`@mcp-ui/server`) is also maintained for backwards compatibility with clients like Goose. It is not being removed, but new interactive preview development is focused on MCP Apps.
 
 **Supported Tools:**
 
-- `preview_style_tool` - Embeds Mapbox style previews
-- `geojson_preview_tool` - Embeds geojson.io visualizations
-- `style_comparison_tool` - Embeds side-by-side style comparisons
+- `preview_style_tool` - Interactive Mapbox style preview panel
+- `geojson_preview_tool` - Interactive GeoJSON visualization panel
+- `style_comparison_tool` - Side-by-side style comparison panel
 
-**How it Works:**
+**Client support:**
 
-- Tools return **both** a text URL (always works) and a UIResource for iframe embedding
-- Clients that don't support MCP-UI (like Claude Desktop) simply ignore the UIResource and use the text URL
-- Clients that support MCP-UI (like Goose) can render the iframe for a richer experience
+| Client                      | MCP Apps | MCP-UI |
+| --------------------------- | -------- | ------ |
+| Claude Desktop              | ✅       |        |
+| VS Code with GitHub Copilot | ✅       |        |
+| Claude Code                 | ✅       |        |
+| Goose                       | ✅       | ✅     |
+| Other clients               |          |        |
 
 **Disabling MCP-UI (Optional):**
 
-If you want to disable MCP-UI support:
+MCP Apps support is always active. If you want to disable the MCP-UI UIResource (used by Goose):
 
 Via environment variable:
 
@@ -1348,7 +1333,7 @@ Or via command-line flag:
 node dist/esm/index.js --disable-mcp-ui
 ```
 
-**Note:** You typically don't need to disable this. The implementation is fully backwards compatible and doesn't affect clients that don't support MCP-UI. See [mcpui.dev](https://mcpui.dev) for compatible clients.
+**Note:** You typically don't need to disable this. All clients receive a usable text URL regardless; interactive previews are a progressive enhancement on top.
 
 ## Troubleshooting
 
@@ -1359,6 +1344,64 @@ node dist/esm/index.js --disable-mcp-ui
 **Issue:** Large GeoJSON files cause slow performance
 
 **Solution:** The GeoJSON preview tool may be slow with very large files. Consider simplifying geometries or using smaller datasets for preview purposes.
+
+## Release Process
+
+Follow these steps to publish a new release:
+
+1. **Bump the version in `package.json`** to the target version (e.g., `1.0.0`).
+
+2. **Sync versions** across `manifest.json` and `server.json`:
+
+   ```bash
+   node scripts/sync-manifest-version.cjs
+   ```
+
+   This reads the version from `package.json` and updates `manifest.json` and `server.json` (including `packages[0].version`) to match.
+
+3. **Prepare the changelog** — this replaces the "Unreleased" heading with the version and date:
+
+   ```bash
+   npm run changelog:prepare-release 1.0.0
+   ```
+
+4. **Commit, tag, and push:**
+
+   ```bash
+   git add package.json manifest.json server.json CHANGELOG.md
+   git commit -m "Release v1.0.0"
+   git tag v1.0.0
+   git push && git push --tags
+   ```
+
+5. **Publish via the [mcp-server-publisher](https://github.com/mapbox/mcp-server-publisher) workflow:**
+   - Go to the Actions tab in the `mcp-server-publisher` repo
+   - Select "Release MCP Server"
+   - Choose `mcp-devkit-server` from the repository dropdown
+   - Enter the version — it **must exactly match** the `package.json` version
+   - Leave the branch field empty for stable releases (or specify a branch for dev releases)
+   - The workflow will: build, test, publish to NPM (`@mapbox/mcp-devkit-server`), publish to the MCP Registry, create a DXT package, and create a GitHub Release
+
+### Version Files
+
+The following files must have matching versions before publishing:
+
+| File            | Fields                           |
+| --------------- | -------------------------------- |
+| `package.json`  | `version` (source of truth)      |
+| `manifest.json` | `version`                        |
+| `server.json`   | `version`, `packages[0].version` |
+
+The `sync-manifest-version.cjs` script handles syncing these automatically from `package.json`.
+
+### Dev Releases
+
+To publish a pre-release from a feature branch:
+
+1. Set the version in `package.json` with a pre-release suffix `-dev` (e.g., `1.0.0-dev`)
+2. Run `node scripts/sync-manifest-version.cjs`
+3. In the publisher workflow, enter the version and specify the branch name
+4. The package will be published to NPM under the `dev` tag (won't affect `latest`)
 
 ## Contributing
 

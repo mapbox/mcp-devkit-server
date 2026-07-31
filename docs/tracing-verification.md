@@ -44,7 +44,7 @@ This will:
 
 In the MCP inspector:
 
-1. Execute any tool (e.g., `list_styles_tool` or `get_latest_mapbox_docs_tool`)
+1. Execute any tool (e.g., `list_styles_tool` or `validate_style_tool`)
 2. Try multiple tools to generate various traces:
    - Style operations (create, update, retrieve, delete)
    - Token management

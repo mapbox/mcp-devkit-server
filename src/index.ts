@@ -11,9 +11,13 @@ import { SpanStatusCode } from '@opentelemetry/api';
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  registerAppResource,
+  RESOURCE_MIME_TYPE
+} from '@modelcontextprotocol/ext-apps/server';
 import { z } from 'zod';
 import { parseToolConfigFromArgs, filterTools } from './config/toolConfig.js';
-import { getAllTools } from './tools/toolRegistry.js';
+import { getCoreTools, getElicitationTools } from './tools/toolRegistry.js';
 import { getAllResources } from './resources/resourceRegistry.js';
 import { getAllPrompts } from './prompts/promptRegistry.js';
 import { getVersionInfo } from './utils/versionUtils.js';
@@ -54,8 +58,12 @@ const versionInfo = getVersionInfo();
 const config = parseToolConfigFromArgs();
 
 // Get and filter tools based on configuration
-const allTools = getAllTools();
-const enabledTools = filterTools(allTools, config);
+// Split into categories for capability-aware registration
+const coreTools = getCoreTools();
+const elicitationTools = getElicitationTools();
+
+const enabledCoreTools = filterTools(coreTools, config);
+const enabledElicitationTools = filterTools(elicitationTools, config);
 
 // Create an MCP server
 const server = new McpServer(
@@ -65,21 +73,46 @@ const server = new McpServer(
   },
   {
     capabilities: {
-      tools: {},
+      tools: {
+        listChanged: true // Advertise support for dynamic tool registration
+      },
       resources: {},
       prompts: {}
     }
   }
 );
 
-// Register enabled tools to the server
-enabledTools.forEach((tool) => {
+// Register only core tools before connection
+// Capability-dependent tools will be registered dynamically after connection
+enabledCoreTools.forEach((tool) => {
   tool.installTo(server);
 });
 
 // Register resources to the server
 const resources = getAllResources();
-resources.forEach((resource) => {
+
+// Separate MCP Apps UI resources from regular resources
+const uiResources = resources.filter((r) => r.uri.startsWith('ui://'));
+const regularResources = resources.filter((r) => !r.uri.startsWith('ui://'));
+
+// Register MCP Apps UI resources using registerAppResource
+// IMPORTANT: Use RESOURCE_MIME_TYPE which is "text/html;profile=mcp-app"
+// This tells clients (like Claude Desktop) that this is an MCP App
+uiResources.forEach((resource) => {
+  registerAppResource(
+    server as any,
+    resource.name,
+    resource.uri,
+    { mimeType: RESOURCE_MIME_TYPE, description: resource.description },
+    async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return await resource.readCallback(new URL(resource.uri), {} as any);
+    }
+  );
+});
+
+// Register regular resources using standard registration
+regularResources.forEach((resource) => {
   resource.installTo(server);
 });
 
@@ -210,6 +243,52 @@ async function main() {
   // Start receiving messages on stdin and sending messages on stdout
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // After connection, dynamically register capability-dependent tools
+  const clientCapabilities = server.server.getClientCapabilities();
+
+  // Debug: Log what capabilities we detected
+  server.server.sendLoggingMessage({
+    level: 'info',
+    data: `Client capabilities detected: ${JSON.stringify(clientCapabilities, null, 2)}`
+  });
+
+  let toolsAdded = false;
+
+  // Register elicitation tools if client supports elicitation
+  if (clientCapabilities?.elicitation && enabledElicitationTools.length > 0) {
+    server.server.sendLoggingMessage({
+      level: 'info',
+      data: `Client supports elicitation. Registering ${enabledElicitationTools.length} elicitation-dependent tools`
+    });
+
+    enabledElicitationTools.forEach((tool) => {
+      tool.installTo(server);
+    });
+    toolsAdded = true;
+  } else if (enabledElicitationTools.length > 0) {
+    server.server.sendLoggingMessage({
+      level: 'debug',
+      data: `Client does not support elicitation. Skipping ${enabledElicitationTools.length} elicitation-dependent tools`
+    });
+  }
+
+  // Notify client about tool list changes if any tools were added
+  if (toolsAdded) {
+    try {
+      server.sendToolListChanged();
+
+      server.server.sendLoggingMessage({
+        level: 'debug',
+        data: 'Sent notifications/tools/list_changed to client'
+      });
+    } catch (error) {
+      server.server.sendLoggingMessage({
+        level: 'warning',
+        data: `Failed to send tool list change notification: ${error instanceof Error ? error.message : String(error)}`
+      });
+    }
+  }
 }
 
 // Ensure cleanup interval is cleared when the process exits

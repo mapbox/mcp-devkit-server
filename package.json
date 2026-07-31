@@ -1,6 +1,6 @@
 {
   "name": "@mapbox/mcp-devkit-server",
-  "version": "0.4.6",
+  "version": "0.8.2",
   "description": "Mapbox MCP devkit server",
   "mcpName": "io.github.mapbox/mcp-devkit-server",
   "main": "./dist/commonjs/index.js",
@@ -10,7 +10,9 @@
     "mapbox-mcp-devkit": "dist/esm/index.js"
   },
   "scripts": {
+    "postinstall": "patch-package || true",
     "build": "npm run prepare && tshy && npm run generate-version && node scripts/add-shebang.cjs",
+    "changelog:prepare-release": "node scripts/prepare-changelog-release.cjs",
     "format": "prettier --check \"./src/**/*.{ts,tsx,js,json,md}\" \"./test/**/*.{ts,tsx,js,json,md}\"",
     "format:fix": "prettier --write \"./src/**/*.{ts,tsx,js,json,md}\" \"./test/**/*.{ts,tsx,js,json,md}\"",
     "generate-version": "node scripts/build-helpers.cjs generate-version",
@@ -19,7 +21,7 @@
     "lint": "eslint \"./src/**/*.{ts,tsx}\" \"./test/**/*.{ts,tsx}\"",
     "lint:fix": "eslint \"./src/**/*.{ts,tsx}\" \"./test/**/*.{ts,tsx}\" --fix",
     "prepare": "husky && node .husky/setup-hooks.js",
-    "spellcheck": "cspell \"*.md\" \"src/**/*.ts\" \"test/**/*.ts\"",
+    "spellcheck": "cspell \"*.md\" \"src/**/*.ts\" \"test/**/*.ts\" \"examples/**/*.ts\"",
     "sync-manifest": "node scripts/sync-manifest-version.cjs",
     "test": "vitest",
     "tracing:jaeger:start": "docker run --rm -d --name jaeger -p 16686:16686 -p 14250:14250 -p 4317:4317 -p 4318:4318 jaegertracing/all-in-one:latest",
@@ -40,31 +42,34 @@
     "node": ">=22"
   },
   "files": [
-    "dist"
+    "dist",
+    "patches"
   ],
   "keywords": [
     "mcp"
   ],
   "dependencies": {
-    "@mcp-ui/server": "^5.13.1",
-    "@modelcontextprotocol/sdk": "^1.17.5",
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.56.0",
-    "@opentelemetry/exporter-trace-otlp-http": "^0.56.0",
-    "@opentelemetry/instrumentation": "^0.56.0",
-    "@opentelemetry/resources": "^1.30.1",
-    "@opentelemetry/sdk-node": "^0.56.0",
-    "@opentelemetry/sdk-trace-base": "^1.30.1",
-    "@opentelemetry/semantic-conventions": "^1.30.1",
-    "zod": "^3.25.42"
+    "@mapbox/mapbox-gl-style-spec": "^14.26.0",
+    "@mcp-ui/server": "^6.1.0",
+    "@modelcontextprotocol/ext-apps": "^1.1.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/auto-instrumentations-node": "^0.74.0",
+    "@opentelemetry/exporter-trace-otlp-http": "^0.216.0",
+    "@opentelemetry/instrumentation": "^0.216.0",
+    "@opentelemetry/resources": "^2.7.1",
+    "@opentelemetry/sdk-node": "^0.216.0",
+    "@opentelemetry/sdk-trace-base": "^2.7.1",
+    "@opentelemetry/semantic-conventions": "^1.40.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "@vitest/coverage-istanbul": "^3.2.4",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
+    "@vitest/coverage-istanbul": "^4.1.4",
     "cspell": "^9.2.1",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
@@ -74,12 +79,13 @@
     "globals": "^16.3.0",
     "husky": "^9.0.0",
     "lint-staged": "^16.1.0",
+    "patch-package": "^8.0.1",
     "plop": "^4.0.1",
     "prettier": "^3.0.0",
-    "tshy": "^3.0.2",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.42.0",
-    "vitest": "^3.2.4"
+    "tshy": "^4.1.1",
+    "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.2",
+    "vitest": "^4.1.4"
   },
   "prettier": {
     "singleQuote": true,
@@ -88,7 +94,11 @@
   "tshy": {
     "project": "./tsconfig.src.json",
     "exports": {
-      ".": "./src/index.ts"
+      ".": "./src/index.ts",
+      "./tools": "./src/tools/index.ts",
+      "./resources": "./src/resources/index.ts",
+      "./prompts": "./src/prompts/index.ts",
+      "./utils": "./src/utils/index.ts"
     },
     "dialects": [
       "esm",
@@ -105,6 +115,46 @@
       "require": {
         "types": "./dist/commonjs/index.d.ts",
         "default": "./dist/commonjs/index.js"
+      }
+    },
+    "./tools": {
+      "import": {
+        "types": "./dist/esm/tools/index.d.ts",
+        "default": "./dist/esm/tools/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/tools/index.d.ts",
+        "default": "./dist/commonjs/tools/index.js"
+      }
+    },
+    "./resources": {
+      "import": {
+        "types": "./dist/esm/resources/index.d.ts",
+        "default": "./dist/esm/resources/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/resources/index.d.ts",
+        "default": "./dist/commonjs/resources/index.js"
+      }
+    },
+    "./prompts": {
+      "import": {
+        "types": "./dist/esm/prompts/index.d.ts",
+        "default": "./dist/esm/prompts/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/prompts/index.d.ts",
+        "default": "./dist/commonjs/prompts/index.js"
+      }
+    },
+    "./utils": {
+      "import": {
+        "types": "./dist/esm/utils/index.d.ts",
+        "default": "./dist/esm/utils/index.js"
+      },
+      "require": {
+        "types": "./dist/commonjs/utils/index.d.ts",
+        "default": "./dist/commonjs/utils/index.js"
       }
     }
   },

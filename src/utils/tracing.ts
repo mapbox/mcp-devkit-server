@@ -3,7 +3,7 @@
 
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { Resource } from '@opentelemetry/resources';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
   ATTR_SERVICE_NAME,
   ATTR_SERVICE_VERSION
@@ -18,6 +18,7 @@ import {
   DiagLogLevel
 } from '@opentelemetry/api';
 import { getVersionInfo } from './versionUtils.js';
+import { RedactingSpanExporter } from './redactingSpanExporter.js';
 import { ATTR_SERVICE_INSTANCE_ID } from '@opentelemetry/semantic-conventions/incubating';
 import { type HttpRequest } from './types.js';
 
@@ -167,7 +168,7 @@ export async function initializeTracing(): Promise<void> {
 
   try {
     // Create resource with service information
-    const resource = new Resource({
+    const resource = resourceFromAttributes({
       [ATTR_SERVICE_NAME]:
         process.env.OTEL_SERVICE_NAME || 'mapbox-mcp-devkit-server',
       [ATTR_SERVICE_VERSION]: versionInfo.version,
@@ -194,7 +195,9 @@ export async function initializeTracing(): Promise<void> {
     // Create SDK instance
     sdk = new NodeSDK({
       resource,
-      traceExporter: exporter,
+      // Wrap the exporter so access tokens recorded in HTTP client span
+      // attributes (url.full, url.query) never reach the OTLP backend
+      traceExporter: new RedactingSpanExporter(exporter),
       instrumentations: [
         getNodeAutoInstrumentations({
           // Disable instrumentations that might be too noisy

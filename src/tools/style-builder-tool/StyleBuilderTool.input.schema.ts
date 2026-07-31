@@ -52,7 +52,7 @@ const LayerConfigSchema = z.object({
       z.number(),
       z.boolean(),
       z.array(z.unknown()),
-      z.record(z.unknown())
+      z.record(z.string(), z.unknown())
     ])
     .optional()
     .describe('Custom filter expression'),
@@ -109,7 +109,7 @@ const LayerConfigSchema = z.object({
       z.number(),
       z.boolean(),
       z.array(z.unknown()),
-      z.record(z.unknown())
+      z.record(z.string(), z.unknown())
     ])
     .optional()
     .describe('Custom Mapbox expression for advanced styling'),

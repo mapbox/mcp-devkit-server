@@ -186,7 +186,7 @@ Analyze the error and provide specific solutions:
 1. **Source not defined**: Ensure source is added before layers that reference it
 2. **Invalid layer type**: Check layer type matches source geometry
 3. **Missing required property**: Verify all required layer properties are set
-4. **Use get_reference_tool**: Get 'style-spec-reference' for layer requirements
+4. **Check style spec**: Read \`resource://mapbox-style-layers\` for layer requirements
 
 `;
       }
@@ -228,10 +228,9 @@ Run these diagnostic checks:
    - Compare the working preview with the broken implementation
 
 3. **Check documentation**
-   - Use get_reference_tool with:
-     * 'style-spec-reference' for style JSON issues
-     * 'token-scopes-reference' for token scope questions
-     * 'streets-v8-fields-reference' for data layer questions
+   - Read \`resource://mapbox-style-layers\` for style JSON issues
+   - Read \`resource://mapbox-token-scopes\` for token scope questions
+   - Read \`resource://mapbox-streets-v8-fields\` for data layer questions
 
 ## Phase 5: Solution Summary
 

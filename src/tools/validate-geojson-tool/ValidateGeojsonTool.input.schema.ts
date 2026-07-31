@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 export const ValidateGeojsonInputSchema = z.object({
   geojson: z
-    .union([z.string(), z.record(z.unknown())])
+    .union([z.string(), z.record(z.string(), z.unknown())])
     .describe('GeoJSON object or JSON string to validate')
 });
 
