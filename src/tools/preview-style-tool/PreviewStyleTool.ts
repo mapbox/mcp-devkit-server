@@ -105,7 +105,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
                 type: 'text',
                 text:
                   'Preview token required but client does not support elicitation. ' +
-                  'Please provide an accessToken parameter directly, or use a client that supports MCP elicitation (e.g., Claude Desktop, Claude Code).'
+                  'Please provide an accessToken parameter directly, or use a client that supports MCP elicitation (e.g., MCP Inspector, Cursor, VS Code).'
               }
             ]
           };
