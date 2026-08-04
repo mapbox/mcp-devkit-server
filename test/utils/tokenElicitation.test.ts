@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
+  cacheKeyFor,
   createPreviewToken,
   elicitPreviewToken,
   isTemporaryServerToken,
@@ -105,6 +106,27 @@ describe('isTemporaryServerToken', () => {
 
   it('does not treat sk.* tokens as temporary', () => {
     expect(isTemporaryServerToken('sk.eyJ1IjoidGVzdCJ9.sig')).toBe(false);
+  });
+});
+
+describe('cacheKeyFor', () => {
+  it('is deterministic for the same token', () => {
+    const token = 'sk.eyJ1IjoidGVzdC11c2VyIn0.sig';
+    expect(cacheKeyFor(token)).toBe(cacheKeyFor(token));
+  });
+
+  it('returns a sha256 hex digest', () => {
+    expect(cacheKeyFor('sk.eyJ1IjoidGVzdC11c2VyIn0.sig')).toMatch(
+      /^[0-9a-f]{64}$/
+    );
+  });
+
+  it('differs for two distinct tokens that decode to the same username', () => {
+    // Same `u` claim ('test-user'), different signatures — a naive username-keyed
+    // cache would conflate these two distinct, unverified bearers into one slot.
+    const tokenA = 'sk.eyJ1IjoidGVzdC11c2VyIn0.signature-a';
+    const tokenB = 'sk.eyJ1IjoidGVzdC11c2VyIn0.signature-b';
+    expect(cacheKeyFor(tokenA)).not.toBe(cacheKeyFor(tokenB));
   });
 });
 

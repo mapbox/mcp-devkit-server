@@ -4,6 +4,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { StyleComparisonTool } from '../../../src/tools/style-comparison-tool/StyleComparisonTool.js';
 import * as jwtUtils from '../../../src/utils/jwtUtils.js';
+import {
+  cacheKeyFor,
+  previewTokenStorage
+} from '../../../src/utils/tokenElicitation.js';
 import { setupHttpRequest } from '../../utils/httpPipelineUtils.js';
 
 function styleComparisonTool() {
@@ -268,6 +272,10 @@ describe('StyleComparisonTool', () => {
   });
 
   describe('elicitation behavior', () => {
+    beforeEach(() => {
+      previewTokenStorage.clearAll();
+    });
+
     it('returns error when no accessToken and no valid server token', async () => {
       const tool = styleComparisonTool();
 
@@ -344,6 +352,31 @@ describe('StyleComparisonTool', () => {
       // A tk.* server token can never create tokens, so listing/creating
       // tokens against the Mapbox API should never even be attempted.
       expect(mockHttpRequest).not.toHaveBeenCalled();
+    });
+
+    it('reuses a cached token instead of erroring when useCustomToken is set but the client cannot act on it', async () => {
+      const serverToken =
+        'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+      previewTokenStorage.set(cacheKeyFor(serverToken), 'pk.test.token');
+
+      // No `this.server` is attached in these tests (installTo() was never
+      // called), so this exercises exactly the "client can't support the
+      // selection dialog" case a reviewer asked about on PR #57.
+      const result = await styleComparisonTool().run(
+        {
+          before: 'mapbox/streets-v12',
+          after: 'mapbox/satellite-v9',
+          useCustomToken: true
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { authInfo: { token: serverToken } } as any
+      );
+
+      expect(result.isError).toBe(false);
+      expect(result.content[0]).toMatchObject({
+        type: 'text',
+        text: expect.stringContaining('access_token=pk.test.token')
+      });
     });
   });
 

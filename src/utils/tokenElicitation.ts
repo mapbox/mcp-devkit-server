@@ -1,6 +1,7 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
+import { createHash } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { HttpRequest } from './types.js';
 
@@ -170,31 +171,46 @@ ${creationNote}`,
 }
 
 /**
- * Session-level storage for preview token preferences.
+ * Derives a `previewTokenStorage` cache key from the server's own access token, rather
+ * than from the username decoded out of it. `getUserNameFromToken` never verifies a
+ * JWT's signature — it just base64-decodes the payload — so an unverified `u` claim is
+ * not a safe cache key: two different presented tokens could decode to the same
+ * username without this process ever independently confirming that. Hosted deployments
+ * (e.g. hosted-mcp-server) verify the bearer upstream before it reaches this code, but
+ * this package is also usable standalone or behind other gateways that may not, so the
+ * cache itself shouldn't depend on that assumption. Hashing the full token ties the
+ * cache slot to the exact credential presented instead.
+ */
+export function cacheKeyFor(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
+/**
+ * Session-level storage for preview token preferences, keyed by {@link cacheKeyFor}.
  * In a real implementation, this could be stored in a database or cache.
  */
 class PreviewTokenStorage {
   private tokenCache = new Map<string, string>();
 
   /**
-   * Store a preview token for a specific username
+   * Store a preview token under the given cache key
    */
-  set(username: string, token: string): void {
-    this.tokenCache.set(username, token);
+  set(cacheKey: string, token: string): void {
+    this.tokenCache.set(cacheKey, token);
   }
 
   /**
-   * Get stored preview token for a username
+   * Get the stored preview token for the given cache key
    */
-  get(username: string): string | undefined {
-    return this.tokenCache.get(username);
+  get(cacheKey: string): string | undefined {
+    return this.tokenCache.get(cacheKey);
   }
 
   /**
-   * Clear stored token for a username
+   * Clear the stored token for the given cache key
    */
-  clear(username: string): void {
-    this.tokenCache.delete(username);
+  clear(cacheKey: string): void {
+    this.tokenCache.delete(cacheKey);
   }
 
   /**

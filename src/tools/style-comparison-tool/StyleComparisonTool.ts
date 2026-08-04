@@ -12,6 +12,7 @@ import {
 } from './StyleComparisonTool.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import {
+  cacheKeyFor,
   createPreviewToken,
   elicitPreviewToken,
   isTemporaryServerToken,
@@ -126,9 +127,19 @@ export class StyleComparisonTool extends BaseTool<
         };
       }
 
-      // Check for stored preview token (unless user wants to use custom)
-      const storedToken = previewTokenStorage.get(userName);
-      if (storedToken && !input.useCustomToken) {
+      // Check for stored preview token (unless user wants to use custom AND the
+      // client can actually act on that — a client with no elicitation support
+      // can't honor useCustomToken anyway, so silently reuse the cache instead
+      // of forcing an avoidable error).
+      const clientSupportsElicitation = Boolean(
+        this.server?.server.getClientCapabilities()?.elicitation
+      );
+      const cacheKey = cacheKeyFor(serverAccessToken || '');
+      const storedToken = previewTokenStorage.get(cacheKey);
+      if (
+        storedToken &&
+        (!input.useCustomToken || !clientSupportsElicitation)
+      ) {
         publicToken = storedToken;
       } else {
         if (!this.server) {
@@ -143,8 +154,7 @@ export class StyleComparisonTool extends BaseTool<
           };
         }
 
-        const clientCapabilities = this.server.server.getClientCapabilities();
-        if (!clientCapabilities?.elicitation) {
+        if (!clientSupportsElicitation) {
           return {
             isError: true,
             content: [
@@ -233,7 +243,7 @@ export class StyleComparisonTool extends BaseTool<
           publicToken = created.token!;
         }
 
-        previewTokenStorage.set(userName, publicToken);
+        previewTokenStorage.set(cacheKey, publicToken);
       }
     }
 
