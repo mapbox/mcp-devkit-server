@@ -2,8 +2,27 @@
 // Licensed under the MIT License.
 
 import { createHash } from 'node:crypto';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { ElicitResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type { HttpRequest } from './types.js';
+
+/**
+ * The per-call `sendRequest` a tool receives via `RequestHandlerExtra` — bound
+ * correctly to whichever session actually made the current call, unlike a `Server`
+ * instance stashed on `this` (see {@link elicitPreviewToken} for why that matters).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SendRequest = RequestHandlerExtra<any, any>['sendRequest'];
+
+/**
+ * Thrown when the elicitation request itself could not be delivered or answered —
+ * most commonly because the connected client doesn't implement elicitation at all, so
+ * `sendRequest` rejects (e.g. with a "method not found" style protocol error) rather
+ * than resolving with a real `ElicitResult`. Distinguished from a normal decline/cancel
+ * (a *successful* response the user just said no to) so callers can fall back to a
+ * cached token instead of surfacing a scary error for something the user never saw.
+ */
+export class ElicitationUnavailableError extends Error {}
 
 /**
  * Token choice options for preview token elicitation
@@ -62,7 +81,22 @@ export interface ExistingTokenInfo {
  * Elicits preview token information from the user via MCP elicitation.
  * This keeps the token out of chat history for better security.
  *
- * @param server - MCP Server instance
+ * Takes the per-call `extra.sendRequest` from `RequestHandlerExtra`, not a `Server`
+ * instance. `Server#elicitInput()` would be the obvious choice, but it reads from
+ * `this` — and a tool that stashes its `Server` on `this.server` in `installTo()` and
+ * reads it back later in `execute()` is reading *shared, mutable* state: if the same
+ * tool instance is ever reused across multiple concurrent sessions (singleton tool
+ * instances installed onto a new session's server on every connection — exactly what
+ * `CORE_TOOLS` are, and what mcp-server's own scripts/dev-http-server.ts and
+ * hosted-mcp-server's request handling both do), `this.server` durably points at
+ * whichever session connected *last*, not whichever session is making *this* call.
+ * That sends the "paste your token" prompt to a different, uninvolved client, and
+ * whatever it submits comes back as this call's result — a real cross-session
+ * hijack, not a hypothetical. `extra.sendRequest` is supplied fresh per call by the
+ * SDK, correctly scoped to the session that made the current request, so it can't be
+ * clobbered by another session connecting in between.
+ *
+ * @param sendRequest - The current call's `extra.sendRequest`
  * @param existingTokens - List of user's existing public tokens
  * @param canCreateTokens - Whether the server's own access token is able to create
  *   new tokens. When false (the server is authenticated with a `tk.*` temporary
@@ -70,9 +104,12 @@ export interface ExistingTokenInfo {
  *   omitted from the dialog entirely, since selecting them would only fail against
  *   the Mapbox API. Defaults to `true` for callers that haven't checked.
  * @returns Elicited token information based on user's choice
+ * @throws {ElicitationUnavailableError} if the client can't be asked at all (e.g. it
+ *   doesn't implement elicitation)
+ * @throws {Error} if the client was asked but the user declined or cancelled
  */
 export async function elicitPreviewToken(
-  server: Server,
+  sendRequest: SendRequest,
   existingTokens: ExistingTokenInfo[],
   canCreateTokens = true
 ): Promise<ElicitedTokenInfo> {
@@ -99,48 +136,64 @@ export async function elicitPreviewToken(
     : "This server is authenticated with a temporary session token, which can't create new " +
       'Mapbox tokens. Paste an existing public token (pk.*) with styles:read scope below.';
 
-  const result = await server.elicitInput({
-    message: `Preview Token Setup
+  // Mirrors what Server#elicitInput() builds internally (method + form-mode params),
+  // but sent via the current call's own sendRequest rather than a stashed Server.
+  let result;
+  try {
+    result = await sendRequest(
+      {
+        method: 'elicitation/create',
+        params: {
+          mode: 'form',
+          message: `Preview Token Setup
 
 Preview URLs require a public token with styles:read scope. This token will be visible in the preview URL.
 
 ${hasExistingTokens ? 'Your existing public tokens:\n' + tokenList : tokenList}
 
 ${creationNote}`,
-    requestedSchema: {
-      type: 'object',
-      properties: {
-        choice: {
-          type: 'string',
-          title: 'Token Option',
-          description: 'How would you like to provide the preview token?',
-          enum: choices,
-          enumNames: choiceNames
-        },
-        token: {
-          type: 'string',
-          title: 'Your Token',
-          description:
-            'Paste your public Mapbox token here (must have styles:read scope)',
-          minLength: 10
-        },
-        tokenNote: {
-          type: 'string',
-          title: 'Token Name (Optional)',
-          description:
-            'A descriptive name for your new token (e.g., "Preview Token - Production")',
-          maxLength: 256
-        },
-        urlRestrictions: {
-          type: 'string',
-          title: 'URL Restrictions (Optional)',
-          description:
-            'Comma-separated URLs to restrict token usage (e.g., "https://yourdomain.com/*,https://staging.yourdomain.com/*")'
+          requestedSchema: {
+            type: 'object',
+            properties: {
+              choice: {
+                type: 'string',
+                title: 'Token Option',
+                description: 'How would you like to provide the preview token?',
+                enum: choices,
+                enumNames: choiceNames
+              },
+              token: {
+                type: 'string',
+                title: 'Your Token',
+                description:
+                  'Paste your public Mapbox token here (must have styles:read scope)',
+                minLength: 10
+              },
+              tokenNote: {
+                type: 'string',
+                title: 'Token Name (Optional)',
+                description:
+                  'A descriptive name for your new token (e.g., "Preview Token - Production")',
+                maxLength: 256
+              },
+              urlRestrictions: {
+                type: 'string',
+                title: 'URL Restrictions (Optional)',
+                description:
+                  'Comma-separated URLs to restrict token usage (e.g., "https://yourdomain.com/*,https://staging.yourdomain.com/*")'
+              }
+            },
+            required: ['choice']
+          }
         }
       },
-      required: ['choice']
-    }
-  });
+      ElicitResultSchema
+    );
+  } catch (error) {
+    throw new ElicitationUnavailableError(
+      error instanceof Error ? error.message : String(error)
+    );
+  }
 
   // Check if user accepted or declined
   if (result.action !== 'accept' || !result.content) {

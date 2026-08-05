@@ -2,10 +2,10 @@
 // Licensed under the MIT License.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   cacheKeyFor,
   createPreviewToken,
+  ElicitationUnavailableError,
   elicitPreviewToken,
   isTemporaryServerToken,
   listPublicPreviewTokens,
@@ -263,21 +263,19 @@ describe('listPublicPreviewTokens', () => {
 });
 
 describe('elicitPreviewToken', () => {
-  function fakeServer(choice: string) {
-    const elicitInput = vi.fn().mockResolvedValue({
+  function fakeSendRequest(choice: string) {
+    return vi.fn().mockResolvedValue({
       action: 'accept',
       content: { choice, token: 'pk.provided-token' }
     });
-    return { elicitInput } as unknown as Server;
   }
 
   it('offers all three choices when the server token can create tokens', async () => {
-    const server = fakeServer('provide');
-    await elicitPreviewToken(server, [], true);
+    const sendRequest = fakeSendRequest('provide');
+    await elicitPreviewToken(sendRequest, [], true);
 
-    const request = (server.elicitInput as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(request.requestedSchema.properties.choice.enum).toEqual([
+    const request = sendRequest.mock.calls[0][0];
+    expect(request.params.requestedSchema.properties.choice.enum).toEqual([
       'provide',
       'create',
       'auto'
@@ -285,21 +283,31 @@ describe('elicitPreviewToken', () => {
   });
 
   it('omits create/auto choices when the server token cannot create tokens', async () => {
-    const server = fakeServer('provide');
-    await elicitPreviewToken(server, [], false);
+    const sendRequest = fakeSendRequest('provide');
+    await elicitPreviewToken(sendRequest, [], false);
 
-    const request = (server.elicitInput as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(request.requestedSchema.properties.choice.enum).toEqual(['provide']);
-    expect(request.message).toContain('temporary session token');
+    const request = sendRequest.mock.calls[0][0];
+    expect(request.params.requestedSchema.properties.choice.enum).toEqual([
+      'provide'
+    ]);
+    expect(request.params.message).toContain('temporary session token');
   });
 
   it('throws when the user declines elicitation', async () => {
-    const elicitInput = vi.fn().mockResolvedValue({ action: 'decline' });
-    const server = { elicitInput } as unknown as Server;
+    const sendRequest = vi.fn().mockResolvedValue({ action: 'decline' });
 
-    await expect(elicitPreviewToken(server, [], true)).rejects.toThrow(
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
       'Token elicitation was cancelled or declined by user'
+    );
+  });
+
+  it('wraps a failed sendRequest (e.g. the client has no elicitation support) in ElicitationUnavailableError', async () => {
+    const sendRequest = vi
+      .fn()
+      .mockRejectedValue(new Error('Method not found'));
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      ElicitationUnavailableError
     );
   });
 });

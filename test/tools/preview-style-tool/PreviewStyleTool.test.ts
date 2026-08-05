@@ -257,18 +257,13 @@ describe('PreviewStyleTool', () => {
       const { httpRequest, mockHttpRequest } = setupHttpRequest();
       const tool = new PreviewStyleTool({ httpRequest });
 
-      const elicitInput = vi.fn().mockResolvedValue({
+      // The per-call sendRequest a real MCP session would pass via `extra` —
+      // not a stashed `this.server`, which a singleton tool instance can't
+      // safely rely on across sessions (see tokenElicitation.ts).
+      const sendRequest = vi.fn().mockResolvedValue({
         action: 'accept',
         content: { choice: 'provide', token: TEST_ACCESS_TOKEN }
       });
-      // Simulate what BaseTool#installTo does, without a full MCP server.
-      tool['server'] = {
-        server: {
-          getClientCapabilities: () => ({ elicitation: {} }),
-          elicitInput
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any;
 
       const tkToken =
         'tk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
@@ -276,12 +271,13 @@ describe('PreviewStyleTool', () => {
       const result = await tool.run(
         { styleId: 'test-style' },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { authInfo: { token: tkToken } } as any
+        { authInfo: { token: tkToken }, sendRequest } as any
       );
 
       expect(result.isError).toBe(false);
-      expect(elicitInput).toHaveBeenCalledTimes(1);
-      const requestedSchema = elicitInput.mock.calls[0][0].requestedSchema;
+      expect(sendRequest).toHaveBeenCalledTimes(1);
+      const requestedSchema =
+        sendRequest.mock.calls[0][0].params.requestedSchema;
       expect(requestedSchema.properties.choice.enum).toEqual(['provide']);
 
       // A tk.* server token can never create tokens, so listing/creating
