@@ -1,6 +1,8 @@
+diff --git a/node_modules/@modelcontextprotocol/sdk/dist/cjs/server/mcp.js b/node_modules/@modelcontextprotocol/sdk/dist/cjs/server/mcp.js
+index 9e1c874..781ebad 100644
 --- a/node_modules/@modelcontextprotocol/sdk/dist/cjs/server/mcp.js
 +++ b/node_modules/@modelcontextprotocol/sdk/dist/cjs/server/mcp.js
-@@ -197,7 +197,7 @@
+@@ -197,7 +197,7 @@ class McpServer {
              return;
          }
          if (!result.structuredContent) {
@@ -9,7 +11,7 @@
          }
          // if the tool has an output schema, validate structured content
          const outputObj = (0, zod_compat_js_1.normalizeObjectSchema)(tool.outputSchema);
-@@ -205,7 +205,7 @@
+@@ -205,7 +205,7 @@ class McpServer {
          if (!parseResult.success) {
              const error = 'error' in parseResult ? parseResult.error : 'Unknown error';
              const errorMessage = (0, zod_compat_js_1.getParseErrorMessage)(error);
@@ -18,9 +20,11 @@
          }
      }
      /**
+diff --git a/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js b/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
+index 2314d88..94aaef1 100644
 --- a/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
 +++ b/node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
-@@ -194,15 +194,20 @@
+@@ -194,15 +194,20 @@ export class McpServer {
              return;
          }
          if (!result.structuredContent) {
