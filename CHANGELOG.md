@@ -13,6 +13,10 @@
 
 - **`preview_style_tool` / `style_comparison_tool`**: token-listing and token-creation HTTP calls now go through the shared `HttpPipeline` (constructor-injected `httpRequest`) instead of a bare `fetch`, consistent with the rest of the API-calling tools.
 
+### Dependencies
+
+- Bumped `@modelcontextprotocol/sdk` to `1.30.0`. Not adopting the `2026-07-28` spec revision this release covers (stateless request/response model, elicitation replaced by Multi Round-Trip Requests, Sampling deprecated) — that's a separate migration, tracked in #130, given this repo's own elicitation-based features depend on the mechanism being replaced. Regenerated `patches/@modelcontextprotocol+sdk+1.30.0.patch` (previously pinned to `1.29.0`) — same patch content, applies cleanly to the new version, verified live against the built server.
+
 ## 0.8.2 - 2026-07-30
 
 ### Fixed
