@@ -93,6 +93,42 @@ describe('PreviewTokenStorage', () => {
     previewTokenStorage.set(specialUsername, 'pk.special-token');
     expect(previewTokenStorage.get(specialUsername)).toBe('pk.special-token');
   });
+
+  it('evicts the least-recently-used entry once at capacity, bounding memory regardless of how many distinct keys are presented', () => {
+    const MAX_CACHED_TOKENS = 1000; // matches the private constant in tokenElicitation.ts
+
+    for (let i = 0; i < MAX_CACHED_TOKENS; i++) {
+      previewTokenStorage.set(`key-${i}`, `pk.token-${i}`);
+    }
+
+    // One more insert should evict the oldest (key-0), not grow unbounded. Checking
+    // key-0 here (rather than before this point) matters: `get()` itself counts as a
+    // "use" and would otherwise protect key-0 from being the next eviction target.
+    previewTokenStorage.set('key-overflow', 'pk.token-overflow');
+
+    expect(previewTokenStorage.get('key-0')).toBeUndefined();
+    expect(previewTokenStorage.get('key-overflow')).toBe('pk.token-overflow');
+    // The rest of the original entries are still present.
+    expect(previewTokenStorage.get('key-1')).toBe('pk.token-1');
+  });
+
+  it('reading an entry protects it from eviction, even if it was inserted first', () => {
+    const MAX_CACHED_TOKENS = 1000;
+
+    previewTokenStorage.set('key-0', 'pk.token-0');
+    for (let i = 1; i < MAX_CACHED_TOKENS; i++) {
+      previewTokenStorage.set(`key-${i}`, `pk.token-${i}`);
+    }
+
+    // Touch key-0 so it's no longer the least-recently-used entry.
+    previewTokenStorage.get('key-0');
+
+    // This overflow should now evict key-1 (the new least-recently-used), not key-0.
+    previewTokenStorage.set('key-overflow', 'pk.token-overflow');
+
+    expect(previewTokenStorage.get('key-0')).toBe('pk.token-0');
+    expect(previewTokenStorage.get('key-1')).toBeUndefined();
+  });
 });
 
 describe('isTemporaryServerToken', () => {
@@ -308,6 +344,55 @@ describe('elicitPreviewToken', () => {
 
     await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
       ElicitationUnavailableError
+    );
+  });
+
+  it('passes an explicit timeout to sendRequest rather than relying on the SDK default', async () => {
+    const sendRequest = fakeSendRequest('provide');
+    await elicitPreviewToken(sendRequest, [], true);
+
+    const options = sendRequest.mock.calls[0][2];
+    expect(options).toMatchObject({ timeout: expect.any(Number) });
+    expect(options.timeout).toBeGreaterThan(0);
+  });
+
+  it('rejects a client-returned token that exceeds the server-enforced max length, regardless of the schema hint', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: { choice: 'provide', token: 'pk.' + 'a'.repeat(3000) }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /exceeds the .* maximum/
+    );
+  });
+
+  it('rejects a client-returned tokenNote that exceeds the max length', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: {
+        choice: 'create',
+        tokenNote: 'a'.repeat(300)
+      }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /Token name.*exceeds/
+    );
+  });
+
+  it('rejects a client-returned urlRestrictions list that exceeds the max count', async () => {
+    const tooManyUrls = Array.from(
+      { length: 101 },
+      (_, i) => `https://example${i}.com/*`
+    ).join(',');
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: { choice: 'create', urlRestrictions: tooManyUrls }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /URL restrictions.*exceeds/
     );
   });
 });

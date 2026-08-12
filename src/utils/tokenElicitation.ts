@@ -15,6 +15,31 @@ import type { HttpRequest } from './types.js';
 type SendRequest = RequestHandlerExtra<any, any>['sendRequest'];
 
 /**
+ * How long to wait for the client to answer an elicitation prompt before giving up.
+ * Set explicitly (matching the SDK's own `DEFAULT_REQUEST_TIMEOUT_MSEC`) rather than
+ * omitting `timeout` and letting the SDK default apply implicitly — a future SDK bump
+ * changing that constant shouldn't silently change how long a session-holding-open
+ * elicitation call can be kept pending. A human genuinely filling out the dialog needs
+ * on the order of tens of seconds; a client that never answers at all (accidentally or
+ * as a resource-exhaustion attempt — each pending call ties up its session's live
+ * connection for the duration) shouldn't be able to hold the request open indefinitely.
+ * Capping the number of *concurrent* pending elicitations a single deployment will
+ * tolerate is an infrastructure-level concern (rate limiting, connection limits) outside
+ * what this package can enforce on its own.
+ */
+const ELICITATION_TIMEOUT_MSEC = 60_000;
+
+/** Real Mapbox tokens are well under this; anything longer is almost certainly not a
+ * token at all. Enforced server-side regardless of what a client's form UI does with
+ * the `maxLength` hint in the requested schema below — that hint is advisory only. */
+const MAX_TOKEN_LENGTH = 2048;
+
+const MAX_TOKEN_NOTE_LENGTH = 256;
+
+/** Matches CreateTokenTool's own `allowedUrls` cap. */
+const MAX_URL_RESTRICTIONS = 100;
+
+/**
  * Thrown when the elicitation request itself could not be delivered or answered —
  * most commonly because the connected client doesn't implement elicitation at all, so
  * `sendRequest` rejects (e.g. with a "method not found" style protocol error) rather
@@ -167,7 +192,8 @@ ${creationNote}`,
                 title: 'Your Token',
                 description:
                   'Paste your public Mapbox token here (must have styles:read scope)',
-                minLength: 10
+                minLength: 10,
+                maxLength: MAX_TOKEN_LENGTH
               },
               tokenNote: {
                 type: 'string',
@@ -187,7 +213,8 @@ ${creationNote}`,
           }
         }
       },
-      ElicitResultSchema
+      ElicitResultSchema,
+      { timeout: ELICITATION_TIMEOUT_MSEC }
     );
   } catch (error) {
     throw new ElicitationUnavailableError(
@@ -215,6 +242,29 @@ ${creationNote}`,
         .filter((url) => url.length > 0)
     : undefined;
 
+  // The requestedSchema's minLength/maxLength are hints for the client's own form UI,
+  // not a security boundary — nothing stops a client (malicious, or just not honoring
+  // the hints) from returning arbitrary content. Enforced here too, since whatever
+  // comes back as `token` ends up cached indefinitely in previewTokenStorage.
+  if (token !== undefined && token.length > MAX_TOKEN_LENGTH) {
+    throw new Error(
+      `Provided token is ${token.length} characters, which exceeds the ${MAX_TOKEN_LENGTH}-character maximum for a Mapbox token.`
+    );
+  }
+  if (tokenNote !== undefined && tokenNote.length > MAX_TOKEN_NOTE_LENGTH) {
+    throw new Error(
+      `Token name is ${tokenNote.length} characters, which exceeds the ${MAX_TOKEN_NOTE_LENGTH}-character maximum.`
+    );
+  }
+  if (
+    urlRestrictions !== undefined &&
+    urlRestrictions.length > MAX_URL_RESTRICTIONS
+  ) {
+    throw new Error(
+      `Provided ${urlRestrictions.length} URL restrictions, which exceeds the ${MAX_URL_RESTRICTIONS}-URL maximum.`
+    );
+  }
+
   return {
     choice,
     token,
@@ -238,9 +288,18 @@ export function cacheKeyFor(token: string): string {
   return createHash('sha256').update(token).digest('hex');
 }
 
+/** Bounds previewTokenStorage's worst-case memory footprint regardless of how many
+ * distinct cache keys ever get presented — deliberately independent of *why* the
+ * count might grow (a long-lived multi-tenant deployment accumulating real distinct
+ * users over time is just as capable of doing this as anything adversarial). */
+const MAX_CACHED_TOKENS = 1000;
+
 /**
  * Session-level storage for preview token preferences, keyed by {@link cacheKeyFor}.
  * In a real implementation, this could be stored in a database or cache.
+ *
+ * Bounded LRU: evicts the least-recently-used entry once at capacity, so memory usage
+ * has a fixed ceiling no matter how many distinct keys are ever presented.
  */
 class PreviewTokenStorage {
   private tokenCache = new Map<string, string>();
@@ -249,14 +308,32 @@ class PreviewTokenStorage {
    * Store a preview token under the given cache key
    */
   set(cacheKey: string, token: string): void {
+    // Re-inserting moves a key to the end (most-recently-used) in Map's iteration
+    // order; delete first so an existing key doesn't just get its value updated
+    // in place at its old position.
+    this.tokenCache.delete(cacheKey);
     this.tokenCache.set(cacheKey, token);
+
+    if (this.tokenCache.size > MAX_CACHED_TOKENS) {
+      const oldestKey = this.tokenCache.keys().next().value;
+      if (oldestKey !== undefined) {
+        this.tokenCache.delete(oldestKey);
+      }
+    }
   }
 
   /**
    * Get the stored preview token for the given cache key
    */
   get(cacheKey: string): string | undefined {
-    return this.tokenCache.get(cacheKey);
+    const token = this.tokenCache.get(cacheKey);
+    if (token !== undefined) {
+      // Bump to most-recently-used on read too, so an actively-used entry survives
+      // eviction even if it was one of the first ever inserted.
+      this.tokenCache.delete(cacheKey);
+      this.tokenCache.set(cacheKey, token);
+    }
+    return token;
   }
 
   /**
