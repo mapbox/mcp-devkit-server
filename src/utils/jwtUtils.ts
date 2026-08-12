@@ -12,8 +12,16 @@ export function mapboxApiEndpoint() {
 }
 
 /**
- * Extracts the username from the Mapbox access token.
- * Mapbox tokens are JWT tokens where the payload contains the username.
+ * Extracts the username from the Mapbox access token's `u` claim, WITHOUT verifying
+ * the token's signature — this only base64-decodes the JWT payload.
+ *
+ * The returned value is only as trustworthy as whatever already validated this
+ * token (e.g. the Mapbox API itself rejecting the token value if it's forged, or an
+ * upstream gateway that verifies bearers before this code ever sees them). Do not
+ * use this result alone for authorization decisions or as a cache key for anything
+ * sensitive — hash the raw token instead if you need a value tied to the specific
+ * credential presented (see `cacheKeyFor` in `tokenElicitation.ts` for why).
+ *
  * @throws Error if the token is not set, invalid, or doesn't contain username
  */
 export function getUserNameFromToken(accessToken?: string): string {
