@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import {
   cacheKeyFor,
   createPreviewToken,
@@ -260,6 +261,64 @@ describe('createPreviewToken', () => {
     expect(result.error).toContain('internal server error');
     expect(result.error).not.toContain('tokens:write');
   });
+
+  it('rejects an API response that omits the token field instead of throwing a raw TypeError', async () => {
+    const { httpRequest } = setupHttpRequest({
+      json: async () => ({})
+    });
+
+    const result = await createPreviewToken(
+      httpRequest,
+      MAPBOX_API_ENDPOINT,
+      'sk.eyJ1IjoidGVzdCJ9.sig',
+      'test-user'
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/did not include a token/);
+  });
+
+  it('redacts the caller access token out of a network-error message before returning it', async () => {
+    const secretToken = 'sk.eyJ1IjoidGVzdC11c2VyIn0.super-secret-signature';
+    const httpRequest = vi
+      .fn()
+      .mockRejectedValue(
+        new Error(
+          `fetch failed: connect ECONNREFUSED, request to https://api.mapbox.com/tokens/v2/test-user?access_token=${secretToken}`
+        )
+      );
+
+    const result = await createPreviewToken(
+      httpRequest,
+      MAPBOX_API_ENDPOINT,
+      secretToken,
+      'test-user'
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).not.toContain(secretToken);
+    expect(result.error).toContain('redacted');
+  });
+
+  it('redacts a token echoed back in a non-ok response body before returning it', async () => {
+    const secretToken = 'sk.eyJ1IjoidGVzdC11c2VyIn0.super-secret-signature';
+    const { httpRequest } = setupHttpRequest({
+      ok: false,
+      status: 400,
+      text: async () =>
+        `Bad request for access_token=${secretToken}: malformed body`
+    });
+
+    const result = await createPreviewToken(
+      httpRequest,
+      MAPBOX_API_ENDPOINT,
+      secretToken,
+      'test-user'
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).not.toContain(secretToken);
+  });
 });
 
 describe('listPublicPreviewTokens', () => {
@@ -393,6 +452,135 @@ describe('elicitPreviewToken', () => {
 
     await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
       /URL restrictions.*exceeds/
+    );
+  });
+
+  it('rejects a client-returned urlRestrictions raw string that exceeds the max length, even as a single unsplit value', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: {
+        choice: 'create',
+        // One URL far longer than the array-count cap alone would ever stop.
+        urlRestrictions: 'https://example.com/' + 'a'.repeat(5000)
+      }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /urlRestrictions value is .* characters/
+    );
+  });
+
+  it('rejects a secret token submitted via the "provide" choice, the same way the accessToken parameter is rejected', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: {
+        choice: 'provide',
+        token: 'sk.eyJ1IjoidGVzdC11c2VyIn0.secret-signature'
+      }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /Only public tokens \(starting with pk\.\*\) are allowed/
+    );
+  });
+
+  it('rejects an unrecognized choice value instead of silently treating it as auto-create', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: { choice: 'delete-everything' }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /unrecognized token choice/
+    );
+  });
+
+  it('rejects a choice offered only when canCreateTokens is true if the server token cannot create tokens', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: { choice: 'auto' }
+    });
+
+    // canCreateTokens=false means only 'provide' was ever offered; a client
+    // returning 'auto' anyway must not be honored.
+    await expect(elicitPreviewToken(sendRequest, [], false)).rejects.toThrow(
+      /unrecognized token choice/
+    );
+  });
+
+  it('rejects a non-string token instead of silently bypassing the length guard', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: { choice: 'provide', token: 12345 }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /non-string value for the token field/
+    );
+  });
+
+  it('rejects a non-string urlRestrictions instead of crashing on .split()', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: {
+        choice: 'create',
+        urlRestrictions: ['https://example.com/*']
+      }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /non-string value for the urlRestrictions field/
+    );
+  });
+
+  it('rejects a non-string tokenNote', async () => {
+    const sendRequest = vi.fn().mockResolvedValue({
+      action: 'accept',
+      content: { choice: 'create', tokenNote: 42 }
+    });
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      /non-string value for the tokenNote field/
+    );
+  });
+
+  it('propagates a request-timeout error instead of treating it as "client does not support elicitation"', async () => {
+    const sendRequest = vi
+      .fn()
+      .mockRejectedValue(
+        new McpError(ErrorCode.RequestTimeout, 'Request timed out')
+      );
+
+    const promise = elicitPreviewToken(sendRequest, [], true);
+    await expect(promise).rejects.not.toBeInstanceOf(
+      ElicitationUnavailableError
+    );
+    await expect(promise).rejects.toThrow('Request timed out');
+  });
+
+  it('propagates a cancellation error instead of treating it as "client does not support elicitation"', async () => {
+    const sendRequest = vi
+      .fn()
+      .mockRejectedValue(
+        new McpError(ErrorCode.InvalidRequest, 'Request cancelled')
+      );
+
+    const promise = elicitPreviewToken(sendRequest, [], true);
+    await expect(promise).rejects.not.toBeInstanceOf(
+      ElicitationUnavailableError
+    );
+    await expect(promise).rejects.toThrow('Request cancelled');
+  });
+
+  it('still wraps a genuine "client does not support elicitation" failure', async () => {
+    const sendRequest = vi
+      .fn()
+      .mockRejectedValue(
+        new McpError(ErrorCode.MethodNotFound, 'Method not found')
+      );
+
+    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
+      ElicitationUnavailableError
     );
   });
 });

@@ -232,11 +232,12 @@ describe('preview/comparison token elicitation over real Streamable HTTP', () =>
     harness = undefined;
   });
 
-  it('trims the dialog to "provide" and never calls the Tokens API when the server token is tk.*', async () => {
+  it('trims the dialog to "provide" and never calls the Tokens API to create a token when the server token is tk.*', async () => {
     const httpRequest = mockHttpRequest({
-      GET: () => {
-        throw new Error('should not list tokens for a tk.* server token');
-      },
+      // Listing only needs tokens:read, a separate scope from the tokens:write a
+      // tk.* token lacks, so it's still attempted — it just isn't used here since
+      // the client answers with 'provide'.
+      GET: () => jsonResponse(200, []),
       POST: () => {
         throw new Error('should not create a token for a tk.* server token');
       }
@@ -263,7 +264,7 @@ describe('preview/comparison token elicitation over real Streamable HTTP', () =>
 
     expect(result.isError).toBeFalsy();
     expect(receivedEnum).toEqual(['provide']);
-    expect(httpRequest).not.toHaveBeenCalled();
+    expect(httpRequest).toHaveBeenCalledTimes(1);
   });
 
   it('offers all three choices for a non-tk.*-shaped server token and surfaces a scope hint when auto-create fails (the hosted-endpoint case)', async () => {
@@ -322,9 +323,10 @@ describe('preview/comparison token elicitation over real Streamable HTTP', () =>
 
   it("trims style_comparison_tool's dialog the same way for a tk.* server token", async () => {
     const httpRequest = mockHttpRequest({
-      GET: () => {
-        throw new Error('should not list tokens for a tk.* server token');
-      },
+      // Listing only needs tokens:read, a separate scope from the tokens:write a
+      // tk.* token lacks, so it's still attempted — it just isn't used here since
+      // the client answers with 'provide'.
+      GET: () => jsonResponse(200, []),
       POST: () => {
         throw new Error('should not create a token for a tk.* server token');
       }
@@ -351,6 +353,6 @@ describe('preview/comparison token elicitation over real Streamable HTTP', () =>
 
     expect(result.isError).toBeFalsy();
     expect(receivedEnum).toEqual(['provide']);
-    expect(httpRequest).not.toHaveBeenCalled();
+    expect(httpRequest).toHaveBeenCalledTimes(1);
   });
 });

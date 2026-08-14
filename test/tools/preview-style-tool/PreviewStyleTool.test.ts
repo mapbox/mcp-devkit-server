@@ -280,9 +280,12 @@ describe('PreviewStyleTool', () => {
         sendRequest.mock.calls[0][0].params.requestedSchema;
       expect(requestedSchema.properties.choice.enum).toEqual(['provide']);
 
-      // A tk.* server token can never create tokens, so listing/creating
-      // tokens against the Mapbox API should never even be attempted.
-      expect(mockHttpRequest).not.toHaveBeenCalled();
+      // A tk.* server token can never create tokens (tokens:write), but listing only
+      // needs tokens:read — a separate scope — so it's still attempted (and fails
+      // safe to an empty list if the token can't do that either). Only creation
+      // (a POST) must never be attempted.
+      expect(mockHttpRequest).toHaveBeenCalledTimes(1);
+      expect(mockHttpRequest.mock.calls[0][1]?.method).not.toBe('POST');
     });
 
     it('reuses a cached token instead of erroring when useCustomToken is set but the client cannot act on it', async () => {

@@ -188,14 +188,17 @@ export class StyleComparisonTool extends BaseTool<
         // the "create"/"auto" options are dropped from the dialog before asking.
         const canCreateTokens = !isTemporaryServerToken(serverAccessToken!);
 
-        const existingTokens = canCreateTokens
-          ? await listPublicPreviewTokens(
-              this.httpRequest,
-              MapboxApiBasedTool.mapboxApiEndpoint,
-              serverAccessToken!,
-              userName
-            )
-          : [];
+        // Listing only needs `tokens:read`, a separate scope from the `tokens:write`
+        // that canCreateTokens checks — a tk.*-authenticated server lacking the
+        // latter isn't thereby known to lack the former too, so this isn't gated on
+        // canCreateTokens. The call already fails safe to an empty list on any
+        // API/permission error.
+        const existingTokens = await listPublicPreviewTokens(
+          this.httpRequest,
+          MapboxApiBasedTool.mapboxApiEndpoint,
+          serverAccessToken!,
+          userName
+        );
 
         try {
           // Elicit token choice from user, over *this* call's own connection.

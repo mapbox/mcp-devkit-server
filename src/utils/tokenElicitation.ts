@@ -2,8 +2,13 @@
 // Licensed under the MIT License.
 
 import { createHash } from 'node:crypto';
-import { ElicitResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+  ElicitResultSchema,
+  ErrorCode,
+  McpError
+} from '@modelcontextprotocol/sdk/types.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import { redactToken } from '../tools/MapboxApiBasedTool.js';
 import type { HttpRequest } from './types.js';
 
 /**
@@ -38,6 +43,12 @@ const MAX_TOKEN_NOTE_LENGTH = 256;
 
 /** Matches CreateTokenTool's own `allowedUrls` cap. */
 const MAX_URL_RESTRICTIONS = 100;
+
+/** Bounds the raw comma-separated `urlRestrictions` string before it's split into an
+ * array. The array-length cap above only limits the *parsed* result — nothing stops a
+ * client from returning one unsplit string far larger than 100 short URLs would ever
+ * require, so this is enforced independently and before the `.split()` call. */
+const MAX_URL_RESTRICTIONS_RAW_LENGTH = 4096;
 
 /**
  * Thrown when the elicitation request itself could not be delivered or answered —
@@ -206,7 +217,8 @@ ${creationNote}`,
                 type: 'string',
                 title: 'URL Restrictions (Optional)',
                 description:
-                  'Comma-separated URLs to restrict token usage (e.g., "https://yourdomain.com/*,https://staging.yourdomain.com/*")'
+                  'Comma-separated URLs to restrict token usage (e.g., "https://yourdomain.com/*,https://staging.yourdomain.com/*")',
+                maxLength: MAX_URL_RESTRICTIONS_RAW_LENGTH
               }
             },
             required: ['choice']
@@ -217,6 +229,20 @@ ${creationNote}`,
       { timeout: ELICITATION_TIMEOUT_MSEC }
     );
   } catch (error) {
+    if (
+      error instanceof McpError &&
+      (error.code === ErrorCode.RequestTimeout ||
+        (error.code === ErrorCode.InvalidRequest &&
+          /cancelled/i.test(error.message)))
+    ) {
+      // The client understood the request and either never answered it in time, or
+      // the caller aborted it — distinct from a client that doesn't implement
+      // elicitation at all. Re-thrown as-is (not wrapped as "unavailable") so callers
+      // surface it instead of silently falling back to a stale cached token: a caller
+      // passing `useCustomToken: true` explicitly wants a fresh answer, not the token
+      // this call was meant to replace.
+      throw error;
+    }
     throw new ElicitationUnavailableError(
       error instanceof Error ? error.message : String(error)
     );
@@ -227,13 +253,52 @@ ${creationNote}`,
     throw new Error('Token elicitation was cancelled or declined by user');
   }
 
-  // Parse the result
-  const choice = (result.content.choice as TokenChoice) || choices[0];
-  const token = result.content.token as string | undefined;
-  const tokenNote = result.content.tokenNote as string | undefined;
-  const urlRestrictionsStr = result.content.urlRestrictions as
-    | string
-    | undefined;
+  // Parse the result. requestedSchema above is only a hint for the client's own form
+  // UI — nothing stops a client (malicious, or just not honoring it) from returning a
+  // differently-shaped payload, so every field's runtime type is checked explicitly
+  // rather than blindly cast. An unchecked cast here previously let a non-string
+  // token silently skip the length guard below, and let a non-string urlRestrictions
+  // reach `.split()` and throw an unclassified TypeError instead of a clear error.
+  const rawChoice = result.content.choice;
+  if (
+    typeof rawChoice !== 'string' ||
+    !choices.includes(rawChoice as TokenChoice)
+  ) {
+    throw new Error(
+      `Client returned an unrecognized token choice (${JSON.stringify(rawChoice)}); expected one of: ${choices.join(', ')}.`
+    );
+  }
+  const choice = rawChoice as TokenChoice;
+
+  const token = result.content.token;
+  if (token !== undefined && typeof token !== 'string') {
+    throw new Error('Client returned a non-string value for the token field.');
+  }
+
+  const tokenNote = result.content.tokenNote;
+  if (tokenNote !== undefined && typeof tokenNote !== 'string') {
+    throw new Error(
+      'Client returned a non-string value for the tokenNote field.'
+    );
+  }
+
+  const urlRestrictionsStr = result.content.urlRestrictions;
+  if (
+    urlRestrictionsStr !== undefined &&
+    typeof urlRestrictionsStr !== 'string'
+  ) {
+    throw new Error(
+      'Client returned a non-string value for the urlRestrictions field.'
+    );
+  }
+  if (
+    urlRestrictionsStr !== undefined &&
+    urlRestrictionsStr.length > MAX_URL_RESTRICTIONS_RAW_LENGTH
+  ) {
+    throw new Error(
+      `Provided urlRestrictions value is ${urlRestrictionsStr.length} characters, which exceeds the ${MAX_URL_RESTRICTIONS_RAW_LENGTH}-character maximum.`
+    );
+  }
 
   const urlRestrictions = urlRestrictionsStr
     ? urlRestrictionsStr
@@ -262,6 +327,17 @@ ${creationNote}`,
   ) {
     throw new Error(
       `Provided ${urlRestrictions.length} URL restrictions, which exceeds the ${MAX_URL_RESTRICTIONS}-URL maximum.`
+    );
+  }
+
+  // Every other path that produces a preview token (the `accessToken` input parameter,
+  // and the create/auto-create API responses) is checked against this same prefix —
+  // this was the one path that wasn't, which meant pasting a secret token (sk.*) into
+  // the elicitation dialog embedded it straight into the returned preview URL and
+  // cached it for reuse, exactly the leak this feature exists to prevent.
+  if (choice === 'provide' && token !== undefined && !token.startsWith('pk.')) {
+    throw new Error(
+      'Invalid access token. Only public tokens (starting with pk.*) are allowed for preview URLs. Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs.'
     );
   }
 
@@ -463,7 +539,7 @@ export async function createPreviewToken(
 
     if (!response.ok) {
       const errorText = await response.text();
-      let message = `Failed to create token: ${response.status} ${errorText}`;
+      let message = `Failed to create token: ${response.status} ${redactToken(errorText)}`;
 
       // Creating a token always requires `tokens:write` on the caller's own access
       // token, so a 401/403 here is a permission problem — surface the same
@@ -488,7 +564,15 @@ export async function createPreviewToken(
       };
     }
 
-    const data = (await response.json()) as { token: string };
+    const data = (await response.json()) as { token?: unknown };
+
+    if (typeof data.token !== 'string') {
+      return {
+        success: false,
+        error:
+          'API response did not include a token. Unexpected response shape from the Mapbox Tokens API.'
+      };
+    }
 
     if (!data.token.startsWith('pk.')) {
       return {
@@ -502,10 +586,17 @@ export async function createPreviewToken(
       token: data.token
     };
   } catch (error) {
+    // A network-level failure (e.g. a misconfigured endpoint) can throw with the full
+    // request URL — including this call's own `access_token=...` query param — in its
+    // message. Redact before this reaches a caller, the same as every other Mapbox API
+    // tool's errors do via MapboxApiBasedTool#run(); these tools don't extend that
+    // class, and this is a returned value rather than a thrown rejection regardless,
+    // so that redaction wouldn't apply here even if they did.
     return {
       success: false,
-      error:
+      error: redactToken(
         error instanceof Error ? error.message : 'Unknown error creating token'
+      )
     };
   }
 }
