@@ -37,6 +37,7 @@ import {
 import { PreviewStyleTool } from '../../src/tools/preview-style-tool/PreviewStyleTool.js';
 import { StyleComparisonTool } from '../../src/tools/style-comparison-tool/StyleComparisonTool.js';
 import { previewTokenStorage } from '../../src/utils/tokenElicitation.js';
+import type { TokenCollectionHandler } from '../../src/utils/tokenCollectionServer.js';
 import type { HttpRequest } from '../../src/utils/types.js';
 
 const TK_SERVER_TOKEN =
@@ -79,6 +80,21 @@ interface TestHarness {
   close(): Promise<void>;
 }
 
+/** A fake TokenCollectionHandler that resolves immediately with `token`, instead of
+ * starting a real local server and waiting for an actual browser submission that will
+ * never come in a test — the URL-mode consent round trip itself is still real (driven
+ * by the real Client/Server elicitation exchange below); only the out-of-band
+ * submission step is faked. */
+function fakeTokenCollectionHandler(token: string): TokenCollectionHandler {
+  return {
+    collect: vi.fn().mockResolvedValue({
+      url: 'http://127.0.0.1:1/fake-collection-url',
+      result: Promise.resolve(token),
+      cancel: vi.fn()
+    })
+  };
+}
+
 /**
  * Session-scoped stateful Streamable HTTP server: one `McpServer`/transport pair per
  * `Mcp-Session-Id`, created on the first (`initialize`) request and reused for every
@@ -101,11 +117,18 @@ interface TestHarness {
  */
 function startHarness(
   previewHttpRequest: HttpRequest,
-  comparisonHttpRequest: HttpRequest = previewHttpRequest
+  comparisonHttpRequest: HttpRequest = previewHttpRequest,
+  tokenCollectionHandler: TokenCollectionHandler = fakeTokenCollectionHandler(
+    EXISTING_PUBLIC_TOKEN
+  )
 ): Promise<TestHarness> {
-  const previewTool = new PreviewStyleTool({ httpRequest: previewHttpRequest });
+  const previewTool = new PreviewStyleTool({
+    httpRequest: previewHttpRequest,
+    tokenCollectionHandler
+  });
   const comparisonTool = new StyleComparisonTool({
-    httpRequest: comparisonHttpRequest
+    httpRequest: comparisonHttpRequest,
+    tokenCollectionHandler
   });
 
   const sessions = new Map<string, StreamableHTTPServerTransport>();
@@ -194,7 +217,10 @@ async function connectClient(
 ): Promise<Client> {
   const client = new Client(
     { name: 'elicitation-http-test-client', version: '1.0.0' },
-    { capabilities: { elicitation: {} } }
+    // Declare both modes — an empty `elicitation: {}` is normalized by the SDK to
+    // form-only support, which would make the follow-up URL-mode request (see
+    // collectProvidedToken) look unsupported to these tests.
+    { capabilities: { elicitation: { form: {}, url: {} } } }
   );
   client.setRequestHandler(ElicitRequestSchema, (request) => onElicit(request));
 
@@ -206,9 +232,10 @@ async function connectClient(
 }
 
 /**
- * `ElicitRequest.params` is a union (form-mode vs. other elicitation modes); this
- * server only ever sends the form-mode shape (`message` + `requestedSchema`) that
- * `elicitPreviewToken` builds, so narrowing here is safe for these tests.
+ * `ElicitRequest.params` is a union (form-mode vs. url-mode); this narrows to the
+ * form-mode shape (`message` + `requestedSchema`) that `elicitPreviewToken` builds for
+ * the initial choice dialog — callers must only invoke this for that request, not for
+ * the follow-up URL-mode consent request `collectProvidedToken` sends afterward.
  */
 function getChoiceEnum(request: ElicitRequest): string[] {
   const params = request.params as unknown as {
@@ -249,11 +276,14 @@ describe('preview/comparison token elicitation over real Streamable HTTP', () =>
       harness.baseUrl,
       TK_SERVER_TOKEN,
       (request) => {
+        // First the form-mode choice dialog, then the follow-up URL-mode consent
+        // request (see collectProvidedToken) — content is irrelevant for the
+        // latter; the actual token comes from the fake tokenCollectionHandler.
+        if (request.params.mode === 'url') {
+          return { action: 'accept' };
+        }
         receivedEnum = getChoiceEnum(request);
-        return {
-          action: 'accept',
-          content: { choice: 'provide', token: EXISTING_PUBLIC_TOKEN }
-        };
+        return { action: 'accept', content: { choice: 'provide' } };
       }
     );
 
@@ -338,11 +368,14 @@ describe('preview/comparison token elicitation over real Streamable HTTP', () =>
       harness.baseUrl,
       TK_SERVER_TOKEN,
       (request) => {
+        // First the form-mode choice dialog, then the follow-up URL-mode consent
+        // request (see collectProvidedToken) — content is irrelevant for the
+        // latter; the actual token comes from the fake tokenCollectionHandler.
+        if (request.params.mode === 'url') {
+          return { action: 'accept' };
+        }
         receivedEnum = getChoiceEnum(request);
-        return {
-          action: 'accept',
-          content: { choice: 'provide', token: EXISTING_PUBLIC_TOKEN }
-        };
+        return { action: 'accept', content: { choice: 'provide' } };
       }
     );
 

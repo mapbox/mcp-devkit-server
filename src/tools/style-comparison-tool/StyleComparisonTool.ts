@@ -14,6 +14,7 @@ import {
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import {
   cacheKeyFor,
+  collectProvidedToken,
   createPreviewToken,
   ElicitationUnavailableError,
   elicitPreviewToken,
@@ -21,6 +22,10 @@ import {
   listPublicPreviewTokens,
   previewTokenStorage
 } from '../../utils/tokenElicitation.js';
+import {
+  localHttpTokenCollectionHandler,
+  type TokenCollectionHandler
+} from '../../utils/tokenCollectionServer.js';
 import type { HttpRequest } from '../../utils/types.js';
 
 // `BaseTool#execute`'s abstract signature accepts `ToolExecutionContext` in this slot;
@@ -56,10 +61,16 @@ export class StyleComparisonTool extends BaseTool<
   };
 
   private readonly httpRequest: HttpRequest;
+  private readonly tokenCollectionHandler: TokenCollectionHandler;
 
-  constructor(params: { httpRequest: HttpRequest }) {
+  constructor(params: {
+    httpRequest: HttpRequest;
+    tokenCollectionHandler?: TokenCollectionHandler;
+  }) {
     super({ inputSchema: StyleComparisonSchema });
     this.httpRequest = params.httpRequest;
+    this.tokenCollectionHandler =
+      params.tokenCollectionHandler ?? localHttpTokenCollectionHandler;
   }
 
   /**
@@ -209,18 +220,15 @@ export class StyleComparisonTool extends BaseTool<
           );
 
           if (elicited.choice === 'provide') {
-            if (!elicited.token) {
-              return {
-                isError: true,
-                content: [
-                  {
-                    type: 'text',
-                    text: 'No token provided. Please provide a valid public token.'
-                  }
-                ]
-              };
-            }
-            publicToken = elicited.token;
+            // Collected via a follow-up URL-mode elicitation, not this form dialog —
+            // the MCP spec requires credentials to go through URL mode, not form mode.
+            // Errors here (unsupported client, decline/cancel, validation failure) are
+            // handled by the catch below exactly like elicitPreviewToken's own errors.
+            publicToken = await collectProvidedToken(
+              extra.sendRequest,
+              extra.sendNotification,
+              this.tokenCollectionHandler
+            );
           } else if (elicited.choice === 'create') {
             const created = await createPreviewToken(
               this.httpRequest,

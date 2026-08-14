@@ -1,17 +1,20 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import {
   cacheKeyFor,
+  collectProvidedToken,
   createPreviewToken,
   ElicitationUnavailableError,
   elicitPreviewToken,
   isTemporaryServerToken,
   listPublicPreviewTokens,
-  previewTokenStorage
+  previewTokenStorage,
+  validatePublicPreviewToken
 } from '../../src/utils/tokenElicitation.js';
+import type { TokenCollectionHandler } from '../../src/utils/tokenCollectionServer.js';
 import { setupHttpRequest } from './httpPipelineUtils.js';
 
 const MAPBOX_API_ENDPOINT = 'https://api.mapbox.com/';
@@ -361,7 +364,7 @@ describe('elicitPreviewToken', () => {
   function fakeSendRequest(choice: string) {
     return vi.fn().mockResolvedValue({
       action: 'accept',
-      content: { choice, token: 'pk.provided-token' }
+      content: { choice }
     });
   }
 
@@ -415,17 +418,6 @@ describe('elicitPreviewToken', () => {
     expect(options.timeout).toBeGreaterThan(0);
   });
 
-  it('rejects a client-returned token that exceeds the server-enforced max length, regardless of the schema hint', async () => {
-    const sendRequest = vi.fn().mockResolvedValue({
-      action: 'accept',
-      content: { choice: 'provide', token: 'pk.' + 'a'.repeat(3000) }
-    });
-
-    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
-      /exceeds the .* maximum/
-    );
-  });
-
   it('rejects a client-returned tokenNote that exceeds the max length', async () => {
     const sendRequest = vi.fn().mockResolvedValue({
       action: 'accept',
@@ -470,20 +462,6 @@ describe('elicitPreviewToken', () => {
     );
   });
 
-  it('rejects a secret token submitted via the "provide" choice, the same way the accessToken parameter is rejected', async () => {
-    const sendRequest = vi.fn().mockResolvedValue({
-      action: 'accept',
-      content: {
-        choice: 'provide',
-        token: 'sk.eyJ1IjoidGVzdC11c2VyIn0.secret-signature'
-      }
-    });
-
-    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
-      /Only public tokens \(starting with pk\.\*\) are allowed/
-    );
-  });
-
   it('rejects an unrecognized choice value instead of silently treating it as auto-create', async () => {
     const sendRequest = vi.fn().mockResolvedValue({
       action: 'accept',
@@ -505,17 +483,6 @@ describe('elicitPreviewToken', () => {
     // returning 'auto' anyway must not be honored.
     await expect(elicitPreviewToken(sendRequest, [], false)).rejects.toThrow(
       /unrecognized token choice/
-    );
-  });
-
-  it('rejects a non-string token instead of silently bypassing the length guard', async () => {
-    const sendRequest = vi.fn().mockResolvedValue({
-      action: 'accept',
-      content: { choice: 'provide', token: 12345 }
-    });
-
-    await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
-      /non-string value for the token field/
     );
   });
 
@@ -582,5 +549,185 @@ describe('elicitPreviewToken', () => {
     await expect(elicitPreviewToken(sendRequest, [], true)).rejects.toThrow(
       ElicitationUnavailableError
     );
+  });
+});
+
+describe('validatePublicPreviewToken', () => {
+  it('returns a valid pk.* token unchanged', () => {
+    expect(validatePublicPreviewToken('pk.valid-token')).toBe('pk.valid-token');
+  });
+
+  it('rejects an empty string', () => {
+    expect(() => validatePublicPreviewToken('')).toThrow(/No token provided/);
+  });
+
+  it('rejects a token exceeding the max length', () => {
+    expect(() => validatePublicPreviewToken('pk.' + 'a'.repeat(3000))).toThrow(
+      /exceeds the .* maximum/
+    );
+  });
+
+  it('rejects a secret token, the same way the accessToken parameter is rejected', () => {
+    expect(() =>
+      validatePublicPreviewToken('sk.eyJ1IjoidGVzdC11c2VyIn0.secret-signature')
+    ).toThrow(/Only public tokens \(starting with pk\.\*\) are allowed/);
+  });
+});
+
+describe('collectProvidedToken', () => {
+  const ORIGINAL_ENV = process.env.ENABLE_LOCAL_URL_ELICITATION;
+
+  afterEach(() => {
+    if (ORIGINAL_ENV === undefined) {
+      delete process.env.ENABLE_LOCAL_URL_ELICITATION;
+    } else {
+      process.env.ENABLE_LOCAL_URL_ELICITATION = ORIGINAL_ENV;
+    }
+  });
+
+  /** A fake TokenCollectionHandler whose `result` settles with `outcome` (a token
+   * string on success, an Error to reject with). Rejections get a no-op `.catch`
+   * attached separately so they don't trigger an unhandled-rejection warning before
+   * the code under test awaits the original `result` promise. */
+  function fakeTokenCollectionHandler(outcome: string | Error): {
+    handler: TokenCollectionHandler;
+    cancel: ReturnType<typeof vi.fn>;
+  } {
+    const cancel = vi.fn();
+    const result =
+      outcome instanceof Error
+        ? Promise.reject(outcome)
+        : Promise.resolve(outcome);
+    result.catch(() => {});
+    return {
+      handler: {
+        collect: vi.fn().mockResolvedValue({
+          url: 'http://127.0.0.1:9999/fake-path',
+          result,
+          cancel
+        })
+      },
+      cancel
+    };
+  }
+
+  function fakeSendRequest(action: 'accept' | 'decline' | 'cancel' = 'accept') {
+    return vi.fn().mockResolvedValue({ action });
+  }
+
+  function fakeSendNotification() {
+    return vi.fn().mockResolvedValue(undefined);
+  }
+
+  it('sends a URL-mode (not form-mode) elicitation request', async () => {
+    const sendRequest = fakeSendRequest();
+    const { handler } = fakeTokenCollectionHandler('pk.good-token');
+
+    await collectProvidedToken(sendRequest, fakeSendNotification(), handler);
+
+    const request = sendRequest.mock.calls[0][0];
+    expect(request.params.mode).toBe('url');
+    expect(request.params.url).toBe('http://127.0.0.1:9999/fake-path');
+    expect(request.params.elicitationId).toEqual(expect.any(String));
+  });
+
+  it('returns the validated token once the client accepts and the out-of-band submission resolves', async () => {
+    const { handler } = fakeTokenCollectionHandler('pk.good-token');
+
+    const token = await collectProvidedToken(
+      fakeSendRequest(),
+      fakeSendNotification(),
+      handler
+    );
+
+    expect(token).toBe('pk.good-token');
+  });
+
+  it('rejects a secret token submitted through URL-mode collection', async () => {
+    const { handler } = fakeTokenCollectionHandler(
+      'sk.eyJ1IjoidGVzdC11c2VyIn0.secret-signature'
+    );
+
+    await expect(
+      collectProvidedToken(fakeSendRequest(), fakeSendNotification(), handler)
+    ).rejects.toThrow(
+      /Only public tokens \(starting with pk\.\*\) are allowed/
+    );
+  });
+
+  it('cancels collection and wraps a failed sendRequest in ElicitationUnavailableError', async () => {
+    const sendRequest = vi
+      .fn()
+      .mockRejectedValue(new Error('Method not found'));
+    const { handler, cancel } = fakeTokenCollectionHandler('pk.good-token');
+
+    await expect(
+      collectProvidedToken(sendRequest, fakeSendNotification(), handler)
+    ).rejects.toThrow(ElicitationUnavailableError);
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('cancels collection and throws (not ElicitationUnavailableError) when the user declines the URL-mode consent', async () => {
+    const { handler, cancel } = fakeTokenCollectionHandler('pk.good-token');
+
+    const promise = collectProvidedToken(
+      fakeSendRequest('decline'),
+      fakeSendNotification(),
+      handler
+    );
+    await expect(promise).rejects.not.toBeInstanceOf(
+      ElicitationUnavailableError
+    );
+    await expect(promise).rejects.toThrow(/cancelled or declined/);
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates a timeout from the out-of-band submission itself', async () => {
+    const { handler } = fakeTokenCollectionHandler(
+      new Error(
+        'Timed out after 300000ms waiting for the token to be submitted.'
+      )
+    );
+
+    await expect(
+      collectProvidedToken(fakeSendRequest(), fakeSendNotification(), handler)
+    ).rejects.toThrow(/Timed out/);
+  });
+
+  it('sends notifications/elicitation/complete after a successful collection', async () => {
+    const sendRequest = fakeSendRequest();
+    const sendNotification = fakeSendNotification();
+    const { handler } = fakeTokenCollectionHandler('pk.good-token');
+
+    await collectProvidedToken(sendRequest, sendNotification, handler);
+
+    const elicitationId = sendRequest.mock.calls[0][0].params.elicitationId;
+    expect(sendNotification).toHaveBeenCalledWith({
+      method: 'notifications/elicitation/complete',
+      params: { elicitationId }
+    });
+  });
+
+  it('does not fail overall if sendNotification itself rejects', async () => {
+    const sendNotification = vi
+      .fn()
+      .mockRejectedValue(
+        new Error('client does not support this notification')
+      );
+    const { handler } = fakeTokenCollectionHandler('pk.good-token');
+
+    await expect(
+      collectProvidedToken(fakeSendRequest(), sendNotification, handler)
+    ).resolves.toBe('pk.good-token');
+  });
+
+  it('short-circuits to ElicitationUnavailableError without starting collection when disabled via env var', async () => {
+    process.env.ENABLE_LOCAL_URL_ELICITATION = 'false';
+    const { handler } = fakeTokenCollectionHandler('pk.good-token');
+
+    await expect(
+      collectProvidedToken(fakeSendRequest(), fakeSendNotification(), handler)
+    ).rejects.toThrow(ElicitationUnavailableError);
+    expect(handler.collect).not.toHaveBeenCalled();
   });
 });

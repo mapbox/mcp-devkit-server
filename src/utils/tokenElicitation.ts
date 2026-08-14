@@ -1,7 +1,7 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
   ElicitResultSchema,
   ErrorCode,
@@ -9,15 +9,22 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { redactToken } from '../tools/MapboxApiBasedTool.js';
+import {
+  localHttpTokenCollectionHandler,
+  type TokenCollectionHandler
+} from './tokenCollectionServer.js';
 import type { HttpRequest } from './types.js';
 
 /**
- * The per-call `sendRequest` a tool receives via `RequestHandlerExtra` — bound
- * correctly to whichever session actually made the current call, unlike a `Server`
- * instance stashed on `this` (see {@link elicitPreviewToken} for why that matters).
+ * The per-call `sendRequest`/`sendNotification` a tool receives via `RequestHandlerExtra`
+ * — bound correctly to whichever session actually made the current call, unlike a
+ * `Server` instance stashed on `this` (see {@link elicitPreviewToken} for why that
+ * matters).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SendRequest = RequestHandlerExtra<any, any>['sendRequest'];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SendNotification = RequestHandlerExtra<any, any>['sendNotification'];
 
 /**
  * How long to wait for the client to answer an elicitation prompt before giving up.
@@ -35,9 +42,34 @@ type SendRequest = RequestHandlerExtra<any, any>['sendRequest'];
 const ELICITATION_TIMEOUT_MSEC = 60_000;
 
 /** Real Mapbox tokens are well under this; anything longer is almost certainly not a
- * token at all. Enforced server-side regardless of what a client's form UI does with
- * the `maxLength` hint in the requested schema below — that hint is advisory only. */
+ * token at all. Enforced against whatever a user submits via URL-mode token collection
+ * (see {@link validatePublicPreviewToken}) — the local collection page's own `maxLength`
+ * attribute is advisory only, since it's just client-side HTML. */
 const MAX_TOKEN_LENGTH = 2048;
+
+/**
+ * How long to wait for the out-of-band URL-mode collection flow to complete once the
+ * user has agreed to open the link — separate from, and much longer than,
+ * {@link ELICITATION_TIMEOUT_MSEC}, since this step requires a human to actually open a
+ * browser and type something, not just click a button in an already-open dialog.
+ */
+const URL_MODE_COLLECTION_TIMEOUT_MSEC = 5 * 60_000;
+
+/**
+ * Set to `"false"` to disable URL-mode token collection entirely and fall straight back
+ * to the "client does not support elicitation, please provide accessToken directly"
+ * message. This exists because the default {@link TokenCollectionHandler}
+ * (`localHttpTokenCollectionHandler`) starts a server bound to `127.0.0.1` on *this*
+ * process's machine — correct when this package runs as a local stdio server (its only
+ * shipped entry point, `src/index.ts`), but wrong for a deployment where this process
+ * runs somewhere other than the end user's own machine (e.g. hosted-mcp-server, a cloud
+ * deployment): the URL would point at the *browser's* loopback interface, where nothing
+ * is listening. Such deployments MUST set this to `"false"` until they supply their own
+ * `TokenCollectionHandler` implementation.
+ */
+function isLocalUrlElicitationEnabled(): boolean {
+  return process.env.ENABLE_LOCAL_URL_ELICITATION !== 'false';
+}
 
 const MAX_TOKEN_NOTE_LENGTH = 256;
 
@@ -95,11 +127,13 @@ export interface CreatePreviewTokenResult {
 }
 
 /**
- * Result of token elicitation
+ * Result of the initial (form-mode) token-choice elicitation. Deliberately does not
+ * carry a token value — see {@link collectProvidedToken} for how the `'provide'` choice
+ * is followed up on. `tokenNote`/`urlRestrictions` are non-sensitive configuration for
+ * the `'create'` choice, not credentials, so they stay in form mode.
  */
 export interface ElicitedTokenInfo {
   choice: TokenChoice;
-  token?: string;
   urlRestrictions?: string[];
   tokenNote?: string;
 }
@@ -170,10 +204,13 @@ export async function elicitPreviewToken(
   const creationNote = canCreateTokens
     ? 'For best security, consider using a URL-restricted token that only works on your domains.'
     : "This server is authenticated with a temporary session token, which can't create new " +
-      'Mapbox tokens. Paste an existing public token (pk.*) with styles:read scope below.';
+      'Mapbox tokens. Choose "I have a token to provide" below.';
 
   // Mirrors what Server#elicitInput() builds internally (method + form-mode params),
-  // but sent via the current call's own sendRequest rather than a stashed Server.
+  // but sent via the current call's own sendRequest rather than a stashed Server. Note
+  // there is no `token` field here: the MCP spec requires credentials to be collected
+  // via URL-mode elicitation, not form mode (see collectProvidedToken below) — only
+  // non-sensitive choice/configuration fields belong in this dialog.
   let result;
   try {
     result = await sendRequest(
@@ -187,7 +224,9 @@ Preview URLs require a public token with styles:read scope. This token will be v
 
 ${hasExistingTokens ? 'Your existing public tokens:\n' + tokenList : tokenList}
 
-${creationNote}`,
+${creationNote}
+
+If you choose "I have a token to provide", you'll get a separate link to submit it securely — the token itself is never entered into this form.`,
           requestedSchema: {
             type: 'object',
             properties: {
@@ -197,14 +236,6 @@ ${creationNote}`,
                 description: 'How would you like to provide the preview token?',
                 enum: choices,
                 enumNames: choiceNames
-              },
-              token: {
-                type: 'string',
-                title: 'Your Token',
-                description:
-                  'Paste your public Mapbox token here (must have styles:read scope)',
-                minLength: 10,
-                maxLength: MAX_TOKEN_LENGTH
               },
               tokenNote: {
                 type: 'string',
@@ -270,11 +301,6 @@ ${creationNote}`,
   }
   const choice = rawChoice as TokenChoice;
 
-  const token = result.content.token;
-  if (token !== undefined && typeof token !== 'string') {
-    throw new Error('Client returned a non-string value for the token field.');
-  }
-
   const tokenNote = result.content.tokenNote;
   if (tokenNote !== undefined && typeof tokenNote !== 'string') {
     throw new Error(
@@ -309,13 +335,7 @@ ${creationNote}`,
 
   // The requestedSchema's minLength/maxLength are hints for the client's own form UI,
   // not a security boundary — nothing stops a client (malicious, or just not honoring
-  // the hints) from returning arbitrary content. Enforced here too, since whatever
-  // comes back as `token` ends up cached indefinitely in previewTokenStorage.
-  if (token !== undefined && token.length > MAX_TOKEN_LENGTH) {
-    throw new Error(
-      `Provided token is ${token.length} characters, which exceeds the ${MAX_TOKEN_LENGTH}-character maximum for a Mapbox token.`
-    );
-  }
+  // the hints) from returning arbitrary content.
   if (tokenNote !== undefined && tokenNote.length > MAX_TOKEN_NOTE_LENGTH) {
     throw new Error(
       `Token name is ${tokenNote.length} characters, which exceeds the ${MAX_TOKEN_NOTE_LENGTH}-character maximum.`
@@ -330,23 +350,128 @@ ${creationNote}`,
     );
   }
 
-  // Every other path that produces a preview token (the `accessToken` input parameter,
-  // and the create/auto-create API responses) is checked against this same prefix —
-  // this was the one path that wasn't, which meant pasting a secret token (sk.*) into
-  // the elicitation dialog embedded it straight into the returned preview URL and
-  // cached it for reuse, exactly the leak this feature exists to prevent.
-  if (choice === 'provide' && token !== undefined && !token.startsWith('pk.')) {
+  return {
+    choice,
+    urlRestrictions,
+    tokenNote
+  };
+}
+
+/**
+ * Validates a candidate preview token submitted through URL-mode collection. Applies
+ * the exact same rules every other path that produces a preview token already enforces
+ * (the `accessToken` input parameter, and the create/auto-create API responses): must
+ * be a non-empty string, under {@link MAX_TOKEN_LENGTH}, and `pk.*`-prefixed. A secret
+ * token (`sk.*`) submitted here is rejected for the same reason it's rejected
+ * everywhere else — it cannot be safely exposed in a preview URL.
+ */
+export function validatePublicPreviewToken(token: string): string {
+  if (token.length === 0) {
+    throw new Error('No token provided. Please provide a valid public token.');
+  }
+  if (token.length > MAX_TOKEN_LENGTH) {
+    throw new Error(
+      `Provided token is ${token.length} characters, which exceeds the ${MAX_TOKEN_LENGTH}-character maximum for a Mapbox token.`
+    );
+  }
+  if (!token.startsWith('pk.')) {
     throw new Error(
       'Invalid access token. Only public tokens (starting with pk.*) are allowed for preview URLs. Secret tokens (sk.*) cannot be used as they cannot be exposed in browser URLs.'
     );
   }
+  return token;
+}
 
-  return {
-    choice,
-    token,
-    urlRestrictions,
-    tokenNote
-  };
+/**
+ * Collects a preview token via URL-mode elicitation, per the MCP spec's requirement
+ * that credentials MUST NOT be requested via form mode. Sends a `mode: 'url'`
+ * elicitation pointing at the URL `tokenCollectionHandler.collect()` provides, waits for
+ * the user to both consent (the elicitation response) and actually submit a value (the
+ * out-of-band collection promise), then validates it exactly like every other token
+ * source in this file.
+ *
+ * @throws {ElicitationUnavailableError} if URL-mode collection is disabled
+ *   ({@link isLocalUrlElicitationEnabled}) or the client can't be asked at all (e.g. it
+ *   doesn't support URL-mode elicitation) — callers should treat this exactly like the
+ *   existing "client doesn't support elicitation" fallback.
+ * @throws {Error} if the client was asked but declined/cancelled, if the out-of-band
+ *   submission times out, or if the submitted value fails validation.
+ */
+export async function collectProvidedToken(
+  sendRequest: SendRequest,
+  sendNotification: SendNotification,
+  tokenCollectionHandler: TokenCollectionHandler = localHttpTokenCollectionHandler
+): Promise<string> {
+  if (!isLocalUrlElicitationEnabled()) {
+    throw new ElicitationUnavailableError(
+      'URL-mode token collection is disabled on this deployment (ENABLE_LOCAL_URL_ELICITATION=false).'
+    );
+  }
+
+  const { url, result, cancel } = await tokenCollectionHandler.collect({
+    timeoutMs: URL_MODE_COLLECTION_TIMEOUT_MSEC
+  });
+
+  const elicitationId = randomUUID();
+  let consent;
+  try {
+    consent = await sendRequest(
+      {
+        method: 'elicitation/create',
+        params: {
+          mode: 'url',
+          elicitationId,
+          message:
+            'Please provide your Mapbox public token to continue. This opens a page ' +
+            'served locally on your own machine — the token goes directly to the MCP ' +
+            'DevKit server process, not through this chat.',
+          url
+        }
+      },
+      ElicitResultSchema,
+      { timeout: ELICITATION_TIMEOUT_MSEC }
+    );
+  } catch (error) {
+    cancel();
+    if (
+      error instanceof McpError &&
+      (error.code === ErrorCode.RequestTimeout ||
+        (error.code === ErrorCode.InvalidRequest &&
+          /cancelled/i.test(error.message)))
+    ) {
+      throw error;
+    }
+    throw new ElicitationUnavailableError(
+      error instanceof Error ? error.message : String(error)
+    );
+  }
+
+  if (consent.action !== 'accept') {
+    cancel();
+    throw new Error('Token elicitation was cancelled or declined by user');
+  }
+
+  let rawToken: string;
+  try {
+    rawToken = await result;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error(String(error));
+  }
+
+  const token = validatePublicPreviewToken(rawToken);
+
+  // Best-effort UX signal that the out-of-band flow completed; not required for
+  // correctness (our own `await result` above is what actually drives completion).
+  try {
+    await sendNotification({
+      method: 'notifications/elicitation/complete',
+      params: { elicitationId }
+    });
+  } catch {
+    // Ignore — some clients may not support this notification at all.
+  }
+
+  return token;
 }
 
 /**

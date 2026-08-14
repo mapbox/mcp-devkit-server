@@ -40,6 +40,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { PreviewStyleTool } from '../../src/tools/preview-style-tool/PreviewStyleTool.js';
 import { previewTokenStorage } from '../../src/utils/tokenElicitation.js';
+import type { TokenCollectionHandler } from '../../src/utils/tokenCollectionServer.js';
 import type { HttpRequest } from '../../src/utils/types.js';
 
 // Non-tk.* tokens so `canCreateTokens` is true and the code actually awaits
@@ -50,14 +51,26 @@ const SESSION_B_TOKEN =
   'sk.eyJ1IjoidGVzdC11c2VyLWIiLCJhIjoidGVzdC1hcGkifQ.signature-b';
 
 // Realistic pk.<base64 JWT payload>.sig shape — PreviewStyleTool decodes the `u` claim
-// out of whichever token elicitation returns to build the preview URL, so these need to
-// parse cleanly for the test to observe which one actually made it into the result.
+// out of whichever token collectProvidedToken returns to build the preview URL, so this
+// needs to parse cleanly for the test to observe that it made it into the result.
 const SESSION_A_SUPPLIED_TOKEN = 'pk.eyJ1IjoiYXR0YWNrZXItYWNjb3VudCJ9.sig-a';
-const SESSION_B_SUPPLIED_TOKEN = 'pk.eyJ1IjoidmljdGltLWFjY291bnQifQ.sig-b';
 
 interface Harness {
   baseUrl: URL;
   close(): Promise<void>;
+}
+
+/** A fake TokenCollectionHandler that resolves immediately with `token`, instead of
+ * starting a real local server and waiting for an actual browser submission that will
+ * never come in a test. */
+function fakeTokenCollectionHandler(token: string): TokenCollectionHandler {
+  return {
+    collect: vi.fn().mockResolvedValue({
+      url: 'http://127.0.0.1:1/fake-collection-url',
+      result: Promise.resolve(token),
+      cancel: vi.fn()
+    })
+  };
 }
 
 /**
@@ -151,7 +164,11 @@ async function connectClient(
 ): Promise<Client> {
   const client = new Client(
     { name: 'cross-session-hijack-test-client', version: '1.0.0' },
-    { capabilities: { elicitation: {} } }
+    // Declare both modes — an empty `elicitation: {}` is normalized by the SDK to
+    // form-only support, which would make the follow-up URL-mode request (see
+    // collectProvidedToken) look unsupported and short-circuit to a different
+    // fallback path than the one this test is actually exercising.
+    { capabilities: { elicitation: { form: {}, url: {} } } }
   );
   client.setRequestHandler(ElicitRequestSchema, (request) => onElicit(request));
 
@@ -186,18 +203,29 @@ describe('cross-session elicitation hijack (singleton tool instance reused acros
     ) as unknown as HttpRequest;
 
     // ONE shared instance, installed onto two different sessions below — this is the
-    // exact shape of CORE_TOOLS being reused across concurrent sessions.
-    const previewTool = new PreviewStyleTool({ httpRequest });
+    // exact shape of CORE_TOOLS being reused across concurrent sessions. Only session
+    // A's tool call actually completes an elicitation flow in this test, so a single
+    // fake token-collection handler resolving with session A's token is enough.
+    const previewTool = new PreviewStyleTool({
+      httpRequest,
+      tokenCollectionHandler: fakeTokenCollectionHandler(
+        SESSION_A_SUPPLIED_TOKEN
+      )
+    });
 
     harness = await startSharedSingletonHarness(previewTool);
 
+    // Answers both the form-mode choice dialog and the follow-up URL-mode consent
+    // request with the same "accept" response — content.token is unused for either
+    // step now (see collectProvidedToken); the actual token comes from the fake
+    // tokenCollectionHandler above instead.
     const elicitReceivedByA = vi.fn().mockReturnValue({
       action: 'accept',
-      content: { choice: 'provide', token: SESSION_A_SUPPLIED_TOKEN }
+      content: { choice: 'provide' }
     });
     const elicitReceivedByB = vi.fn().mockReturnValue({
       action: 'accept',
-      content: { choice: 'provide', token: SESSION_B_SUPPLIED_TOKEN }
+      content: { choice: 'provide' }
     });
 
     // Session A connects and installs the shared tool onto its own McpServer —
@@ -229,8 +257,10 @@ describe('cross-session elicitation hijack (singleton tool instance reused acros
     });
 
     // The fix: session A's own client must be the one asked, regardless of what
-    // installTo() calls happened on the shared tool instance in the meantime.
-    expect(elicitReceivedByA).toHaveBeenCalledTimes(1);
+    // installTo() calls happened on the shared tool instance in the meantime. Called
+    // twice — the form-mode choice dialog, then the follow-up URL-mode consent
+    // request (see collectProvidedToken) — both correctly routed to session A.
+    expect(elicitReceivedByA).toHaveBeenCalledTimes(2);
     expect(elicitReceivedByB).not.toHaveBeenCalled();
 
     // And the result that comes back for session A's tool call must reflect session

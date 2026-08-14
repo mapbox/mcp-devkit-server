@@ -8,11 +8,25 @@ import {
   cacheKeyFor,
   previewTokenStorage
 } from '../../../src/utils/tokenElicitation.js';
+import type { TokenCollectionHandler } from '../../../src/utils/tokenCollectionServer.js';
 import { setupHttpRequest } from '../../utils/httpPipelineUtils.js';
 
 function styleComparisonTool() {
   const { httpRequest } = setupHttpRequest();
   return new StyleComparisonTool({ httpRequest });
+}
+
+/** A fake TokenCollectionHandler that resolves immediately with `token`, instead of
+ * starting a real local server and waiting for an actual browser submission that will
+ * never come in a test. */
+function fakeTokenCollectionHandler(token: string): TokenCollectionHandler {
+  return {
+    collect: vi.fn().mockResolvedValue({
+      url: 'http://127.0.0.1:1/fake-collection-url',
+      result: Promise.resolve(token),
+      cancel: vi.fn()
+    })
+  };
 }
 
 describe('StyleComparisonTool', () => {
@@ -320,15 +334,23 @@ describe('StyleComparisonTool', () => {
 
     it('omits create/auto options and skips token creation calls when the server token is temporary (tk.*)', async () => {
       const { httpRequest, mockHttpRequest } = setupHttpRequest();
-      const tool = new StyleComparisonTool({ httpRequest });
+      const tokenCollectionHandler =
+        fakeTokenCollectionHandler('pk.test.token');
+      const tool = new StyleComparisonTool({
+        httpRequest,
+        tokenCollectionHandler
+      });
 
       // The per-call sendRequest a real MCP session would pass via `extra` —
       // not a stashed `this.server`, which a singleton tool instance can't
-      // safely rely on across sessions (see tokenElicitation.ts).
+      // safely rely on across sessions (see tokenElicitation.ts). Answers both
+      // the form-mode choice dialog and the follow-up URL-mode consent request
+      // with the same "accept" response.
       const sendRequest = vi.fn().mockResolvedValue({
         action: 'accept',
-        content: { choice: 'provide', token: 'pk.test.token' }
+        content: { choice: 'provide' }
       });
+      const sendNotification = vi.fn().mockResolvedValue(undefined);
 
       const tkToken =
         'tk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
@@ -336,14 +358,19 @@ describe('StyleComparisonTool', () => {
       const result = await tool.run(
         { before: 'mapbox/streets-v12', after: 'mapbox/satellite-v9' },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { authInfo: { token: tkToken }, sendRequest } as any
+        { authInfo: { token: tkToken }, sendRequest, sendNotification } as any
       );
 
       expect(result.isError).toBe(false);
-      expect(sendRequest).toHaveBeenCalledTimes(1);
+      // First call is the form-mode choice dialog, second is the follow-up
+      // URL-mode elicitation for the token itself (see collectProvidedToken).
+      expect(sendRequest).toHaveBeenCalledTimes(2);
       const requestedSchema =
         sendRequest.mock.calls[0][0].params.requestedSchema;
       expect(requestedSchema.properties.choice.enum).toEqual(['provide']);
+      expect(requestedSchema.properties.token).toBeUndefined();
+      expect(sendRequest.mock.calls[1][0].params.mode).toBe('url');
+      expect(tokenCollectionHandler.collect).toHaveBeenCalledTimes(1);
 
       // A tk.* server token can never create tokens (tokens:write), but listing only
       // needs tokens:read — a separate scope — so it's still attempted (and fails

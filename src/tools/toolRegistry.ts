@@ -25,6 +25,7 @@ import { ValidateExpressionTool } from './validate-expression-tool/ValidateExpre
 import { ValidateGeojsonTool } from './validate-geojson-tool/ValidateGeojsonTool.js';
 import { ValidateStyleTool } from './validate-style-tool/ValidateStyleTool.js';
 import { httpRequest } from '../utils/httpPipeline.js';
+import { localHttpTokenCollectionHandler } from '../utils/tokenCollectionServer.js';
 
 /**
  * Core tools that work in all MCP clients without requiring special capabilities
@@ -36,13 +37,19 @@ export const CORE_TOOLS = [
   new RetrieveStyleTool({ httpRequest }),
   new UpdateStyleTool({ httpRequest }),
   new DeleteStyleTool({ httpRequest }),
-  new PreviewStyleTool({ httpRequest }),
+  new PreviewStyleTool({
+    httpRequest,
+    tokenCollectionHandler: localHttpTokenCollectionHandler
+  }),
   new StyleBuilderTool(),
   new GeojsonPreviewTool(),
   new CheckColorContrastTool(),
   new CompareStylesTool(),
   new OptimizeStyleTool(),
-  new StyleComparisonTool({ httpRequest }),
+  new StyleComparisonTool({
+    httpRequest,
+    tokenCollectionHandler: localHttpTokenCollectionHandler
+  }),
   new CreateTokenTool({ httpRequest }),
   new ListTokensTool({ httpRequest }),
   new BoundingBoxTool(),
