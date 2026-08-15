@@ -4,16 +4,40 @@
 process.env.MAPBOX_ACCESS_TOKEN =
   'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PreviewStyleTool } from '../../../src/tools/preview-style-tool/PreviewStyleTool.js';
+import {
+  cacheKeyFor,
+  previewTokenStorage
+} from '../../../src/utils/tokenElicitation.js';
+import type { TokenCollectionHandler } from '../../../src/utils/tokenCollectionServer.js';
+import { setupHttpRequest } from '../../utils/httpPipelineUtils.js';
+
+/** A fake TokenCollectionHandler that resolves immediately with `token`, instead of
+ * starting a real local server and waiting for an actual browser submission that will
+ * never come in a test. */
+function fakeTokenCollectionHandler(token: string): TokenCollectionHandler {
+  return {
+    collect: vi.fn().mockResolvedValue({
+      url: 'http://127.0.0.1:1/fake-collection-url',
+      result: Promise.resolve(token),
+      cancel: vi.fn()
+    })
+  };
+}
 
 describe('PreviewStyleTool', () => {
   const TEST_ACCESS_TOKEN =
     'pk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
+  function previewStyleTool() {
+    const { httpRequest } = setupHttpRequest();
+    return new PreviewStyleTool({ httpRequest });
+  }
+
   describe('tool metadata', () => {
     it('should have correct name and description', () => {
-      const tool = new PreviewStyleTool();
+      const tool = previewStyleTool();
       expect(tool.name).toBe('preview_style_tool');
       expect(tool.description).toBe(
         'Generate preview URL for a Mapbox style using an existing public token'
@@ -28,7 +52,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('uses user-provided public token and returns preview URL', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
@@ -45,7 +69,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('includes styleId in URL', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h49',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
@@ -61,7 +85,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('includes title parameter when provided', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: true,
@@ -75,7 +99,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('includes zoomwheel parameter when provided', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       zoomwheel: false,
@@ -89,7 +113,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('includes fresh parameter for secure access', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
@@ -103,7 +127,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('rejects secret tokens', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken:
         'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.secret_token',
@@ -121,7 +145,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('rejects temporary tokens', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: 'tk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIn0.temp_token',
       title: false,
@@ -138,7 +162,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('returns URL and MCP-UI resource on success (default)', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
@@ -174,7 +198,7 @@ describe('PreviewStyleTool', () => {
   });
 
   it('returns URL and MCP-UI resource for backward compatibility', async () => {
-    const result = await new PreviewStyleTool().run({
+    const result = await previewStyleTool().run({
       styleId: 'cmojrmkc9002t01ry96yi6h48',
       accessToken: TEST_ACCESS_TOKEN,
       title: false,
@@ -193,6 +217,138 @@ describe('PreviewStyleTool', () => {
     // Second item is MCP-UI resource
     expect(result.content[1]).toMatchObject({
       type: 'resource'
+    });
+  });
+
+  describe('elicitation behavior', () => {
+    const ORIGINAL_ENABLE_LOCAL_URL_ELICITATION =
+      process.env.ENABLE_LOCAL_URL_ELICITATION;
+
+    beforeEach(() => {
+      previewTokenStorage.clearAll();
+      // Opt-in (disabled by default) — these tests simulate the stdio entry point,
+      // the one context where src/index.ts enables this automatically.
+      process.env.ENABLE_LOCAL_URL_ELICITATION = 'true';
+    });
+
+    afterEach(() => {
+      if (ORIGINAL_ENABLE_LOCAL_URL_ELICITATION === undefined) {
+        delete process.env.ENABLE_LOCAL_URL_ELICITATION;
+      } else {
+        process.env.ENABLE_LOCAL_URL_ELICITATION =
+          ORIGINAL_ENABLE_LOCAL_URL_ELICITATION;
+      }
+    });
+
+    it('returns error when no accessToken and no valid server token', async () => {
+      const tool = previewStyleTool();
+
+      // Remove env var temporarily to test error path
+      const oldToken = process.env.MAPBOX_ACCESS_TOKEN;
+      delete process.env.MAPBOX_ACCESS_TOKEN;
+
+      const result = await tool.run({
+        styleId: 'test-style'
+        // No accessToken, no authInfo.token either
+      });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0]).toMatchObject({
+        type: 'text',
+        text: expect.stringContaining(
+          'Server access token is required when no preview token is provided'
+        )
+      });
+
+      // Restore env var
+      process.env.MAPBOX_ACCESS_TOKEN = oldToken;
+    });
+
+    it('works with backward compatibility when accessToken is provided', async () => {
+      const tool = previewStyleTool();
+      // Even without server initialization, providing accessToken directly should work
+
+      const result = await tool.run({
+        styleId: 'test-style',
+        accessToken: TEST_ACCESS_TOKEN
+      });
+
+      expect(result.isError).toBe(false);
+      expect(result.content[0]).toMatchObject({
+        type: 'text',
+        text: expect.stringContaining(
+          '/styles/v1/test-user/test-style.html?access_token=pk.'
+        )
+      });
+    });
+
+    it('omits create/auto options and skips token creation calls when the server token is temporary (tk.*)', async () => {
+      const { httpRequest, mockHttpRequest } = setupHttpRequest();
+      const tokenCollectionHandler =
+        fakeTokenCollectionHandler(TEST_ACCESS_TOKEN);
+      const tool = new PreviewStyleTool({
+        httpRequest,
+        tokenCollectionHandler
+      });
+
+      // The per-call sendRequest a real MCP session would pass via `extra` —
+      // not a stashed `this.server`, which a singleton tool instance can't
+      // safely rely on across sessions (see tokenElicitation.ts). Answers both
+      // the form-mode choice dialog and the follow-up URL-mode consent request
+      // with the same "accept" response.
+      const sendRequest = vi.fn().mockResolvedValue({
+        action: 'accept',
+        content: { choice: 'provide' }
+      });
+      const sendNotification = vi.fn().mockResolvedValue(undefined);
+
+      const tkToken =
+        'tk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+
+      const result = await tool.run(
+        { styleId: 'test-style' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { authInfo: { token: tkToken }, sendRequest, sendNotification } as any
+      );
+
+      expect(result.isError).toBe(false);
+      // First call is the form-mode choice dialog, second is the follow-up
+      // URL-mode elicitation for the token itself (see collectProvidedToken).
+      expect(sendRequest).toHaveBeenCalledTimes(2);
+      const requestedSchema =
+        sendRequest.mock.calls[0][0].params.requestedSchema;
+      expect(requestedSchema.properties.choice.enum).toEqual(['provide']);
+      expect(requestedSchema.properties.token).toBeUndefined();
+      expect(sendRequest.mock.calls[1][0].params.mode).toBe('url');
+      expect(tokenCollectionHandler.collect).toHaveBeenCalledTimes(1);
+
+      // A tk.* server token can never create tokens (tokens:write), but listing only
+      // needs tokens:read — a separate scope — so it's still attempted (and fails
+      // safe to an empty list if the token can't do that either). Only creation
+      // (a POST) must never be attempted.
+      expect(mockHttpRequest).toHaveBeenCalledTimes(1);
+      expect(mockHttpRequest.mock.calls[0][1]?.method).not.toBe('POST');
+    });
+
+    it('reuses a cached token instead of erroring when useCustomToken is set but the client cannot act on it', async () => {
+      const serverToken =
+        'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
+      previewTokenStorage.set(cacheKeyFor(serverToken), TEST_ACCESS_TOKEN);
+
+      // No `this.server` is attached in these tests (installTo() was never
+      // called), so this exercises exactly the "client can't support the
+      // selection dialog" case a reviewer asked about on PR #57.
+      const result = await previewStyleTool().run(
+        { styleId: 'test-style', useCustomToken: true },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        { authInfo: { token: serverToken } } as any
+      );
+
+      expect(result.isError).toBe(false);
+      expect(result.content[0]).toMatchObject({
+        type: 'text',
+        text: expect.stringContaining(`access_token=${TEST_ACCESS_TOKEN}`)
+      });
     });
   });
 });

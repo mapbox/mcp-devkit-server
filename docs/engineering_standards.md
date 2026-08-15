@@ -110,6 +110,7 @@ Keep secrets out of repositories. Use environment variables for sensitive data:
 - `MAPBOX_ACCESS_TOKEN` - Required for all Mapbox API operations
 - `VERBOSE_ERRORS` - Set to `true` for detailed error messages
 - `ENABLE_MCP_UI` - Controls MCP-UI support (default: `true`)
+- `ENABLE_LOCAL_URL_ELICITATION` - Controls whether `preview_style_tool`/`style_comparison_tool` offer URL-mode token collection via a local `127.0.0.1` server (opt-in, default: `false` — see `src/utils/tokenCollectionServer.ts`). Only `src/index.ts` (this package's stdio entry point) sets it to `true` automatically, since that's the one context confirmed to run on the same machine as the user's browser; any other embedder (e.g. a hosted/cloud deployment) stays safe by default and must not enable this unless it's confirmed the same machine/browser relationship holds.
 - `OTEL_EXPORTER_OTLP_ENDPOINT` - OpenTelemetry endpoint (optional)
 - `OTEL_SERVICE_NAME` - Override service name for tracing (optional)
 

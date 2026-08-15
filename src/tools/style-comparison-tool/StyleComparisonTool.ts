@@ -3,13 +3,37 @@
 
 import { randomUUID } from 'node:crypto';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import { createUIResource } from '@mcp-ui/server';
 import { BaseTool } from '../BaseTool.js';
+import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';
 import {
   StyleComparisonSchema,
   StyleComparisonInput
 } from './StyleComparisonTool.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
+import {
+  cacheKeyFor,
+  collectProvidedToken,
+  createPreviewToken,
+  ElicitationUnavailableError,
+  elicitPreviewToken,
+  isTemporaryServerToken,
+  listPublicPreviewTokens,
+  previewTokenStorage
+} from '../../utils/tokenElicitation.js';
+import {
+  localHttpTokenCollectionHandler,
+  type TokenCollectionHandler
+} from '../../utils/tokenCollectionServer.js';
+import type { HttpRequest } from '../../utils/types.js';
+
+// `BaseTool#execute`'s abstract signature accepts `ToolExecutionContext` in this slot;
+// overriding with the concrete `RequestHandlerExtra` type here (rather than `any`) would
+// fail TS's contravariant parameter check since the two types don't overlap. `any` is the
+// same escape hatch `BaseTool.run()` itself already uses for this exact parameter.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ToolCallExtra = RequestHandlerExtra<any, any>;
 
 export class StyleComparisonTool extends BaseTool<
   typeof StyleComparisonSchema
@@ -36,8 +60,17 @@ export class StyleComparisonTool extends BaseTool<
     }
   };
 
-  constructor() {
+  private readonly httpRequest: HttpRequest;
+  private readonly tokenCollectionHandler: TokenCollectionHandler;
+
+  constructor(params: {
+    httpRequest: HttpRequest;
+    tokenCollectionHandler?: TokenCollectionHandler;
+  }) {
     super({ inputSchema: StyleComparisonSchema });
+    this.httpRequest = params.httpRequest;
+    this.tokenCollectionHandler =
+      params.tokenCollectionHandler ?? localHttpTokenCollectionHandler;
   }
 
   /**
@@ -85,15 +118,202 @@ export class StyleComparisonTool extends BaseTool<
     return resolved;
   }
 
+  /**
+   * Overridden only to forward `extra` down to `execute()`. `BaseTool.run()` extracts
+   * `accessToken` from `extra` and drops the rest, but elicitation needs `extra.sendRequest`
+   * — the per-call, correctly-session-scoped request sender (see the doc comment on
+   * `elicitPreviewToken` for why `this.server` can't be used for this instead).
+   */
+  async run(rawInput: unknown, extra?: ToolCallExtra): Promise<CallToolResult> {
+    try {
+      const input = this.inputSchema.parse(rawInput);
+      const accessToken =
+        extra?.authInfo?.token || process.env.MAPBOX_ACCESS_TOKEN;
+      return this.execute(input, accessToken, extra);
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{ type: 'text', text: (error as Error).message }]
+      };
+    }
+  }
+
   protected async execute(
-    input: StyleComparisonInput
+    input: StyleComparisonInput,
+    serverAccessToken?: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rawExtra?: any
   ): Promise<CallToolResult> {
+    const extra: ToolCallExtra | undefined = rawExtra;
+    let publicToken: string;
+
+    // Step 1: Determine which token to use for the comparison
+    if (input.accessToken) {
+      // User provided token directly (backward compatibility)
+      publicToken = input.accessToken;
+    } else {
+      // No token provided - use elicitation flow
+      let userName: string;
+      try {
+        userName = getUserNameFromToken(serverAccessToken || '');
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text:
+                'Server access token is required when no preview token is provided. ' +
+                (error instanceof Error ? error.message : String(error))
+            }
+          ]
+        };
+      }
+
+      const cacheKey = cacheKeyFor(serverAccessToken || '');
+      const storedToken = previewTokenStorage.get(cacheKey);
+
+      // Reuse the cached token unless the caller explicitly wants to choose a
+      // different one — in which case we still need `extra.sendRequest` to ask.
+      if (storedToken && !input.useCustomToken) {
+        publicToken = storedToken;
+      } else if (!extra?.sendRequest) {
+        // No per-call session context to elicit through at all (e.g. invoked
+        // directly, outside a connected MCP session).
+        if (storedToken) {
+          publicToken = storedToken;
+        } else {
+          return {
+            isError: true,
+            content: [
+              {
+                type: 'text',
+                text: 'Server not initialized. Cannot elicit token from user.'
+              }
+            ]
+          };
+        }
+      } else {
+        // A server authenticated with a temporary tk.* token (e.g. the hosted MCP
+        // DevKit Server) can never call the Tokens API to create a new token, so
+        // the "create"/"auto" options are dropped from the dialog before asking.
+        const canCreateTokens = !isTemporaryServerToken(serverAccessToken!);
+
+        // Listing only needs `tokens:read`, a separate scope from the `tokens:write`
+        // that canCreateTokens checks — a tk.*-authenticated server lacking the
+        // latter isn't thereby known to lack the former too, so this isn't gated on
+        // canCreateTokens. The call already fails safe to an empty list on any
+        // API/permission error.
+        const existingTokens = await listPublicPreviewTokens(
+          this.httpRequest,
+          MapboxApiBasedTool.mapboxApiEndpoint,
+          serverAccessToken!,
+          userName
+        );
+
+        try {
+          // Elicit token choice from user, over *this* call's own connection.
+          const elicited = await elicitPreviewToken(
+            extra.sendRequest,
+            existingTokens,
+            canCreateTokens
+          );
+
+          if (elicited.choice === 'provide') {
+            // Collected via a follow-up URL-mode elicitation, not this form dialog —
+            // the MCP spec requires credentials to go through URL mode, not form mode.
+            // Errors here (unsupported client, decline/cancel, validation failure) are
+            // handled by the catch below exactly like elicitPreviewToken's own errors.
+            publicToken = await collectProvidedToken(
+              extra.sendRequest,
+              extra.sendNotification,
+              this.tokenCollectionHandler
+            );
+          } else if (elicited.choice === 'create') {
+            const created = await createPreviewToken(
+              this.httpRequest,
+              MapboxApiBasedTool.mapboxApiEndpoint,
+              serverAccessToken!,
+              userName,
+              elicited.tokenNote,
+              elicited.urlRestrictions
+            );
+            if (!created.success) {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: 'text',
+                    text: `Failed to create token: ${created.error}`
+                  }
+                ]
+              };
+            }
+            publicToken = created.token!;
+          } else {
+            const created = await createPreviewToken(
+              this.httpRequest,
+              MapboxApiBasedTool.mapboxApiEndpoint,
+              serverAccessToken!,
+              userName
+            );
+            if (!created.success) {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: 'text',
+                    text: `Failed to auto-create token: ${created.error}`
+                  }
+                ]
+              };
+            }
+            publicToken = created.token!;
+          }
+
+          previewTokenStorage.set(cacheKey, publicToken);
+        } catch (error) {
+          if (error instanceof ElicitationUnavailableError) {
+            // The client can't be asked at all (e.g. no elicitation support). Fall
+            // back to a cached token if one exists rather than failing outright.
+            if (storedToken) {
+              publicToken = storedToken;
+            } else {
+              return {
+                isError: true,
+                content: [
+                  {
+                    type: 'text',
+                    text:
+                      'Preview token required but client does not support elicitation. ' +
+                      'Please provide an accessToken parameter directly, or use a client that supports MCP elicitation (e.g., MCP Inspector, Cursor, VS Code).'
+                  }
+                ]
+              };
+            }
+          } else {
+            // The client was asked and the user declined/cancelled, or something
+            // else went wrong — surface it rather than silently reusing a cache.
+            return {
+              isError: true,
+              content: [
+                {
+                  type: 'text',
+                  text: error instanceof Error ? error.message : String(error)
+                }
+              ]
+            };
+          }
+        }
+      }
+    }
+
     let beforeStyleId;
     let afterStyleId;
     try {
       // Process style IDs to get username/styleId format
-      beforeStyleId = this.processStyleId(input.before, input.accessToken);
-      afterStyleId = this.processStyleId(input.after, input.accessToken);
+      beforeStyleId = this.processStyleId(input.before, publicToken);
+      afterStyleId = this.processStyleId(input.after, publicToken);
     } catch (error) {
       return {
         content: [
@@ -111,7 +331,7 @@ export class StyleComparisonTool extends BaseTool<
 
     // Build the comparison URL
     const params = new URLSearchParams();
-    params.append('access_token', input.accessToken);
+    params.append('access_token', publicToken);
     params.append('before', beforeStyleId);
     params.append('after', afterStyleId);
 

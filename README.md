@@ -60,6 +60,19 @@ Get started by integrating with your preferred AI development environment:
 - [Cursor Integration](./docs/cursor-integration.md) - Cursor IDE integration
 - [VS Code Integration](./docs/vscode-integration.md) - Visual Studio Code with GitHub Copilot
 
+**Note on MCP Elicitation Support**: Some tools (like `preview_style_tool` and `style_comparison_tool`) use [MCP elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation) to provide secure token management following the principle of least privilege. Elicitation ensures that only minimal-scope public tokens (pk._) appear in preview URLs, while your powerful server token (sk._) stays secure. This guided workflow also improves UX for token selection and creation. Elicitation support varies by client:
+
+- **MCP Inspector**: ✅ Full support
+- **Cursor**: ✅ Full support
+- **VS Code (with Copilot)**: ✅ Full support
+- **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
+- **Claude Desktop**: ⚠️ Not yet supported (Claude will fall back to creating tokens via chat)
+- **Claude Code**: ⚠️ Not yet supported (provide `accessToken` parameter directly)
+
+Choosing **"I have a token to provide"** doesn't paste the token into a form — the MCP spec requires credentials to go through [URL-mode elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation#url-mode-elicitation-requests) instead, so this opens a page served locally on your own machine (`http://127.0.0.1:<port>`) to submit it. This requires a client that supports URL-mode elicitation specifically, and only works when the server process is running on the same machine as your browser — running via `dist/esm/index.js` (Claude Desktop, Claude Code, Cursor, VS Code, or any other local stdio client) enables it automatically. See [`ENABLE_LOCAL_URL_ELICITATION`](#enable_local_url_elicitation) if you're embedding this package's tools yourself rather than running it as a local server.
+
+**Note on the hosted MCP endpoint**: even on a client with full elicitation support, "create a new token" and "auto-create" will fail on the [hosted endpoint](#hosted-mcp-endpoint) — see below for why. "I have a token to provide" is also unavailable there; use the `accessToken` parameter directly instead.
+
 ### DXT Package Distribution
 
 This MCP server can be packaged as a DXT (Desktop Extension) file for easy distribution and installation. DXT is a standardized format for distributing local MCP servers, similar to browser extensions.
@@ -95,6 +108,13 @@ For quick access, you can use our hosted MCP endpoint:
 **Endpoint**: https://mcp-devkit.mapbox.com/mcp
 
 For detailed setup instructions for different clients and API usage, see the [Hosted MCP Server Guide](https://github.com/mapbox/mcp-server/blob/main/docs/hosted-mcp-guide.md). Note: This guide references the standard MCP endpoint - you'll need to update the endpoint URL to use the devkit endpoint above.
+
+**Token creation is unavailable on the hosted endpoint**: the hosted deployment authenticates each request with its own access token rather than your personal Mapbox account token, and that token is not granted `tokens:write`. As a result, on the hosted endpoint:
+
+- `preview_style_tool` / `style_comparison_tool`'s elicitation dialog still offers all three options, but choosing "create a new token" or "auto-create" fails against the Mapbox Tokens API with a scope/permission error (the dialog can't know ahead of time that this particular deployment's token lacks `tokens:write` — see the `isTemporaryServerToken` caveat in `src/utils/tokenElicitation.ts` for tokens where it can tell).
+- `create_token_tool` is not exposed on the hosted endpoint at all.
+
+**"I have a token to provide" is also unavailable on the hosted endpoint by default**: that option works via URL-mode elicitation to a page served on `127.0.0.1`, which only makes sense when the server process runs on your own machine. This is opt-in (see [`ENABLE_LOCAL_URL_ELICITATION`](#enable_local_url_elicitation)) and only this package's own local stdio entry point (`dist/esm/index.js`) turns it on automatically, so a hosted/cloud deployment stays safe with no action needed — pass `accessToken` directly there instead. Create a token ahead of time from your [Mapbox Account page](https://account.mapbox.com/) if you don't have one. Running this server **locally** with your own `pk.*`/`sk.*` access token (which can carry `tokens:write`) also enables create and auto-create.
 
 ### Getting Your Mapbox Access Token
 
@@ -169,11 +189,49 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - Input: `styleId`
 - Returns: Success confirmation
 
-**PreviewStyleTool** - Generate preview URL for a Mapbox style using an existing public token
+**PreviewStyleTool** - Generate preview URL for a Mapbox style with secure token handling
 
-- Input: `styleId`, `title` (optional), `zoomwheel` (optional), `zoom` (optional), `center` (optional), `bearing` (optional), `pitch` (optional)
+- Input:
+  - `styleId` (required): Style ID to preview
+  - `accessToken` (optional): Provide a specific public token (for backward compatibility)
+  - `useCustomToken` (optional): Force token selection dialog even if a token is cached
+  - `title` (optional): Show title in preview
+  - `zoomwheel` (optional): Enable zoom wheel control
 - Returns: URL to open the style preview in browser
-- **Note**: This tool automatically fetches the first available public token from your account for the preview URL. Requires at least one public token with `styles:read` scope.
+- **🔐 Secure Token Management**: If `accessToken` is not provided, this tool uses MCP **elicitation** to create minimal-scope public tokens (pk._) instead of exposing your powerful server token. This follows the **principle of least privilege** - preview/comparison URLs only contain read-only tokens (styles:read, styles:tiles, fonts:read), keeping your server token (sk._) with write permissions secure. **Elicitation support varies by client**:
+  - **MCP Inspector, Cursor, VS Code**: ✅ Full support - Shows guided form dialog with three options:
+    1. **Provide an existing token** - Paste a token you already have
+    2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
+    3. **Auto-create a basic token** - Let the tool create a simple preview token for you
+  - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
+  - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool`
+  - **Hosted MCP endpoint**: ⚠️ "Create" and "auto-create" will fail regardless of client — see [Token creation is unavailable on the hosted endpoint](#hosted-mcp-endpoint)
+  - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
+- **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
+- **Best Practice**: Use URL-restricted tokens to further limit token usage to specific domains. While public tokens in URLs are read-only, URL restrictions add an extra layer of security by ensuring tokens only work on your specified domains
+
+**StyleComparisonTool** - Generate side-by-side comparison URL for two Mapbox styles
+
+- Input:
+  - `before` (required): Mapbox style for the "before" side (accepts full style URL, username/styleId format, or just styleId)
+  - `after` (required): Mapbox style for the "after" side (accepts full style URL, username/styleId format, or just styleId)
+  - `accessToken` (optional): Provide a specific public token (for backward compatibility)
+  - `useCustomToken` (optional): Force token selection dialog even if a token is cached
+  - `zoom` (optional): Initial zoom level (0-22)
+  - `latitude` (optional): Latitude coordinate for initial map center (-90 to 90)
+  - `longitude` (optional): Longitude coordinate for initial map center (-180 to 180)
+- Returns: URL to open the side-by-side style comparison in browser
+- **🔐 Secure Token Management**: If `accessToken` is not provided, this tool uses MCP **elicitation** to create minimal-scope public tokens (pk._) instead of exposing your powerful server token. This follows the **principle of least privilege** - preview/comparison URLs only contain read-only tokens (styles:read, styles:tiles, fonts:read), keeping your server token (sk._) with write permissions secure. **Elicitation support varies by client**:
+  - **MCP Inspector, Cursor, VS Code**: ✅ Full support - Shows guided form dialog with three options:
+    1. **Provide an existing token** - Paste a token you already have
+    2. **Create a new preview token** - Create a new token with optional URL restrictions for enhanced security
+    3. **Auto-create a basic token** - Let the tool create a simple preview token for you
+  - **Goose**: ⚠️ Known bug - Form displays after timeout ([goose#6471](https://github.com/block/goose/issues/6471))
+  - **Claude Desktop, Claude Code**: ⚠️ Not yet supported - Provide `accessToken` parameter directly, or Claude will intelligently offer to create a token for you using `create_token_tool`
+  - **Hosted MCP endpoint**: ⚠️ "Create" and "auto-create" will fail regardless of client — see [Token creation is unavailable on the hosted endpoint](#hosted-mcp-endpoint)
+  - **Alternative**: Provide `accessToken` parameter directly for backward compatibility with any client
+- **Session Storage**: Your token choice is cached for the session, so you only need to provide it once (when elicitation is supported)
+- **Best Practice**: Use URL-restricted tokens to further limit token usage to specific domains. While public tokens in URLs are read-only, URL restrictions add an extra layer of security by ensuring tokens only work on your specified domains
 
 **ValidateStyleTool** - Validate Mapbox style JSON against the Mapbox Style Specification
 
@@ -195,7 +253,8 @@ Complete set of tools for managing Mapbox styles via the Styles API:
 - **RetrieveStyleTool**: Requires `styles:download` scope
 - **UpdateStyleTool**: Requires `styles:write` scope
 - **DeleteStyleTool**: Requires `styles:write` scope
-- **PreviewStyleTool**: Requires `tokens:read` scope (to list tokens) and at least one public token with `styles:read` scope
+- **PreviewStyleTool**: Can work without token scopes via elicitation, or optionally accepts a direct public token. If using automatic token listing, requires `tokens:read` scope
+- **StyleComparisonTool**: Can work without token scopes via elicitation, or optionally accepts a direct public token. If using automatic token listing, requires `tokens:read` scope
 
 **Note:** The username is automatically extracted from the JWT token payload.
 
@@ -1246,6 +1305,16 @@ src/tools/your-tool-name-tool/
 Set `VERBOSE_ERRORS=true` to get detailed error messages from the MCP server. This is useful for debugging issues when integrating with MCP clients.
 
 By default, the server returns generic error messages. With verbose errors enabled, you'll receive the actual error details, which can help diagnose API connection issues, invalid parameters, or other problems.
+
+#### ENABLE_LOCAL_URL_ELICITATION
+
+Controls whether `preview_style_tool` / `style_comparison_tool`'s "I have a token to provide" option is offered. Per the MCP spec, servers must not collect credentials via form-mode elicitation, so providing a token instead opens a short-lived HTTP server on `127.0.0.1` and sends a URL-mode elicitation request pointing at it — the same pattern CLI tools like `gh auth login` use. This only works when the server process and your browser are on the same machine.
+
+**Opt-in, not opt-out: defaults to `false`.** Set to `true` only after confirming the server process and the user's browser really are on the same machine — a `127.0.0.1` URL otherwise resolves to the browser's own loopback interface, where nothing is listening, rather than the server. This package's own local stdio entry point (`dist/esm/index.js`, used by Claude Desktop, Claude Code, Cursor, VS Code, and similar clients) sets this automatically; you only need to set it yourself if you're embedding these tools in your own server rather than running `dist/esm/index.js` directly. With it disabled (the default for any such embedding), choosing "provide" falls back to the same message shown to clients without elicitation support at all: pass `accessToken` directly instead.
+
+```bash
+export ENABLE_LOCAL_URL_ELICITATION=true
+```
 
 #### ENABLE_MCP_UI
 
