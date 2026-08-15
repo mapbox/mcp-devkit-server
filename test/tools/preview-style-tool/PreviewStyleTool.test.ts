@@ -4,7 +4,7 @@
 process.env.MAPBOX_ACCESS_TOKEN =
   'sk.eyJhbGciOiJIUzI1NiJ9.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PreviewStyleTool } from '../../../src/tools/preview-style-tool/PreviewStyleTool.js';
 import {
   cacheKeyFor,
@@ -221,8 +221,23 @@ describe('PreviewStyleTool', () => {
   });
 
   describe('elicitation behavior', () => {
+    const ORIGINAL_ENABLE_LOCAL_URL_ELICITATION =
+      process.env.ENABLE_LOCAL_URL_ELICITATION;
+
     beforeEach(() => {
       previewTokenStorage.clearAll();
+      // Opt-in (disabled by default) — these tests simulate the stdio entry point,
+      // the one context where src/index.ts enables this automatically.
+      process.env.ENABLE_LOCAL_URL_ELICITATION = 'true';
+    });
+
+    afterEach(() => {
+      if (ORIGINAL_ENABLE_LOCAL_URL_ELICITATION === undefined) {
+        delete process.env.ENABLE_LOCAL_URL_ELICITATION;
+      } else {
+        process.env.ENABLE_LOCAL_URL_ELICITATION =
+          ORIGINAL_ENABLE_LOCAL_URL_ELICITATION;
+      }
     });
 
     it('returns error when no accessToken and no valid server token', async () => {

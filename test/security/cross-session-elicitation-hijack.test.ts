@@ -183,9 +183,14 @@ describe('cross-session elicitation hijack (singleton tool instance reused acros
   let harness: Harness | undefined;
   let clientA: Client | undefined;
   let clientB: Client | undefined;
+  const ORIGINAL_ENABLE_LOCAL_URL_ELICITATION =
+    process.env.ENABLE_LOCAL_URL_ELICITATION;
 
   beforeEach(() => {
     previewTokenStorage.clearAll();
+    // Opt-in (disabled by default) — this harness simulates the stdio entry point,
+    // the one context where src/index.ts enables this automatically.
+    process.env.ENABLE_LOCAL_URL_ELICITATION = 'true';
   });
 
   afterEach(async () => {
@@ -195,6 +200,12 @@ describe('cross-session elicitation hijack (singleton tool instance reused acros
     clientA = undefined;
     clientB = undefined;
     harness = undefined;
+    if (ORIGINAL_ENABLE_LOCAL_URL_ELICITATION === undefined) {
+      delete process.env.ENABLE_LOCAL_URL_ELICITATION;
+    } else {
+      process.env.ENABLE_LOCAL_URL_ELICITATION =
+        ORIGINAL_ENABLE_LOCAL_URL_ELICITATION;
+    }
   });
 
   it("does not send session A's elicitation prompt to session B, when B connected more recently and B's installTo() call is the last one to touch the shared tool's this.server", async () => {

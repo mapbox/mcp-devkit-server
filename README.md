@@ -69,7 +69,7 @@ Get started by integrating with your preferred AI development environment:
 - **Claude Desktop**: ⚠️ Not yet supported (Claude will fall back to creating tokens via chat)
 - **Claude Code**: ⚠️ Not yet supported (provide `accessToken` parameter directly)
 
-Choosing **"I have a token to provide"** doesn't paste the token into a form — the MCP spec requires credentials to go through [URL-mode elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation#url-mode-elicitation-requests) instead, so this opens a page served locally on your own machine (`http://127.0.0.1:<port>`) to submit it. This requires a client that supports URL-mode elicitation specifically, and requires the server process to be running on the same machine as your browser — see [`ENABLE_LOCAL_URL_ELICITATION`](#enable_local_url_elicitation).
+Choosing **"I have a token to provide"** doesn't paste the token into a form — the MCP spec requires credentials to go through [URL-mode elicitation](https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation#url-mode-elicitation-requests) instead, so this opens a page served locally on your own machine (`http://127.0.0.1:<port>`) to submit it. This requires a client that supports URL-mode elicitation specifically, and only works when the server process is running on the same machine as your browser — running via `dist/esm/index.js` (Claude Desktop, Claude Code, Cursor, VS Code, or any other local stdio client) enables it automatically. See [`ENABLE_LOCAL_URL_ELICITATION`](#enable_local_url_elicitation) if you're embedding this package's tools yourself rather than running it as a local server.
 
 **Note on the hosted MCP endpoint**: even on a client with full elicitation support, "create a new token" and "auto-create" will fail on the [hosted endpoint](#hosted-mcp-endpoint) — see below for why. "I have a token to provide" is also unavailable there; use the `accessToken` parameter directly instead.
 
@@ -114,7 +114,7 @@ For detailed setup instructions for different clients and API usage, see the [Ho
 - `preview_style_tool` / `style_comparison_tool`'s elicitation dialog still offers all three options, but choosing "create a new token" or "auto-create" fails against the Mapbox Tokens API with a scope/permission error (the dialog can't know ahead of time that this particular deployment's token lacks `tokens:write` — see the `isTemporaryServerToken` caveat in `src/utils/tokenElicitation.ts` for tokens where it can tell).
 - `create_token_tool` is not exposed on the hosted endpoint at all.
 
-**"I have a token to provide" also requires the hosted deployment to set `ENABLE_LOCAL_URL_ELICITATION=false`**: that option now works via URL-mode elicitation to a page served on `127.0.0.1`, which only makes sense when the server process runs on your own machine — see [`ENABLE_LOCAL_URL_ELICITATION`](#enable_local_url_elicitation). Until the hosted deployment sets that variable, treat "provide" as unavailable there too and pass `accessToken` directly instead. Create a token ahead of time from your [Mapbox Account page](https://account.mapbox.com/) if you don't have one. Running this server **locally** with your own `pk.*`/`sk.*` access token (which can carry `tokens:write`) also enables create and auto-create.
+**"I have a token to provide" is also unavailable on the hosted endpoint by default**: that option works via URL-mode elicitation to a page served on `127.0.0.1`, which only makes sense when the server process runs on your own machine. This is opt-in (see [`ENABLE_LOCAL_URL_ELICITATION`](#enable_local_url_elicitation)) and only this package's own local stdio entry point (`dist/esm/index.js`) turns it on automatically, so a hosted/cloud deployment stays safe with no action needed — pass `accessToken` directly there instead. Create a token ahead of time from your [Mapbox Account page](https://account.mapbox.com/) if you don't have one. Running this server **locally** with your own `pk.*`/`sk.*` access token (which can carry `tokens:write`) also enables create and auto-create.
 
 ### Getting Your Mapbox Access Token
 
@@ -1310,10 +1310,10 @@ By default, the server returns generic error messages. With verbose errors enabl
 
 Controls whether `preview_style_tool` / `style_comparison_tool`'s "I have a token to provide" option is offered. Per the MCP spec, servers must not collect credentials via form-mode elicitation, so providing a token instead opens a short-lived HTTP server on `127.0.0.1` and sends a URL-mode elicitation request pointing at it — the same pattern CLI tools like `gh auth login` use. This only works when the server process and your browser are on the same machine.
 
-Defaults to `true`. **Set to `false` for any deployment where the server process does not run on the end user's own machine** (for example, a hosted/cloud deployment) — a `127.0.0.1` URL there would resolve to the browser's own loopback interface, where nothing is listening, rather than the server. With it disabled, choosing "provide" falls back to the same message shown to clients without elicitation support at all: pass `accessToken` directly instead.
+**Opt-in, not opt-out: defaults to `false`.** Set to `true` only after confirming the server process and the user's browser really are on the same machine — a `127.0.0.1` URL otherwise resolves to the browser's own loopback interface, where nothing is listening, rather than the server. This package's own local stdio entry point (`dist/esm/index.js`, used by Claude Desktop, Claude Code, Cursor, VS Code, and similar clients) sets this automatically; you only need to set it yourself if you're embedding these tools in your own server rather than running `dist/esm/index.js` directly. With it disabled (the default for any such embedding), choosing "provide" falls back to the same message shown to clients without elicitation support at all: pass `accessToken` directly instead.
 
 ```bash
-export ENABLE_LOCAL_URL_ELICITATION=false
+export ENABLE_LOCAL_URL_ELICITATION=true
 ```
 
 #### ENABLE_MCP_UI

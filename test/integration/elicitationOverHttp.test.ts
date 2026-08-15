@@ -247,9 +247,14 @@ function getChoiceEnum(request: ElicitRequest): string[] {
 describe('preview/comparison token elicitation over real Streamable HTTP', () => {
   let harness: TestHarness | undefined;
   let client: Client | undefined;
+  const ORIGINAL_ENABLE_LOCAL_URL_ELICITATION =
+    process.env.ENABLE_LOCAL_URL_ELICITATION;
 
   beforeEach(() => {
     previewTokenStorage.clearAll();
+    // Opt-in (disabled by default) — this harness simulates the stdio entry point,
+    // the one context where src/index.ts enables this automatically.
+    process.env.ENABLE_LOCAL_URL_ELICITATION = 'true';
   });
 
   afterEach(async () => {
@@ -257,6 +262,12 @@ describe('preview/comparison token elicitation over real Streamable HTTP', () =>
     await harness?.close();
     client = undefined;
     harness = undefined;
+    if (ORIGINAL_ENABLE_LOCAL_URL_ELICITATION === undefined) {
+      delete process.env.ENABLE_LOCAL_URL_ELICITATION;
+    } else {
+      process.env.ENABLE_LOCAL_URL_ELICITATION =
+        ORIGINAL_ENABLE_LOCAL_URL_ELICITATION;
+    }
   });
 
   it('trims the dialog to "provide" and never calls the Tokens API to create a token when the server token is tk.*', async () => {

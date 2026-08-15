@@ -577,6 +577,12 @@ describe('validatePublicPreviewToken', () => {
 describe('collectProvidedToken', () => {
   const ORIGINAL_ENV = process.env.ENABLE_LOCAL_URL_ELICITATION;
 
+  beforeEach(() => {
+    // Opt-in by default (disabled-by-default is covered explicitly further down) —
+    // most tests below exercise the enabled path.
+    process.env.ENABLE_LOCAL_URL_ELICITATION = 'true';
+  });
+
   afterEach(() => {
     if (ORIGINAL_ENV === undefined) {
       delete process.env.ENABLE_LOCAL_URL_ELICITATION;
@@ -721,8 +727,18 @@ describe('collectProvidedToken', () => {
     ).resolves.toBe('pk.good-token');
   });
 
-  it('short-circuits to ElicitationUnavailableError without starting collection when disabled via env var', async () => {
+  it('short-circuits to ElicitationUnavailableError without starting collection when explicitly disabled', async () => {
     process.env.ENABLE_LOCAL_URL_ELICITATION = 'false';
+    const { handler } = fakeTokenCollectionHandler('pk.good-token');
+
+    await expect(
+      collectProvidedToken(fakeSendRequest(), fakeSendNotification(), handler)
+    ).rejects.toThrow(ElicitationUnavailableError);
+    expect(handler.collect).not.toHaveBeenCalled();
+  });
+
+  it('is disabled by default when the env var is unset (opt-in, not opt-out)', async () => {
+    delete process.env.ENABLE_LOCAL_URL_ELICITATION;
     const { handler } = fakeTokenCollectionHandler('pk.good-token');
 
     await expect(

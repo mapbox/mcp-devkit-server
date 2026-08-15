@@ -52,6 +52,18 @@ if (existsSync(envPath)) {
   }
 }
 
+// preview_style_tool / style_comparison_tool's "provide a token" option collects the
+// token via a local http://127.0.0.1 server (see src/utils/tokenCollectionServer.ts),
+// which only makes sense when the MCP server process and the user's browser are on the
+// same machine — true for this stdio entry point, but not for every way this package's
+// tools can be embedded (e.g. a cloud deployment). Opt in here, since this is the one
+// context confirmed safe, rather than defaulting it on everywhere and relying on every
+// other embedder to remember to opt out. Left untouched if already set (by the
+// environment or the .env file below), so an explicit override always wins.
+if (process.env.ENABLE_LOCAL_URL_ELICITATION === undefined) {
+  process.env.ENABLE_LOCAL_URL_ELICITATION = 'true';
+}
+
 const versionInfo = getVersionInfo();
 
 // Parse configuration from command-line arguments

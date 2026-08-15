@@ -56,19 +56,25 @@ const MAX_TOKEN_LENGTH = 2048;
 const URL_MODE_COLLECTION_TIMEOUT_MSEC = 5 * 60_000;
 
 /**
- * Set to `"false"` to disable URL-mode token collection entirely and fall straight back
- * to the "client does not support elicitation, please provide accessToken directly"
- * message. This exists because the default {@link TokenCollectionHandler}
- * (`localHttpTokenCollectionHandler`) starts a server bound to `127.0.0.1` on *this*
- * process's machine — correct when this package runs as a local stdio server (its only
- * shipped entry point, `src/index.ts`), but wrong for a deployment where this process
+ * Opt-in, not opt-out: defaults to disabled, and must be set to `"true"` to enable
+ * URL-mode token collection. When disabled (the default), the "provide" choice falls
+ * straight back to the "client does not support elicitation, please provide accessToken
+ * directly" message.
+ *
+ * The default {@link TokenCollectionHandler} (`localHttpTokenCollectionHandler`) starts
+ * a server bound to `127.0.0.1` on *this* process's own machine — correct only when this
+ * package runs as a local stdio server, and wrong for any deployment where this process
  * runs somewhere other than the end user's own machine (e.g. hosted-mcp-server, a cloud
- * deployment): the URL would point at the *browser's* loopback interface, where nothing
- * is listening. Such deployments MUST set this to `"false"` until they supply their own
- * `TokenCollectionHandler` implementation.
+ * deployment): there, the URL would point at the *browser's* loopback interface, where
+ * nothing is listening. This package's own stdio entry point (`src/index.ts`) is the
+ * only context confirmed safe, so it opts in there explicitly (unless the environment
+ * already set this var, which is left untouched); every other embedder — this package
+ * used as a library, a test harness, a future unknown embedder — stays safe by default
+ * and must deliberately opt in only after confirming the same machine/browser
+ * relationship holds, rather than relying on every embedder remembering to opt out.
  */
 function isLocalUrlElicitationEnabled(): boolean {
-  return process.env.ENABLE_LOCAL_URL_ELICITATION !== 'false';
+  return process.env.ENABLE_LOCAL_URL_ELICITATION === 'true';
 }
 
 const MAX_TOKEN_NOTE_LENGTH = 256;
