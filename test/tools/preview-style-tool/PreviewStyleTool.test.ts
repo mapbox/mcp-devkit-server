@@ -293,7 +293,7 @@ describe('PreviewStyleTool', () => {
       }
     });
 
-    it('surfaces a clean error when minting fails', async () => {
+    it('surfaces an actionable error, not the raw Token API status, when minting fails (e.g. missing tokens:write)', async () => {
       const httpRequest = vi.fn(
         async () => new Response('forbidden', { status: 403 })
       );
@@ -306,8 +306,33 @@ describe('PreviewStyleTool', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0]).toMatchObject({
         type: 'text',
-        text: expect.stringContaining('Token API 403')
+        text: expect.stringContaining('tokens:write')
       });
+      expect(
+        (result.content[0] as { type: 'text'; text: string }).text
+      ).toContain('list_tokens_tool');
+    });
+
+    it('surfaces a hosted-endpoint-aware error, not a raw jwtUtils message, when the server token is not a Mapbox token at all', async () => {
+      const saved = process.env.MAPBOX_ACCESS_TOKEN;
+      process.env.MAPBOX_ACCESS_TOKEN = 'not-a-mapbox-token';
+      try {
+        const httpRequest = stubMintingFetch();
+        const result = await new PreviewStyleTool({ httpRequest }).run({
+          styleId: 'cmojrmkc9002t01ry96yi6h48',
+          title: false,
+          zoomwheel: false
+        });
+
+        expect(result.isError).toBe(true);
+        expect(httpRequest).not.toHaveBeenCalled();
+        const text = (result.content[0] as { type: 'text'; text: string }).text;
+        expect(text).toContain('list_tokens_tool');
+        expect(text).not.toContain('MAPBOX_ACCESS_TOKEN');
+      } finally {
+        if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
+        else delete process.env.MAPBOX_ACCESS_TOKEN;
+      }
     });
   });
 });

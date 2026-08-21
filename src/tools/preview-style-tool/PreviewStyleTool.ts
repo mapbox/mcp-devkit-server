@@ -8,7 +8,10 @@ import {
   PreviewStyleInput
 } from './PreviewStyleTool.input.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
-import { mintScopedPreviewToken } from '../../utils/mintScopedPreviewToken.js';
+import {
+  mintScopedPreviewToken,
+  describeAutoMintFailure
+} from '../../utils/mintScopedPreviewToken.js';
 import type { HttpRequest } from '../../utils/types.js';
 
 export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
@@ -102,12 +105,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
       } catch (error) {
         return {
           isError: true,
-          content: [
-            {
-              type: 'text',
-              text: error instanceof Error ? error.message : String(error)
-            }
-          ]
+          content: [{ type: 'text', text: describeAutoMintFailure(error) }]
         };
       }
     }

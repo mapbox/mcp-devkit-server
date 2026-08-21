@@ -355,6 +355,49 @@ describe('StyleComparisonTool', () => {
         if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
       }
     });
+
+    it('surfaces a hosted-endpoint-aware error, not a raw jwtUtils message, when the server token is not a Mapbox token at all', async () => {
+      const saved = process.env.MAPBOX_ACCESS_TOKEN;
+      process.env.MAPBOX_ACCESS_TOKEN = 'not-a-mapbox-token';
+      try {
+        const httpRequest = stubMintingFetch();
+        const result = await new StyleComparisonTool({ httpRequest }).run({
+          before: 'mapbox/streets-v12',
+          after: 'mapbox/outdoors-v12'
+        });
+
+        expect(result.isError).toBe(true);
+        expect(httpRequest).not.toHaveBeenCalled();
+        const text = (result.content[0] as { type: 'text'; text: string }).text;
+        expect(text).toContain('list_tokens_tool');
+        expect(text).not.toContain('MAPBOX_ACCESS_TOKEN');
+      } finally {
+        if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
+        else delete process.env.MAPBOX_ACCESS_TOKEN;
+      }
+    });
+
+    it('surfaces an actionable error, not the raw Token API status, when minting fails (e.g. missing tokens:write)', async () => {
+      const saved = process.env.MAPBOX_ACCESS_TOKEN;
+      process.env.MAPBOX_ACCESS_TOKEN = SERVER_TOKEN;
+      try {
+        const httpRequest = vi.fn(
+          async () => new Response('forbidden', { status: 403 })
+        );
+        const result = await new StyleComparisonTool({ httpRequest }).run({
+          before: 'mapbox/streets-v12',
+          after: 'mapbox/outdoors-v12'
+        });
+
+        expect(result.isError).toBe(true);
+        const text = (result.content[0] as { type: 'text'; text: string }).text;
+        expect(text).toContain('tokens:write');
+        expect(text).toContain('list_tokens_tool');
+      } finally {
+        if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
+        else delete process.env.MAPBOX_ACCESS_TOKEN;
+      }
+    });
   });
 
   describe('metadata', () => {

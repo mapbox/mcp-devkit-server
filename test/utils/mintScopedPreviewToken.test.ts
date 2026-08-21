@@ -2,7 +2,11 @@
 // Licensed under the MIT License.
 
 import { describe, it, expect, vi } from 'vitest';
-import { mintScopedPreviewToken } from '../../src/utils/mintScopedPreviewToken.js';
+import {
+  mintScopedPreviewToken,
+  describeAutoMintFailure
+} from '../../src/utils/mintScopedPreviewToken.js';
+import { getUserNameFromToken } from '../../src/utils/jwtUtils.js';
 
 function makeToken(username: string, signature = 'sig'): string {
   const payload = Buffer.from(JSON.stringify({ u: username })).toString(
@@ -121,5 +125,60 @@ describe('mintScopedPreviewToken', () => {
         scopes: []
       })
     ).rejects.toThrow('Token API 403');
+  });
+});
+
+describe('describeAutoMintFailure', () => {
+  it('rewrites getUserNameFromToken’s "not in valid JWT format" error (the hosted-endpoint case) into hosted-aware, actionable wording', () => {
+    let caught: unknown;
+    try {
+      // A hosted-deployment-style opaque bearer: not a Mapbox pk./sk./tk.
+      // token at all, so it fails jwtUtils' part-count check.
+      getUserNameFromToken('not-a-mapbox-token');
+    } catch (error) {
+      caught = error;
+    }
+
+    const message = describeAutoMintFailure(caught);
+    expect(message).toContain('list_tokens_tool');
+    expect(message).toContain('create_token_tool');
+    expect(message).not.toContain('MAPBOX_ACCESS_TOKEN');
+  });
+
+  it('rewrites getUserNameFromToken’s "does not contain username" error the same way', () => {
+    const noUsernameToken = `pk.${Buffer.from(JSON.stringify({ notU: 'x' })).toString('base64')}.sig`;
+    let caught: unknown;
+    try {
+      getUserNameFromToken(noUsernameToken);
+    } catch (error) {
+      caught = error;
+    }
+
+    const message = describeAutoMintFailure(caught);
+    expect(message).toContain('list_tokens_tool');
+  });
+
+  it('rewrites a Token API 401/403 (missing tokens:write) into actionable wording', () => {
+    expect(describeAutoMintFailure(new Error('Token API 403'))).toContain(
+      'tokens:write'
+    );
+    expect(describeAutoMintFailure(new Error('Token API 401'))).toContain(
+      'tokens:write'
+    );
+  });
+
+  it('passes through any other error unchanged (e.g. a transient failure)', () => {
+    expect(describeAutoMintFailure(new Error('Token API 500'))).toBe(
+      'Token API 500'
+    );
+    expect(
+      describeAutoMintFailure(
+        new Error('Minted token does not match caller account')
+      )
+    ).toBe('Minted token does not match caller account');
+  });
+
+  it('handles a non-Error thrown value', () => {
+    expect(describeAutoMintFailure('a plain string')).toBe('a plain string');
   });
 });
