@@ -9,45 +9,9 @@ import type {
 } from '@modelcontextprotocol/sdk/types.js';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { BaseResource } from '../BaseResource.js';
-import {
-  getUserNameFromToken,
-  mapboxApiEndpoint
-} from '../../utils/jwtUtils.js';
+import { mintScopedPreviewToken } from '../../utils/mintScopedPreviewToken.js';
 
 const MAPBOX_GL_VERSION = '3.12.0';
-
-// GL JS needs a public token; mint a short-lived one per request from the
-// caller's sk.*. Do NOT cache it in module scope — on a multi-tenant server a
-// process-global cache can return one caller's token to a different caller.
-//
-// Only used to bootstrap the map before any tool result has arrived (the
-// GeoJSON-preview path draws on top of the default Standard style using this
-// token). The style-preview path never needs it: its tool result URL already
-// carries a token scoped to the style being previewed, which takes over via
-// mapboxgl.accessToken once that result arrives — see handleToolResult below.
-async function createPreviewToken(skToken: string): Promise<string> {
-  const username = getUserNameFromToken(skToken);
-  const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
-  const url = `${mapboxApiEndpoint()}tokens/v2/${username}?access_token=${skToken}`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      note: 'Map Preview (auto-generated, expires in 1h)',
-      scopes: ['styles:tiles', 'styles:read', 'fonts:read'],
-      expires
-    })
-  });
-
-  if (!response.ok) {
-    // Do not include the response body — it may echo the token back.
-    throw new Error(`Token API ${response.status}`);
-  }
-
-  const data = (await response.json()) as { token: string };
-  return data.token;
-}
 
 /**
  * Serves the UI App HTML shared by `geojson_preview_tool` and
@@ -87,12 +51,10 @@ export class MapPreviewUIResource extends BaseResource {
     let accessToken = '';
     if (skToken.startsWith('sk.')) {
       try {
-        const minted = await createPreviewToken(skToken);
-        // Defense in depth: only embed a token minted for the caller's own
-        // account, so a token can never be served to a different caller.
-        if (getUserNameFromToken(minted) === getUserNameFromToken(skToken)) {
-          accessToken = minted;
-        }
+        accessToken = await mintScopedPreviewToken(fetch, skToken, {
+          note: 'Map Preview (auto-generated, expires in 1h)',
+          scopes: ['styles:tiles', 'styles:read', 'fonts:read']
+        });
       } catch {
         // Non-fatal — map won't render until a style-preview result
         // supplies its own token, but the link button still works.

@@ -124,7 +124,7 @@ export const listTokens = new ListTokensTool({ httpRequest });
 export const optimizeStyle = new OptimizeStyleTool();
 
 /** Preview a Mapbox style */
-export const previewStyle = new PreviewStyleTool();
+export const previewStyle = new PreviewStyleTool({ httpRequest });
 
 /** Retrieve a Mapbox style */
 export const retrieveStyle = new RetrieveStyleTool({ httpRequest });
@@ -133,7 +133,7 @@ export const retrieveStyle = new RetrieveStyleTool({ httpRequest });
 export const styleBuilder = new StyleBuilderTool();
 
 /** Compare styles side-by-side */
-export const styleComparison = new StyleComparisonTool();
+export const styleComparison = new StyleComparisonTool({ httpRequest });
 
 /** Query tiles at a location */
 export const tilequery = new TilequeryTool({ httpRequest });
