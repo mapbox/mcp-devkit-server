@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Fixed
+
+- **`create-and-preview-style` prompt now defaults to the Standard base style, not Classic `streets-v12`.** `StyleBuilderTool` (used by every other style-related prompt in this repo) has defaulted `base_style` to `"standard"` for a while — "ALWAYS use 'standard' as the default for all new styles" — but this prompt's own `base_style` fallback and its "Create the map style" step were never updated to match: it hardcoded `streets-v12` and hand-authored a bare Classic-style JSON skeleton (`sources`/`layers` background fill) directly in the prompt text, disconnected from the `base_style` argument entirely. Now defaults to `"standard"` and, like `build-custom-map` and other prompts in this repo, delegates style construction to `style_builder_tool` (which knows how to build either Standard or Classic structures correctly) instead of hand-rolling a Classic-only skeleton that would have been wrong for any base style other than the one it hardcoded.
+
 ### Dependencies
 
 - Bumped `@modelcontextprotocol/sdk` to `1.30.0`. Not adopting the `2026-07-28` spec revision this release covers (stateless request/response model, elicitation replaced by Multi Round-Trip Requests, Sampling deprecated) — that's a separate migration, tracked in #130, given this repo's own elicitation-based features depend on the mechanism being replaced. Regenerated `patches/@modelcontextprotocol+sdk+1.30.0.patch` (previously pinned to `1.29.0`) — same patch content, applies cleanly to the new version, verified live against the built server.
