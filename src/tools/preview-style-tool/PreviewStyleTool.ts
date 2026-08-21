@@ -23,7 +23,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
 
   readonly meta = {
     ui: {
-      resourceUri: 'ui://mapbox/preview-style/index.html',
+      resourceUri: 'ui://mapbox/map-preview/index.html',
       csp: {
         connectDomains: ['https://*.mapbox.com'],
         resourceDomains: ['https://*.mapbox.com'],

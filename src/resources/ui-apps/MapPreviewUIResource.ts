@@ -19,6 +19,12 @@ const MAPBOX_GL_VERSION = '3.12.0';
 // GL JS needs a public token; mint a short-lived one per request from the
 // caller's sk.*. Do NOT cache it in module scope — on a multi-tenant server a
 // process-global cache can return one caller's token to a different caller.
+//
+// Only used to bootstrap the map before any tool result has arrived (the
+// GeoJSON-preview path draws on top of the default Standard style using this
+// token). The style-preview path never needs it: its tool result URL already
+// carries a token scoped to the style being previewed, which takes over via
+// mapboxgl.accessToken once that result arrives — see handleToolResult below.
 async function createPreviewToken(skToken: string): Promise<string> {
   const username = getUserNameFromToken(skToken);
   const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour
@@ -28,7 +34,7 @@ async function createPreviewToken(skToken: string): Promise<string> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      note: 'GeoJSON Preview (auto-generated, expires in 1h)',
+      note: 'Map Preview (auto-generated, expires in 1h)',
       scopes: ['styles:tiles', 'styles:read', 'fonts:read'],
       expires
     })
@@ -44,15 +50,27 @@ async function createPreviewToken(skToken: string): Promise<string> {
 }
 
 /**
- * Serves UI App HTML for GeoJSON Preview using Mapbox GL JS directly.
- * Renders GeoJSON inline — no inner iframe needed, so frame-src CSP is not an issue.
- * Implements MCP Apps pattern with ui:// scheme.
+ * Serves the UI App HTML shared by `geojson_preview_tool` and
+ * `preview_style_tool` — one Mapbox GL JS map that either draws a GeoJSON
+ * overlay on the default Standard style, or swaps to an arbitrary preview
+ * style, depending on which tool's result arrives. Renders inline — no
+ * inner iframe needed, so frame-src CSP is not an issue.
+ *
+ * Previously two nearly-identical resources (GeojsonPreviewUIResource,
+ * PreviewStyleUIResource) each hand-wrote the same MCP-Apps postMessage
+ * handshake, fullscreen/open-link controls, and resize handling. Merged
+ * here since the only real difference between them was what they drew on
+ * the map once data arrived, not how the map/iframe worked.
+ *
+ * `style_comparison_tool`'s dual-map swipe UI (StyleComparisonUIResource)
+ * is a genuinely different UI shape — two synced map instances under a
+ * compare slider, not "one map, different content" — and stays separate.
  */
-export class GeojsonPreviewUIResource extends BaseResource {
-  readonly name = 'GeoJSON Preview UI';
-  readonly uri = 'ui://mapbox/geojson-preview/index.html';
+export class MapPreviewUIResource extends BaseResource {
+  readonly name = 'Mapbox Map Preview UI';
+  readonly uri = 'ui://mapbox/map-preview/index.html';
   readonly description =
-    'Interactive UI for previewing GeoJSON data rendered inline with Mapbox GL JS (MCP Apps)';
+    'Interactive UI for previewing GeoJSON data or Mapbox styles rendered inline with Mapbox GL JS (MCP Apps)';
   readonly mimeType = RESOURCE_MIME_TYPE;
 
   public async readCallback(
@@ -76,7 +94,8 @@ export class GeojsonPreviewUIResource extends BaseResource {
           accessToken = minted;
         }
       } catch {
-        // Non-fatal — map won't render but the link button still works
+        // Non-fatal — map won't render until a style-preview result
+        // supplies its own token, but the link button still works.
       }
     } else if (skToken.startsWith('pk.')) {
       accessToken = skToken; // Already a public token
@@ -87,7 +106,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GeoJSON Preview</title>
+  <title>Map Preview</title>
   <link href="https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.css" rel="stylesheet">
   <script src="https://api.mapbox.com/mapbox-gl-js/v${MAPBOX_GL_VERSION}/mapbox-gl.js"></script>
   <style>
@@ -103,6 +122,14 @@ export class GeojsonPreviewUIResource extends BaseResource {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
       color: #d32f2f; background: #ffebee; border-radius: 8px;
       padding: 20px; max-width: 400px; text-align: center; z-index: 10;
+    }
+    #style-name {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.55); color: #fff;
+      padding: 5px 14px; border-radius: 12px;
+      font-size: 13px; font-weight: 500;
+      display: none; z-index: 10;
+      white-space: nowrap; max-width: 70%; overflow: hidden; text-overflow: ellipsis;
     }
     #open-btn {
       position: absolute; bottom: 12px; right: 12px; z-index: 10;
@@ -128,8 +155,9 @@ export class GeojsonPreviewUIResource extends BaseResource {
 </head>
 <body>
   <div id="map"></div>
-  <div id="loading">Loading GeoJSON preview...</div>
+  <div id="loading">Loading preview...</div>
   <div id="error" style="display:none"></div>
+  <div id="style-name"></div>
   <button id="open-btn">↗ Open in browser</button>
   <button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
 
@@ -140,10 +168,10 @@ export class GeojsonPreviewUIResource extends BaseResource {
     var pendingGeoJSON = null;
     var currentPreviewUrl = '';
     var currentDisplayMode = 'inline';
-    var canFullscreen = false;
 
     var loadingEl = document.getElementById('loading');
     var errorEl = document.getElementById('error');
+    var styleNameEl = document.getElementById('style-name');
     var openBtn = document.getElementById('open-btn');
     var fullscreenBtn = document.getElementById('fullscreen-btn');
 
@@ -219,7 +247,6 @@ export class GeojsonPreviewUIResource extends BaseResource {
         }
         if (ctx && ctx.capabilities && ctx.capabilities.supportedDisplayModes &&
             ctx.capabilities.supportedDisplayModes.indexOf('fullscreen') !== -1) {
-          canFullscreen = true;
           fullscreenBtn.classList.add('visible');
         }
       }
@@ -228,7 +255,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
     sendRequest('ui/initialize', {
       protocolVersion: '2026-01-26',
       appCapabilities: {},
-      clientInfo: { name: 'GeoJSON Preview', version: '1.0.0' }
+      clientInfo: { name: 'Mapbox Map Preview', version: '1.0.0' }
     }).then(function() {
       sendNotification('ui/notifications/initialized', {});
     }, function() {
@@ -236,7 +263,7 @@ export class GeojsonPreviewUIResource extends BaseResource {
     });
 
     // ---------------------------------------------------------------------------
-    // Map initialisation
+    // GeoJSON overlay helpers (used once we know we're in GeoJSON-preview mode)
     // ---------------------------------------------------------------------------
 
     function getGeojsonBounds(geojson) {
@@ -301,6 +328,47 @@ export class GeojsonPreviewUIResource extends BaseResource {
       }
     }
 
+    // ---------------------------------------------------------------------------
+    // Style-preview helper (used once we know we're in style-preview mode)
+    // ---------------------------------------------------------------------------
+
+    function onStyleLoaded() {
+      loadingEl.style.display = 'none';
+      var style = map.getStyle();
+      if (style && style.name) {
+        styleNameEl.textContent = style.name;
+        styleNameEl.style.display = 'block';
+      }
+      requestSizeToFit();
+    }
+
+    function showStylePreview(targetStyle, urlToken) {
+      mapboxgl.accessToken = urlToken;
+      if (map) {
+        // A map already exists (GeoJSON-preview's eager bootstrap below) —
+        // swap its style in place rather than creating a second instance.
+        map.once('style.load', onStyleLoaded);
+        map.setStyle(targetStyle);
+      } else {
+        map = new mapboxgl.Map({
+          container: 'map',
+          style: targetStyle,
+          center: [0, 20],
+          zoom: 1.5
+        });
+        map.addControl(new mapboxgl.NavigationControl(), 'top-left');
+        map.on('style.load', onStyleLoaded);
+      }
+    }
+
+    // ---------------------------------------------------------------------------
+    // Eager map bootstrap — draws the default Standard style immediately so a
+    // GeoJSON overlay has something to render onto as soon as it arrives.
+    // Style-preview mode doesn't need this (it supplies its own style/token),
+    // but eagerly creating it here does no harm: showStylePreview() above
+    // reuses this instance via setStyle() instead of creating a second one.
+    // ---------------------------------------------------------------------------
+
     if (TOKEN && typeof mapboxgl !== 'undefined') {
       mapboxgl.accessToken = TOKEN;
       map = new mapboxgl.Map({
@@ -321,11 +389,15 @@ export class GeojsonPreviewUIResource extends BaseResource {
       });
     } else {
       // No token or GL JS failed to load — wait for tool result to show link
-      loadingEl.textContent = 'Waiting for GeoJSON data...';
+      // (or, for style-preview mode, to supply its own token and build the map).
+      loadingEl.textContent = 'Waiting for preview data...';
     }
 
     // ---------------------------------------------------------------------------
-    // Tool result handler
+    // Tool result handler — dispatches on the URL shape returned by whichever
+    // tool fed this resource: geojson_preview_tool (a geojson.io URL carrying
+    // GeoJSON in its data= param) or preview_style_tool (a Styles API
+    // .html preview URL carrying its own access_token).
     // ---------------------------------------------------------------------------
 
     function handleToolResult(result) {
@@ -341,9 +413,41 @@ export class GeojsonPreviewUIResource extends BaseResource {
       currentPreviewUrl = url;
       openBtn.style.display = 'block';
 
-      // Parse GeoJSON from the geojson.io/next URL
+      if (typeof mapboxgl === 'undefined') {
+        loadingEl.style.display = 'none';
+        return;
+      }
+
+      let parsed;
       try {
-        const dataParam = new URL(url).searchParams.get('data');
+        parsed = new URL(url);
+      } catch (e) {
+        loadingEl.style.display = 'none';
+        errorEl.textContent = 'Could not parse tool result URL';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const styleMatch = parsed.pathname.match(/\\/styles\\/v1\\/([^\\/]+)\\/([^.]+)\\.html/);
+      const urlToken = parsed.searchParams.get('access_token');
+
+      if (styleMatch && urlToken) {
+        // Style-preview mode
+        const username = styleMatch[1];
+        const styleId = styleMatch[2];
+        try {
+          showStylePreview('mapbox://styles/' + username + '/' + styleId, urlToken);
+        } catch (e) {
+          loadingEl.style.display = 'none';
+          errorEl.textContent = 'Could not load style';
+          errorEl.style.display = 'block';
+        }
+        return;
+      }
+
+      // GeoJSON-preview mode
+      try {
+        const dataParam = parsed.searchParams.get('data');
         if (!dataParam || !dataParam.startsWith('data:application/json,')) throw new Error('Unexpected URL format');
         const geojson = JSON.parse(decodeURIComponent(dataParam.replace('data:application/json,', '')));
 
