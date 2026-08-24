@@ -74,7 +74,7 @@ exports[`Tool Naming Convention > should maintain consistent tool list (snapshot
   },
   {
     "className": "PreviewStyleTool",
-    "description": "Generate preview URL for a Mapbox style using an existing public token",
+    "description": "Generate a live preview of a Mapbox style. By default, auto-generates a short-lived preview token so you can view it right away — no existing token needed. Pass \`share: true\` with an existing public \`accessToken\` instead to generate a durable, shareable preview link.",
     "toolName": "preview_style_tool",
   },
   {
@@ -149,7 +149,7 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
   },
   {
     "className": "StyleComparisonTool",
-    "description": "Generate a comparison URL for comparing two Mapbox styles side-by-side",
+    "description": "Generate a live side-by-side comparison of two Mapbox styles. By default, auto-generates a scoped preview token so you can compare them right away — no existing token needed. Pass \`share: true\` with an existing public \`accessToken\` instead to generate a comparison link using a token you manage yourself.",
     "toolName": "style_comparison_tool",
   },
   {
