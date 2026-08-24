@@ -10,13 +10,18 @@ import {
   StyleComparisonInput
 } from './StyleComparisonTool.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
+import {
+  mintScopedPreviewToken,
+  describeAutoMintFailure
+} from '../../utils/mintScopedPreviewToken.js';
+import type { HttpRequest } from '../../utils/types.js';
 
 export class StyleComparisonTool extends BaseTool<
   typeof StyleComparisonSchema
 > {
   readonly name = 'style_comparison_tool';
   readonly description =
-    'Generate a comparison URL for comparing two Mapbox styles side-by-side';
+    'Generate a live side-by-side comparison of two Mapbox styles. By default, auto-generates a scoped preview token so you can compare them right away — no existing token needed. Pass `share: true` with an existing public `accessToken` instead to generate a comparison link using a token you manage yourself.';
   readonly annotations = {
     readOnlyHint: true,
     destructiveHint: false,
@@ -36,8 +41,11 @@ export class StyleComparisonTool extends BaseTool<
     }
   };
 
-  constructor() {
+  private readonly httpRequest: HttpRequest;
+
+  constructor(params: { httpRequest: HttpRequest }) {
     super({ inputSchema: StyleComparisonSchema });
+    this.httpRequest = params.httpRequest;
   }
 
   /**
@@ -86,14 +94,70 @@ export class StyleComparisonTool extends BaseTool<
   }
 
   protected async execute(
-    input: StyleComparisonInput
+    input: StyleComparisonInput,
+    accessToken?: string
   ): Promise<CallToolResult> {
+    let publicToken: string;
+
+    if (input.accessToken) {
+      // Caller-supplied token — used as-is, for either mode.
+      publicToken = input.accessToken;
+    } else if (input.share) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: 'text',
+            text:
+              '`share: true` requires an existing public token via `accessToken` — a persistent ' +
+              'pk.* token is needed for a durable, shareable link. Get one via list_tokens_tool ' +
+              'or create_token_tool, or omit `share` for a quick inline comparison (no token needed).'
+          }
+        ]
+      };
+    } else {
+      if (!accessToken) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: 'No Mapbox access token available to generate a comparison.'
+            }
+          ]
+        };
+      }
+      try {
+        // Unlike the inline style preview, the comparison page this URL
+        // points to (agent.mapbox.com/tools/style-compare) validates the
+        // token prefix itself and hard-rejects anything but pk.* — a
+        // short-lived tk.* token (this repo's usual auto-mint default)
+        // fails there with a "Configuration Error", confirmed live. So
+        // this mints a real, non-expiring pk.* token instead: narrowly
+        // scoped, but it persists on the account until manually revoked.
+        publicToken = await mintScopedPreviewToken(
+          this.httpRequest,
+          accessToken,
+          {
+            note: 'Style Comparison (auto-generated)',
+            scopes: ['styles:tiles', 'styles:read', 'fonts:read'],
+            expiresInMs: null
+          }
+        );
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: describeAutoMintFailure(error) }]
+        };
+      }
+    }
+
     let beforeStyleId;
     let afterStyleId;
     try {
       // Process style IDs to get username/styleId format
-      beforeStyleId = this.processStyleId(input.before, input.accessToken);
-      afterStyleId = this.processStyleId(input.after, input.accessToken);
+      beforeStyleId = this.processStyleId(input.before, publicToken);
+      afterStyleId = this.processStyleId(input.after, publicToken);
     } catch (error) {
       return {
         content: [
@@ -111,7 +175,7 @@ export class StyleComparisonTool extends BaseTool<
 
     // Build the comparison URL
     const params = new URLSearchParams();
-    params.append('access_token', input.accessToken);
+    params.append('access_token', publicToken);
     params.append('before', beforeStyleId);
     params.append('after', afterStyleId);
 

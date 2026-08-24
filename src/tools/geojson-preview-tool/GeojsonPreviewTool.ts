@@ -25,7 +25,7 @@ export class GeojsonPreviewTool extends BaseTool<typeof GeojsonPreviewSchema> {
 
   readonly meta = {
     ui: {
-      resourceUri: 'ui://mapbox/geojson-preview/index.html',
+      resourceUri: 'ui://mapbox/map-preview/index.html',
       csp: {
         frameDomains: ['https://geojson.io']
       }

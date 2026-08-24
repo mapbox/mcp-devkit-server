@@ -200,7 +200,8 @@ describe('path traversal security', () => {
     it('PreviewStyleTool encodes username containing "/" in preview URL and resource URI', async () => {
       const maliciousPublicToken = makePublicToken('user/attacker');
 
-      const result = await new PreviewStyleTool().run({
+      const { httpRequest } = setupHttpRequest();
+      const result = await new PreviewStyleTool({ httpRequest }).run({
         styleId: VALID_STYLE_ID,
         accessToken: maliciousPublicToken
       });

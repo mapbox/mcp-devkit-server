@@ -23,18 +23,16 @@ export { MapboxStyleLayersResource } from './mapbox-style-layers-resource/Mapbox
 export { MapboxStreetsV8FieldsResource } from './mapbox-streets-v8-fields-resource/MapboxStreetsV8FieldsResource.js';
 export { MapboxTokenScopesResource } from './mapbox-token-scopes-resource/MapboxTokenScopesResource.js';
 export { MapboxLayerTypeMappingResource } from './mapbox-layer-type-mapping-resource/MapboxLayerTypeMappingResource.js';
-export { PreviewStyleUIResource } from './ui-apps/PreviewStyleUIResource.js';
+export { MapPreviewUIResource } from './ui-apps/MapPreviewUIResource.js';
 export { StyleComparisonUIResource } from './ui-apps/StyleComparisonUIResource.js';
-export { GeojsonPreviewUIResource } from './ui-apps/GeojsonPreviewUIResource.js';
 
 // Import resource classes for instantiation
 import { MapboxStyleLayersResource } from './mapbox-style-layers-resource/MapboxStyleLayersResource.js';
 import { MapboxStreetsV8FieldsResource } from './mapbox-streets-v8-fields-resource/MapboxStreetsV8FieldsResource.js';
 import { MapboxTokenScopesResource } from './mapbox-token-scopes-resource/MapboxTokenScopesResource.js';
 import { MapboxLayerTypeMappingResource } from './mapbox-layer-type-mapping-resource/MapboxLayerTypeMappingResource.js';
-import { PreviewStyleUIResource } from './ui-apps/PreviewStyleUIResource.js';
+import { MapPreviewUIResource } from './ui-apps/MapPreviewUIResource.js';
 import { StyleComparisonUIResource } from './ui-apps/StyleComparisonUIResource.js';
-import { GeojsonPreviewUIResource } from './ui-apps/GeojsonPreviewUIResource.js';
 
 // Export pre-configured resource instances with short, clean names
 
@@ -50,14 +48,14 @@ export const mapboxTokenScopes = new MapboxTokenScopesResource();
 /** Mapbox layer type mapping reference */
 export const mapboxLayerTypeMapping = new MapboxLayerTypeMappingResource();
 
-/** Preview style UI resource */
-export const previewStyleUI = new PreviewStyleUIResource();
+/**
+ * Shared map preview UI resource — serves both geojson_preview_tool and
+ * preview_style_tool's inline MCP Apps preview.
+ */
+export const mapPreviewUI = new MapPreviewUIResource();
 
 /** Style comparison UI resource */
 export const styleComparisonUI = new StyleComparisonUIResource();
-
-/** GeoJSON preview UI resource */
-export const geojsonPreviewUI = new GeojsonPreviewUIResource();
 
 // Export registry functions for batch access
 export {
