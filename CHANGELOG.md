@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Fixed
+
+- **Startup logging messages (`.env` status, tracing status, detected client capabilities) now actually reach clients.** The `McpServer` never declared the `logging` capability, so every `sendLoggingMessage` call was a silent no-op regardless of when it was sent. Several of those calls also ran before `server.connect(transport)`, which would have dropped them anyway even with the capability declared, since there's no connected client yet to receive a notification sent before the transport is connected. Fixed both: `logging: {}` is now declared in the server's capabilities, and startup logging is deferred until after `connect()`. Covered by a new integration test that spawns the real built server and asserts a real client receives at least one startup log message.
+
 ### New Features
 
 - **`preview_style_tool` and `style_comparison_tool` no longer require an existing `accessToken`.** Both previously made `accessToken` a required `pk.*` input — meaning a caller had to already have (or separately go create) a public token before either tool would do anything, for even a quick one-off preview. `accessToken` is now optional on both: when omitted, the tool auto-generates a preview token from the server's own access token (the same pattern `geojson_preview_tool`'s resource already used) via a new shared `mintScopedPreviewToken` utility, so a first call needs no setup at all.

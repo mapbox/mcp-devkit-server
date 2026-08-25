@@ -77,7 +77,8 @@ const server = new McpServer(
         listChanged: true // Advertise support for dynamic tool registration
       },
       resources: {},
-      prompts: {}
+      prompts: {},
+      logging: {}
     }
   }
 );
@@ -148,44 +149,19 @@ prompts.forEach((prompt) => {
 });
 
 async function main() {
-  // Send MCP logging messages about .env loading
-  if (envLoadError) {
-    server.server.sendLoggingMessage({
-      level: 'warning',
-      data: `Failed to load .env file: ${envLoadError.message}`
-    });
-  } else if (envLoadedCount > 0) {
-    server.server.sendLoggingMessage({
-      level: 'info',
-      data: `Loaded ${envLoadedCount} environment variables from ${envPath}`
-    });
-  } else {
-    server.server.sendLoggingMessage({
-      level: 'debug',
-      data: 'No .env file found or file was empty'
-    });
-  }
-
-  // Initialize OpenTelemetry tracing if not in test mode
+  // Initialize OpenTelemetry tracing if not in test mode. This happens before
+  // the transport connects (below), so any resulting MCP logging messages are
+  // only sent once we're connected -- sending them earlier would be silently
+  // dropped, since there's no client to receive them yet.
+  let tracingInitialized = false;
+  let tracingInitError: Error | null = null;
   if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
     try {
       await initializeTracing();
-
-      // Send MCP logging message about tracing status
-      if (isTracingInitialized()) {
-        server.server.sendLoggingMessage({
-          level: 'info',
-          data: 'OpenTelemetry tracing enabled'
-        });
-      } else {
-        server.server.sendLoggingMessage({
-          level: 'debug',
-          data: 'OpenTelemetry tracing disabled (no OTLP endpoint configured)'
-        });
-      }
+      tracingInitialized = isTracingInitialized();
 
       // Record .env loading as a span (retrospectively since it happened before tracing init)
-      if (isTracingInitialized()) {
+      if (tracingInitialized) {
         const tracer = getTracer();
         const span = tracer.startSpan('config.load_env', {
           attributes: {
@@ -217,12 +193,48 @@ async function main() {
         span.end();
       }
     } catch (error) {
-      // Log tracing initialization failure
-      server.server.sendLoggingMessage({
-        level: 'warning',
-        data: `Failed to initialize tracing: ${error instanceof Error ? error.message : String(error)}`
-      });
+      tracingInitError =
+        error instanceof Error ? error : new Error(String(error));
     }
+  }
+
+  // Start receiving messages on stdin and sending messages on stdout
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+
+  // Now that we're connected, send all the logging messages accumulated above.
+  if (envLoadError) {
+    server.server.sendLoggingMessage({
+      level: 'warning',
+      data: `Failed to load .env file: ${envLoadError.message}`
+    });
+  } else if (envLoadedCount > 0) {
+    server.server.sendLoggingMessage({
+      level: 'info',
+      data: `Loaded ${envLoadedCount} environment variables from ${envPath}`
+    });
+  } else {
+    server.server.sendLoggingMessage({
+      level: 'debug',
+      data: 'No .env file found or file was empty'
+    });
+  }
+
+  if (tracingInitError) {
+    server.server.sendLoggingMessage({
+      level: 'warning',
+      data: `Failed to initialize tracing: ${tracingInitError.message}`
+    });
+  } else if (tracingInitialized) {
+    server.server.sendLoggingMessage({
+      level: 'info',
+      data: 'OpenTelemetry tracing enabled'
+    });
+  } else {
+    server.server.sendLoggingMessage({
+      level: 'debug',
+      data: 'OpenTelemetry tracing disabled (no OTLP endpoint configured)'
+    });
   }
 
   const relevantEnvVars = Object.freeze({
@@ -239,10 +251,6 @@ async function main() {
     level: 'debug',
     data: JSON.stringify(relevantEnvVars, null, 2)
   });
-
-  // Start receiving messages on stdin and sending messages on stdout
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
 
   // After connection, dynamically register capability-dependent tools
   const clientCapabilities = server.server.getClientCapabilities();
