@@ -22,7 +22,8 @@ import {
   initializeTracing,
   shutdownTracing,
   isTracingInitialized,
-  getTracer
+  getTracer,
+  setClientInfo
 } from './utils/tracing.js';
 
 // Load .env from current working directory (where npm run is executed)
@@ -68,7 +69,8 @@ const server = new McpServer(
         listChanged: true // Advertise support for dynamic tool registration
       },
       resources: {},
-      prompts: {}
+      prompts: {},
+      logging: {}
     }
   }
 );
@@ -139,7 +141,82 @@ prompts.forEach((prompt) => {
 });
 
 async function main() {
-  // Send MCP logging messages about .env loading
+  // Initialize OpenTelemetry tracing if not in test mode. This happens before
+  // the transport connects (below), so any resulting MCP logging messages are
+  // only sent once we're connected -- sending them earlier would be silently
+  // dropped, since there's no client to receive them yet.
+  let tracingInitialized = false;
+  let tracingInitError: Error | null = null;
+  if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+    try {
+      await initializeTracing();
+      tracingInitialized = isTracingInitialized();
+
+      // Record .env loading as a span (retrospectively since it happened before tracing init)
+      if (tracingInitialized) {
+        const tracer = getTracer();
+        const span = tracer.startSpan('config.load_env', {
+          attributes: {
+            'config.file.path': envPath,
+            'config.file.exists': envResult.exists,
+            'config.vars.loaded': envLoadedCount,
+            'config.vars.skipped': envSkippedKeys.length,
+            'config.vars.blocked': envBlockedKeys.length,
+            'operation.type': 'config_load'
+          }
+        });
+
+        if (envLoadError) {
+          span.recordException(envLoadError);
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: envLoadError.message
+          });
+          span.setAttribute('error.type', envLoadError.name);
+          span.setAttribute('error.message', envLoadError.message);
+        } else if (
+          envLoadedCount > 0 ||
+          envSkippedKeys.length > 0 ||
+          envBlockedKeys.length > 0
+        ) {
+          span.setStatus({ code: SpanStatusCode.OK });
+          span.setAttribute('config.load.success', true);
+        } else {
+          // No error, but no variables loaded either (file might be empty or not exist)
+          span.setStatus({ code: SpanStatusCode.OK });
+          span.setAttribute('config.load.success', true);
+          span.setAttribute('config.load.empty', true);
+        }
+
+        span.end();
+      }
+    } catch (error) {
+      tracingInitError =
+        error instanceof Error ? error : new Error(String(error));
+    }
+  }
+
+  // Registered before connect() so it's already in place the moment the
+  // client's initialize handshake completes. getClientCapabilities() and
+  // getClientVersion() are only populated once the server has processed the
+  // client's `initialize` request -- reading them synchronously right after
+  // `server.connect()` races that request and reliably sees them as unset,
+  // since connect() only waits for the transport to start, not for the
+  // handshake to finish.
+  server.server.oninitialized = () => {
+    onClientInitialized().catch((error) => {
+      server.server.sendLoggingMessage({
+        level: 'warning',
+        data: `Error handling client initialization: ${error instanceof Error ? error.message : String(error)}`
+      });
+    });
+  };
+
+  // Start receiving messages on stdin and sending messages on stdout
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+
+  // Now that we're connected, send all the logging messages accumulated above.
   if (envLoadError) {
     server.server.sendLoggingMessage({
       level: 'warning',
@@ -181,69 +258,21 @@ async function main() {
     });
   }
 
-  // Initialize OpenTelemetry tracing if not in test mode
-  if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
-    try {
-      await initializeTracing();
-
-      // Send MCP logging message about tracing status
-      if (isTracingInitialized()) {
-        server.server.sendLoggingMessage({
-          level: 'info',
-          data: 'OpenTelemetry tracing enabled'
-        });
-      } else {
-        server.server.sendLoggingMessage({
-          level: 'debug',
-          data: 'OpenTelemetry tracing disabled (no OTLP endpoint configured)'
-        });
-      }
-
-      // Record .env loading as a span (retrospectively since it happened before tracing init)
-      if (isTracingInitialized()) {
-        const tracer = getTracer();
-        const span = tracer.startSpan('config.load_env', {
-          attributes: {
-            'config.file.path': envPath,
-            'config.file.exists': envResult.exists,
-            'config.vars.loaded': envLoadedCount,
-            'config.vars.skipped': envSkippedKeys.length,
-            'config.vars.blocked': envBlockedKeys.length,
-            'operation.type': 'config_load'
-          }
-        });
-
-        if (envLoadError) {
-          span.recordException(envLoadError);
-          span.setStatus({
-            code: SpanStatusCode.ERROR,
-            message: envLoadError.message
-          });
-          span.setAttribute('error.type', envLoadError.name);
-          span.setAttribute('error.message', envLoadError.message);
-        } else if (
-          envLoadedCount > 0 ||
-          envSkippedKeys.length > 0 ||
-          envBlockedKeys.length > 0
-        ) {
-          span.setStatus({ code: SpanStatusCode.OK });
-          span.setAttribute('config.load.success', true);
-        } else {
-          // No error, but no variables loaded either (file might be empty or not exist)
-          span.setStatus({ code: SpanStatusCode.OK });
-          span.setAttribute('config.load.success', true);
-          span.setAttribute('config.load.empty', true);
-        }
-
-        span.end();
-      }
-    } catch (error) {
-      // Log tracing initialization failure
-      server.server.sendLoggingMessage({
-        level: 'warning',
-        data: `Failed to initialize tracing: ${error instanceof Error ? error.message : String(error)}`
-      });
-    }
+  if (tracingInitError) {
+    server.server.sendLoggingMessage({
+      level: 'warning',
+      data: `Failed to initialize tracing: ${tracingInitError.message}`
+    });
+  } else if (tracingInitialized) {
+    server.server.sendLoggingMessage({
+      level: 'info',
+      data: 'OpenTelemetry tracing enabled'
+    });
+  } else {
+    server.server.sendLoggingMessage({
+      level: 'debug',
+      data: 'OpenTelemetry tracing disabled (no OTLP endpoint configured)'
+    });
   }
 
   const relevantEnvVars = Object.freeze({
@@ -260,12 +289,22 @@ async function main() {
     level: 'debug',
     data: JSON.stringify(relevantEnvVars, null, 2)
   });
+}
 
-  // Start receiving messages on stdin and sending messages on stdout
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+// Runs once per session, after the client's initialize handshake completes
+// (see the `oninitialized` registration in main() for why that timing
+// matters). Reports which client connected and registers any tools gated on
+// capabilities the client declared during that handshake.
+async function onClientInitialized() {
+  const clientInfo = server.server.getClientVersion();
+  server.server.sendLoggingMessage({
+    level: 'info',
+    data: `Client identified as: ${clientInfo?.name ?? 'unknown'} v${clientInfo?.version ?? 'unknown'}`
+  });
+  // Recorded so every subsequent tool-execution span carries it too --
+  // see setClientInfo's doc comment in tracing.ts.
+  setClientInfo(clientInfo);
 
-  // After connection, dynamically register capability-dependent tools
   const clientCapabilities = server.server.getClientCapabilities();
 
   // Debug: Log what capabilities we detected

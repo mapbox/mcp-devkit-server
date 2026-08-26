@@ -51,6 +51,25 @@ describe('CreateAndPreviewStylePrompt', () => {
     expect(text).toContain('preview_style_tool');
   });
 
+  it('defaults base_style to "standard", not the Classic "streets-v12"', () => {
+    const result = prompt.execute({ style_name: 'Test Style' });
+    const text = result.messages[0].content.text;
+
+    expect(text).toContain('base_style: "standard"');
+    expect(text).not.toContain('streets-v12');
+    expect(text).toContain('style_builder_tool');
+  });
+
+  it('respects an explicit Classic base_style override', () => {
+    const result = prompt.execute({
+      style_name: 'Test Style',
+      base_style: 'streets-v12'
+    });
+    const text = result.messages[0].content.text;
+
+    expect(text).toContain('base_style: "streets-v12"');
+  });
+
   it('should include optional arguments in messages', () => {
     const result = prompt.execute({
       style_name: 'Test Style',
