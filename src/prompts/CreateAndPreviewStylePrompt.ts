@@ -10,8 +10,9 @@ import { BasePrompt, type PromptArgument } from './BasePrompt.js';
  * This prompt orchestrates multiple tools to:
  * 1. Check for an existing public token with styles:read scope
  * 2. Create a new public token if needed
- * 3. Create the map style
- * 4. Generate a preview link using the public token
+ * 3. Build the style specification (style_builder_tool, defaulting to the Standard base style)
+ * 4. Create the map style (create_style_tool)
+ * 5. Generate a preview link using the public token
  */
 export class CreateAndPreviewStylePrompt extends BasePrompt {
   readonly name = 'create-and-preview-style';
@@ -32,7 +33,7 @@ export class CreateAndPreviewStylePrompt extends BasePrompt {
     {
       name: 'base_style',
       description:
-        'Optional base style to start from (e.g., "streets-v12", "outdoors-v12", "light-v11", "dark-v11")',
+        'Optional base style to start from. Defaults to "standard" (Mapbox\'s modern default). Only use a Classic style (e.g., "streets-v12", "outdoors-v12", "light-v11", "dark-v11") if explicitly requested.',
       required: false
     },
     {
@@ -51,7 +52,7 @@ export class CreateAndPreviewStylePrompt extends BasePrompt {
   getMessages(args: Record<string, string>): PromptMessage[] {
     const styleName = args['style_name'];
     const styleDescription = args['style_description'];
-    const baseStyle = args['base_style'] || 'streets-v12';
+    const baseStyle = args['base_style'] || 'standard';
     const previewLocation = args['preview_location'];
     const previewZoom = args['preview_zoom'] || '12';
 
@@ -71,38 +72,26 @@ Follow these steps carefully:
      * scopes: ["styles:read"]
    - Save the token value from the response
 
-3. **Create the map style**
-   - Use the create_style_tool to create the new style
-   - Style name: "${styleName}"`;
+3. **Build the map style**
+   - Use the style_builder_tool to generate the style specification
+   - style_name: "${styleName}"
+   - base_style: "${baseStyle}"`;
 
     if (styleDescription) {
-      instructionText += `\n   - Description: "${styleDescription}"`;
+      instructionText += `\n   - Interpret this description into appropriate \`layers\`/\`global_settings\` entries: "${styleDescription}". If there's nothing specific to customize, pass an empty \`layers\` array to use ${baseStyle} as-is.`;
+    } else {
+      instructionText += `\n   - No specific customizations requested — pass an empty \`layers\` array to use ${baseStyle} as-is.`;
     }
 
-    instructionText += `\n   - Base the style on Mapbox ${baseStyle}
-   - You can start with a basic style like:
-     \`\`\`json
-     {
-       "version": 8,
-       "name": "${styleName}",
-       "sources": {
-         "mapbox": {
-           "type": "vector",
-           "url": "mapbox://mapbox.mapbox-streets-v8"
-         }
-       },
-       "layers": [
-         {
-           "id": "background",
-           "type": "background",
-           "paint": { "background-color": "#f0f0f0" }
-         }
-       ]
-     }
-     \`\`\`
+    instructionText += `\n   - The tool returns a complete Mapbox GL JS style specification
+
+4. **Create the map style**
+   - Use the create_style_tool to save the generated style to the Mapbox account
+   - Style name: "${styleName}"
+   - Include the complete style specification from step 3
    - Save the style ID from the response
 
-4. **Generate preview link**
+5. **Generate preview link**
    - Use the preview_style_tool with the style ID you just created`;
 
     if (previewLocation) {
@@ -112,16 +101,16 @@ Follow these steps carefully:
     instructionText += `\n   - Set zoom level to: ${previewZoom}
    - The tool will automatically use the public token you created/found earlier
 
-5. **Validate the style**
+6. **Validate the style**
    - Automatically run validation using the prepare-style-for-production prompt
-   - Pass the style ID from step 3 as the style_id_or_json parameter
+   - Pass the style ID from step 4 as the style_id_or_json parameter
    - This checks:
      * Expression syntax and correctness
      * Color contrast for accessibility (WCAG AA)
      * Style optimization opportunities
    - Validation is fast (offline processing only)
 
-6. **Present complete results**
+7. **Present complete results**
    - Show the user:
      * The created style ID
      * The preview URL (they can click to open in browser)
