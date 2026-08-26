@@ -8,11 +8,16 @@ import {
   PreviewStyleInput
 } from './PreviewStyleTool.input.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
+import {
+  mintScopedPreviewToken,
+  describeAutoMintFailure
+} from '../../utils/mintScopedPreviewToken.js';
+import type { HttpRequest } from '../../utils/types.js';
 
 export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   readonly name = 'preview_style_tool';
   readonly description =
-    'Generate preview URL for a Mapbox style using an existing public token';
+    'Generate a live preview of a Mapbox style. By default, auto-generates a short-lived preview token so you can view it right away — no existing token needed. Pass `share: true` with an existing public `accessToken` instead to generate a durable, shareable preview link.';
   readonly annotations = {
     readOnlyHint: true,
     destructiveHint: false,
@@ -23,7 +28,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
 
   readonly meta = {
     ui: {
-      resourceUri: 'ui://mapbox/preview-style/index.html',
+      resourceUri: 'ui://mapbox/map-preview/index.html',
       csp: {
         connectDomains: ['https://*.mapbox.com'],
         resourceDomains: ['https://*.mapbox.com'],
@@ -32,28 +37,78 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     }
   };
 
-  constructor() {
+  private readonly httpRequest: HttpRequest;
+
+  constructor(params: { httpRequest: HttpRequest }) {
     super({ inputSchema: PreviewStyleSchema });
+    this.httpRequest = params.httpRequest;
   }
 
-  protected async execute(input: PreviewStyleInput): Promise<CallToolResult> {
+  protected async execute(
+    input: PreviewStyleInput,
+    accessToken?: string
+  ): Promise<CallToolResult> {
     let userName: string;
-    try {
-      userName = getUserNameFromToken(input.accessToken);
-    } catch (error) {
+    let publicToken: string;
+
+    if (input.accessToken) {
+      // Caller-supplied token — used as-is, for either mode.
+      try {
+        userName = getUserNameFromToken(input.accessToken);
+      } catch (error) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: error instanceof Error ? error.message : String(error)
+            }
+          ]
+        };
+      }
+      publicToken = input.accessToken;
+    } else if (input.share) {
       return {
         isError: true,
         content: [
           {
             type: 'text',
-            text: error instanceof Error ? error.message : String(error)
+            text:
+              '`share: true` requires an existing public token via `accessToken` — a persistent ' +
+              'pk.* token is needed for a durable, shareable link. Get one via list_tokens_tool ' +
+              'or create_token_tool, or omit `share` for a quick inline preview (no token needed).'
           }
         ]
       };
+    } else {
+      if (!accessToken) {
+        return {
+          isError: true,
+          content: [
+            {
+              type: 'text',
+              text: 'No Mapbox access token available to generate a preview.'
+            }
+          ]
+        };
+      }
+      try {
+        userName = getUserNameFromToken(accessToken);
+        publicToken = await mintScopedPreviewToken(
+          this.httpRequest,
+          accessToken,
+          {
+            note: 'Style Preview (auto-generated, expires in 1h)',
+            scopes: ['styles:tiles', 'styles:read', 'fonts:read']
+          }
+        );
+      } catch (error) {
+        return {
+          isError: true,
+          content: [{ type: 'text', text: describeAutoMintFailure(error) }]
+        };
+      }
     }
-
-    // Use the user-provided public token
-    const publicToken = input.accessToken;
 
     // Build URL for the embeddable HTML endpoint
     const params = new URLSearchParams();

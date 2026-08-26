@@ -9,7 +9,10 @@ describe('StyleComparisonTool', () => {
   let tool: StyleComparisonTool;
 
   beforeEach(() => {
-    tool = new StyleComparisonTool();
+    // Unused by tests below that supply their own accessToken; the tool
+    // takes httpRequest as a constructor dependency regardless, matching
+    // every other network-calling tool in this repo — see toolRegistry.ts.
+    tool = new StyleComparisonTool({ httpRequest: vi.fn() });
   });
 
   afterEach(() => {
@@ -50,19 +53,20 @@ describe('StyleComparisonTool', () => {
       });
     });
 
-    it('should require access token', async () => {
+    it('requires an access token when share is true', async () => {
       const input = {
         before: 'mapbox/streets-v12',
-        after: 'mapbox/satellite-v9'
+        after: 'mapbox/satellite-v9',
+        share: true
         // Missing accessToken
-      } as any;
+      };
 
       const result = await tool.run(input);
 
       expect(result.isError).toBe(true);
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('invalid_type');
+      ).toContain('share: true` requires');
     });
 
     it('should handle full style URLs', async () => {
@@ -262,11 +266,145 @@ describe('StyleComparisonTool', () => {
     });
   });
 
+  describe('auto-minted inline comparison (no accessToken, no share)', () => {
+    const SERVER_TOKEN = 'sk.eyJ1IjoidGVzdC11c2VyIn0.signature';
+
+    function stubMintingFetch() {
+      return vi.fn(
+        async (_input: string | URL | Request, _init?: RequestInit) =>
+          new Response(
+            JSON.stringify({ token: 'pk.eyJ1IjoidGVzdC11c2VyIn0.minted' }),
+            { status: 200 }
+          )
+      );
+    }
+
+    it('auto-generates a token from the server access token and needs no accessToken input', async () => {
+      const saved = process.env.MAPBOX_ACCESS_TOKEN;
+      process.env.MAPBOX_ACCESS_TOKEN = SERVER_TOKEN;
+      try {
+        const httpRequest = stubMintingFetch();
+        const result = await new StyleComparisonTool({ httpRequest }).run({
+          before: 'mapbox/streets-v12',
+          after: 'mapbox/outdoors-v12'
+        });
+
+        expect(result.isError).toBe(false);
+        expect(httpRequest).toHaveBeenCalledTimes(1);
+        const [url] = httpRequest.mock.calls[0];
+        expect(String(url)).toContain('tokens/v2/test-user');
+        const resultUrl = (result.content[0] as { type: 'text'; text: string })
+          .text;
+        expect(resultUrl).toContain(
+          'access_token=pk.eyJ1IjoidGVzdC11c2VyIn0.minted'
+        );
+      } finally {
+        if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
+        else delete process.env.MAPBOX_ACCESS_TOKEN;
+      }
+    });
+
+    it('mints a non-expiring token, not the short-lived tk.* the other preview tools use — agent.mapbox.com/tools/style-compare rejects tk.* outright (confirmed live)', async () => {
+      const saved = process.env.MAPBOX_ACCESS_TOKEN;
+      process.env.MAPBOX_ACCESS_TOKEN = SERVER_TOKEN;
+      try {
+        const httpRequest = stubMintingFetch();
+        await new StyleComparisonTool({ httpRequest }).run({
+          before: 'mapbox/streets-v12',
+          after: 'mapbox/outdoors-v12'
+        });
+
+        const [, init] = httpRequest.mock.calls[0];
+        const body = JSON.parse((init as RequestInit).body as string);
+        expect(body).not.toHaveProperty('expires');
+      } finally {
+        if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
+        else delete process.env.MAPBOX_ACCESS_TOKEN;
+      }
+    });
+
+    it('an explicit accessToken is honored even when share is true', async () => {
+      const httpRequest = stubMintingFetch();
+      const result = await new StyleComparisonTool({ httpRequest }).run({
+        before: 'mapbox/streets-v12',
+        after: 'mapbox/outdoors-v12',
+        share: true,
+        accessToken: 'pk.test.token'
+      });
+
+      expect(result.isError).toBe(false);
+      expect(httpRequest).not.toHaveBeenCalled();
+      const resultUrl = (result.content[0] as { type: 'text'; text: string })
+        .text;
+      expect(resultUrl).toContain('access_token=pk.test.token');
+    });
+
+    it('errors when no server access token is available to mint from', async () => {
+      const saved = process.env.MAPBOX_ACCESS_TOKEN;
+      delete process.env.MAPBOX_ACCESS_TOKEN;
+      try {
+        const httpRequest = stubMintingFetch();
+        const result = await new StyleComparisonTool({ httpRequest }).run({
+          before: 'mapbox/streets-v12',
+          after: 'mapbox/outdoors-v12'
+        });
+
+        expect(result.isError).toBe(true);
+        expect(httpRequest).not.toHaveBeenCalled();
+      } finally {
+        if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
+      }
+    });
+
+    it('surfaces a hosted-endpoint-aware error, not a raw jwtUtils message, when the server token is not a Mapbox token at all', async () => {
+      const saved = process.env.MAPBOX_ACCESS_TOKEN;
+      process.env.MAPBOX_ACCESS_TOKEN = 'not-a-mapbox-token';
+      try {
+        const httpRequest = stubMintingFetch();
+        const result = await new StyleComparisonTool({ httpRequest }).run({
+          before: 'mapbox/streets-v12',
+          after: 'mapbox/outdoors-v12'
+        });
+
+        expect(result.isError).toBe(true);
+        expect(httpRequest).not.toHaveBeenCalled();
+        const text = (result.content[0] as { type: 'text'; text: string }).text;
+        expect(text).toContain('list_tokens_tool');
+        expect(text).not.toContain('MAPBOX_ACCESS_TOKEN');
+      } finally {
+        if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
+        else delete process.env.MAPBOX_ACCESS_TOKEN;
+      }
+    });
+
+    it('surfaces an actionable error, not the raw Token API status, when minting fails (e.g. missing tokens:write)', async () => {
+      const saved = process.env.MAPBOX_ACCESS_TOKEN;
+      process.env.MAPBOX_ACCESS_TOKEN = SERVER_TOKEN;
+      try {
+        const httpRequest = vi.fn(
+          async () => new Response('forbidden', { status: 403 })
+        );
+        const result = await new StyleComparisonTool({ httpRequest }).run({
+          before: 'mapbox/streets-v12',
+          after: 'mapbox/outdoors-v12'
+        });
+
+        expect(result.isError).toBe(true);
+        const text = (result.content[0] as { type: 'text'; text: string }).text;
+        expect(text).toContain('tokens:write');
+        expect(text).toContain('list_tokens_tool');
+      } finally {
+        if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
+        else delete process.env.MAPBOX_ACCESS_TOKEN;
+      }
+    });
+  });
+
   describe('metadata', () => {
     it('should have correct name and description', () => {
       expect(tool.name).toBe('style_comparison_tool');
-      expect(tool.description).toBe(
-        'Generate a comparison URL for comparing two Mapbox styles side-by-side'
+      expect(tool.description).toContain(
+        'auto-generates a scoped preview token'
       );
     });
   });
