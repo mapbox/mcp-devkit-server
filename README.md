@@ -782,38 +782,19 @@ A JSON object with:
 
 ## Agent Skills
 
-This repository includes [Agent Skills](https://agentskills.io) that provide domain expertise for building maps with Mapbox. Skills teach AI assistants about map design, security best practices, and common implementation patterns.
+[Agent Skills](https://agentskills.io) providing domain expertise for building maps with Mapbox — map design, security best practices, and framework integration patterns — now live in the dedicated **[mapbox-agent-skills](https://github.com/mapbox/mapbox-agent-skills)** repository, not this one.
 
-**Available Skills:**
-
-- **🎨 mapbox-cartography**: Map design principles, color theory, visual hierarchy, typography
-- **🔐 mapbox-token-security**: Token management, scope control, URL restrictions, rotation strategies
-- **📐 mapbox-style-patterns**: Common style patterns and layer configurations for typical scenarios
-- **🔧 mapbox-integration-patterns**: Framework-specific integration patterns for React, Vue, Svelte, Angular, and vanilla JS
-- **✅ mapbox-style-quality**: Expert guidance on validating, optimizing, and ensuring quality of Mapbox styles through validation, accessibility checks, and optimization
-
-Skills complement the MCP server by providing expertise (how to think about design) while tools provide capabilities (how to execute actions).
-
-For complete documentation and usage instructions, see [skills/README.md](./skills/README.md).
-
-### Using Skills with Claude Code
-
-To use these skills in Claude Code, create a symlink:
+Skills complement this MCP server by providing expertise (how to think about design) while tools provide capabilities (how to execute actions).
 
 ```bash
-mkdir -p .claude
-ln -s ../skills .claude/skills
+# Install all Mapbox skills
+npx add-skill mapbox/mapbox-agent-skills
+
+# Install a specific skill
+npx add-skill mapbox/mapbox-agent-skills --skill mapbox-cartography
 ```
 
-Or copy to your global skills directory:
-
-```bash
-cp -r skills/* ~/.claude/skills/
-```
-
-### Using Skills with Claude API
-
-Upload skills as zip files via the Skills API. See [Claude API Skills documentation](https://docs.anthropic.com/en/build-with-claude/skills-guide).
+See the [mapbox-agent-skills README](https://github.com/mapbox/mapbox-agent-skills#readme) for the full list of available skills and usage with Claude Code or the Claude API.
 
 ## Prompts
 
@@ -1032,7 +1013,7 @@ Arguments:
 
 **Related:**
 
-See the [mapbox-style-quality skill](skills/mapbox-style-quality/SKILL.md) for detailed guidance on when to use validation tools, best practices, and optimization strategies.
+See the [mapbox-style-quality skill](https://github.com/mapbox/mapbox-agent-skills/blob/main/skills/mapbox-style-quality/SKILL.md) for detailed guidance on when to use validation tools, best practices, and optimization strategies.
 
 ## Resources
 
