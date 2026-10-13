@@ -113,6 +113,7 @@ describe('installResources', () => {
       'tokens/v2/caller-user?'
     );
     expect(usernameOf(embedded)).toBe('caller-user');
+    expect(html).not.toContain('sk.');
     await client.close();
   });
 });
