@@ -72,7 +72,7 @@ This approach supports dependency injection and maintains testability. See `src/
 
 All Mapbox API tools require `MAPBOX_ACCESS_TOKEN` with specific scopes:
 
-- Tools receive tokens via `extra.authInfo.token` or `process.env.MAPBOX_ACCESS_TOKEN`
+- Tools receive tokens via `ctx.http.authInfo.token` or `process.env.MAPBOX_ACCESS_TOKEN`
 - Document required scopes in `README.md` for each tool
 - Token scope mismatches are the primary failure mode
 - Use `VERBOSE_ERRORS=true` for debugging authentication issues

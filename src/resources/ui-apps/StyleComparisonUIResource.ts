@@ -1,12 +1,10 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
   ReadResourceResult,
-  ServerNotification,
-  ServerRequest
-} from '@modelcontextprotocol/sdk/types.js';
+  ServerContext
+} from '@modelcontextprotocol/server';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { BaseResource } from '../BaseResource.js';
 
@@ -28,7 +26,7 @@ export class StyleComparisonUIResource extends BaseResource {
 
   public async readCallback(
     _uri: URL,
-    _extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+    _extra: ServerContext
   ): Promise<ReadResourceResult> {
     const html = `<!DOCTYPE html>
 <html>

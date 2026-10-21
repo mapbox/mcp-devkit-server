@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { createUIResource } from '@mcp-ui/server';
 import { BaseTool } from '../BaseTool.js';
 import { MapboxApiBasedTool } from '../MapboxApiBasedTool.js';

@@ -189,7 +189,7 @@ describe('path traversal security', () => {
       await new DeleteStyleTool({ httpRequest }).run(
         { styleId: VALID_STYLE_ID },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { authInfo: { token: maliciousToken } } as any
+        { http: { authInfo: { token: maliciousToken } } } as any
       );
 
       const calledUrl: string = mockHttpRequest.mock.calls[0][0];
@@ -221,7 +221,7 @@ describe('path traversal security', () => {
       await new RetrieveStyleTool({ httpRequest }).run(
         { styleId: VALID_STYLE_ID },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { authInfo: { token: maliciousToken } } as any
+        { http: { authInfo: { token: maliciousToken } } } as any
       );
 
       const calledUrl: string = mockHttpRequest.mock.calls[0][0];
@@ -239,7 +239,7 @@ describe('path traversal security', () => {
       await new UpdateStyleTool({ httpRequest }).run(
         { styleId: VALID_STYLE_ID },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        { authInfo: { token: maliciousToken } } as any
+        { http: { authInfo: { token: maliciousToken } } } as any
       );
 
       const calledUrl: string = mockHttpRequest.mock.calls[0][0];
