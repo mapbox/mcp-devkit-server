@@ -4,7 +4,7 @@
 import type {
   PromptMessage,
   GetPromptResult
-} from '@modelcontextprotocol/sdk/types.js';
+} from '@modelcontextprotocol/server';
 
 /**
  * Argument definition for a prompt

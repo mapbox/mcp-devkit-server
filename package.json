@@ -51,8 +51,9 @@
   "dependencies": {
     "@mapbox/mapbox-gl-style-spec": "^14.26.0",
     "@mcp-ui/server": "^6.1.0",
-    "@modelcontextprotocol/ext-apps": "^1.1.1",
-    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@modelcontextprotocol/core": "^2.3.1",
+    "@modelcontextprotocol/ext-apps": "^2.0.3",
+    "@modelcontextprotocol/server": "^2.3.1",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.74.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.216.0",
@@ -65,6 +66,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
+    "@modelcontextprotocol/client": "^2.3.1",
     "@types/geojson": "^7946.0.16",
     "@types/node": "^22.0.0",
     "@typescript-eslint/eslint-plugin": "^8.58.2",

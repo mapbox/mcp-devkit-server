@@ -3,15 +3,14 @@
 
 import {
   McpServer,
-  RegisteredTool
-} from '@modelcontextprotocol/sdk/server/mcp.js';
-import { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import {
+  RegisteredTool,
   CallToolResult,
-  ToolAnnotations
-} from '@modelcontextprotocol/sdk/types.js';
+  ToolAnnotations,
+  ServerContext
+} from '@modelcontextprotocol/server';
 import { z, ZodTypeAny } from 'zod';
 import type { ToolExecutionContext } from '../utils/tracing.js';
+import { lenientOutputSchema } from './lenientOutputSchema.js';
 
 export abstract class BaseTool<
   InputSchema extends ZodTypeAny,
@@ -46,15 +45,11 @@ export abstract class BaseTool<
   /**
    * Tool logic to be implemented by subclasses.
    */
-  async run(
-    rawInput: unknown,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    extra?: RequestHandlerExtra<any, any>
-  ): Promise<CallToolResult> {
+  async run(rawInput: unknown, extra?: ServerContext): Promise<CallToolResult> {
     try {
       const input = this.inputSchema.parse(rawInput);
       const accessToken =
-        extra?.authInfo?.token || process.env.MAPBOX_ACCESS_TOKEN;
+        extra?.http?.authInfo?.token || process.env.MAPBOX_ACCESS_TOKEN;
       return this.execute(input, accessToken);
     } catch (error) {
       return {
@@ -104,11 +99,9 @@ export abstract class BaseTool<
 
     // Add outputSchema if provided
     if (this.outputSchema) {
-      // Pass the schema shape directly - don't wrap
-      // The MCP SDK will validate structuredContent against this schema
-      config.outputSchema =
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (this.outputSchema as unknown as z.ZodObject<any>).shape;
+      // tools/list publishes the real schema; validation only warns. See
+      // lenientOutputSchema.ts.
+      config.outputSchema = lenientOutputSchema(this.outputSchema, this.name);
     }
 
     // Add _meta for MCP Apps support if provided (includes CSP configuration)
@@ -120,7 +113,23 @@ export abstract class BaseTool<
       this.name,
       config,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (args: any, extra: any) => this.run(args, extra)
+      async (args: any, ctx: ServerContext) => {
+        const result = await this.run(args, ctx);
+        // McpServer fails a call to a tool with an output schema that returns
+        // no structuredContent, before validation can let it through. Send an
+        // empty object rather than turn a usable text answer into an error.
+        if (
+          this.outputSchema &&
+          !result.isError &&
+          result.structuredContent === undefined
+        ) {
+          console.warn(
+            `Output validation warning: tool ${this.name} has an output schema but returned no structured content`
+          );
+          return { ...result, structuredContent: {} };
+        }
+        return result;
+      }
     );
   }
 

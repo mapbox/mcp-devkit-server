@@ -1,12 +1,10 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
   ReadResourceResult,
-  ServerNotification,
-  ServerRequest
-} from '@modelcontextprotocol/sdk/types.js';
+  ServerContext
+} from '@modelcontextprotocol/server';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import { BaseResource } from '../BaseResource.js';
 import { mintScopedPreviewToken } from '../../utils/mintScopedPreviewToken.js';
@@ -39,13 +37,13 @@ export class MapPreviewUIResource extends BaseResource {
 
   public async readCallback(
     _uri: URL,
-    _extra: RequestHandlerExtra<ServerRequest, ServerNotification>
+    _extra: ServerContext
   ): Promise<ReadResourceResult> {
     // GL JS requires a public (pk.*) token. Create a short-lived one on the
     // customer's account using their sk.* token so we're not exposing any
     // Mapbox-owned credentials. Falls back gracefully if no sk.* is configured.
     const skToken =
-      (_extra.authInfo?.token as string | undefined) ||
+      (_extra.http?.authInfo?.token as string | undefined) ||
       process.env.MAPBOX_ACCESS_TOKEN ||
       '';
     let accessToken = '';

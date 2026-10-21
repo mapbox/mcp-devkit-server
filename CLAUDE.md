@@ -33,7 +33,7 @@ The codebase organizes into:
 
 **Resource System:** Static reference data exposed as MCP resources using URI pattern `resource://mapbox-*`, including style layer specs, Streets v8 field definitions, and token scope documentation.
 
-**Token Management:** Tools receive `MAPBOX_ACCESS_TOKEN` via `extra.authInfo.token` or environment variable. Token scope validation is critical—most tool failures stem from insufficient scopes (see `README.md` for per-tool requirements).
+**Token Management:** Tools receive `MAPBOX_ACCESS_TOKEN` via `ctx.http.authInfo.token` (SDK v2 `ServerContext`) or environment variable. Token scope validation is critical—most tool failures stem from insufficient scopes (see `README.md` for per-tool requirements).
 
 **Tool Registry:** Tools are auto-discovered via `src/tools/toolRegistry.ts` exports. No manual registration required—just export from registry.
 
