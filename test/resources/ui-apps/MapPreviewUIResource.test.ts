@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import * as vm from 'node:vm';
 import { MapPreviewUIResource } from '../../../src/resources/ui-apps/MapPreviewUIResource.js';
+import { resourceTextOf } from '../../utils/resultTestUtils.js';
 
 const uri = new URL('ui://mapbox/map-preview/index.html');
 
@@ -30,7 +31,7 @@ async function readHtml(
   token?: string
 ): Promise<string> {
   const result = await resource['readCallback'](uri, extra(token));
-  return result.contents[0].text as string;
+  return resourceTextOf(result);
 }
 
 // Stub global fetch to mirror real Mapbox behaviour: POST tokens/v2/{username}
@@ -118,7 +119,7 @@ describe('MapPreviewUIResource — AGI-905 cross-account token leak', () => {
     );
 
     expect(result.contents).toHaveLength(1);
-    expect(embeddedToken(result.contents[0].text as string)).toBe('');
+    expect(embeddedToken(resourceTextOf(result))).toBe('');
   });
 
   it('passes a pk token through unchanged without minting', async () => {
@@ -167,10 +168,10 @@ async function renderHtml(accessToken?: string): Promise<string> {
   const resource = new MapPreviewUIResource();
   if (accessToken?.startsWith('pk.')) {
     const result = await resource['readCallback'](uri, extra(accessToken));
-    return result.contents[0].text as string;
+    return resourceTextOf(result);
   }
   const result = await resource['readCallback'](uri, extra());
-  return result.contents[0].text as string;
+  return resourceTextOf(result);
 }
 
 function runScriptSandbox(

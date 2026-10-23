@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { DesignDataDrivenStylePrompt } from '../../src/prompts/DesignDataDrivenStylePrompt.js';
+import { promptTextOf } from '../utils/resultTestUtils.js';
 
 describe('DesignDataDrivenStylePrompt', () => {
   const prompt = new DesignDataDrivenStylePrompt();
@@ -42,7 +43,7 @@ describe('DesignDataDrivenStylePrompt', () => {
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content.type).toBe('text');
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Population Map');
     expect(text).toContain('City populations');
     expect(text).toContain('population');
@@ -55,7 +56,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       property_name: 'value'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('interpolate');
     expect(text).toContain('["get", "value"]');
     expect(text).toContain('Expression types');
@@ -69,7 +70,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       visualization_type: 'color'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('fill-color');
     expect(text).toContain('Color by Value');
   });
@@ -82,7 +83,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       visualization_type: 'size'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('circle-radius');
     expect(text).toContain('Size by Value');
   });
@@ -95,7 +96,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       visualization_type: 'both'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('fill-color');
     expect(text).toContain('circle-radius');
   });
@@ -108,7 +109,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       visualization_type: 'heatmap'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('heatmap');
     expect(text).toContain('heatmap-weight');
     expect(text).toContain('heatmap-color');
@@ -121,7 +122,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       property_name: 'value'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('sequential');
   });
 
@@ -133,7 +134,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       color_scheme: 'diverging'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Diverging');
     expect(text).toContain('midpoint');
   });
@@ -146,7 +147,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       color_scheme: 'categorical'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('match');
     expect(text).toContain('Category');
   });
@@ -158,7 +159,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       property_name: 'value'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Step 1');
     expect(text).toContain('Step 2');
     expect(text).toContain('Step 3');
@@ -176,7 +177,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       property_name: 'value'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Advanced Expressions');
     expect(text).toContain('Zoom-Based');
     expect(text).toContain('Conditional');
@@ -189,7 +190,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       property_name: 'value'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Best Practices');
     expect(text).toContain('DO:');
     expect(text).toContain("DON'T:");
@@ -202,7 +203,7 @@ describe('DesignDataDrivenStylePrompt', () => {
       property_name: 'value'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('style_builder_tool');
     expect(text).toContain('create_style_tool');
   });

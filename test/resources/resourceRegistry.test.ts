@@ -4,13 +4,17 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { Client } from '@modelcontextprotocol/client';
 import { McpServer, InMemoryTransport } from '@modelcontextprotocol/server';
-import type { JSONRPCMessage } from '@modelcontextprotocol/server';
+import type {
+  JSONRPCMessage,
+  ServerContext
+} from '@modelcontextprotocol/server';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import {
   getAllResources,
   installResources
 } from '../../src/resources/resourceRegistry.js';
 import { MapPreviewUIResource } from '../../src/resources/ui-apps/MapPreviewUIResource.js';
+import { resourceTextOf } from '../utils/resultTestUtils.js';
 
 function makeToken(prefix: 'sk' | 'pk' | 'tk', username: string): string {
   const payload = Buffer.from(JSON.stringify({ u: username })).toString(
@@ -66,7 +70,8 @@ describe('installResources', () => {
 
     spies.forEach((spy) => {
       expect(spy).toHaveBeenCalledTimes(1);
-      expect(spy.mock.calls[0][1].http?.authInfo?.token).toBe('caller-token');
+      const ctx = spy.mock.calls[0][1] as ServerContext;
+      expect(ctx.http?.authInfo?.token).toBe('caller-token');
     });
     await client.close();
   });
@@ -104,7 +109,7 @@ describe('installResources', () => {
     );
 
     const result = await client.readResource({ uri: resource.uri });
-    const html = result.contents[0].text as string;
+    const html = resourceTextOf(result);
     const embedded = html.match(/var TOKEN = '([^']*)'/)?.[1] ?? '';
 
     expect(fetchMock).toHaveBeenCalledTimes(1);

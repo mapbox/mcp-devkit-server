@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ValidateGeojsonTool } from '../../../src/tools/validate-geojson-tool/ValidateGeojsonTool.js';
+import { textOf } from '../../utils/resultTestUtils.js';
 
 describe('ValidateGeojsonTool', () => {
   let tool: ValidateGeojsonTool;
@@ -42,7 +43,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
       expect(parsed.statistics.type).toBe('Point');
@@ -66,7 +67,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
       expect(parsed.statistics.type).toBe('LineString');
@@ -91,7 +92,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
       expect(parsed.warnings).toHaveLength(0);
@@ -115,7 +116,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
       expect(parsed.statistics.featureCount).toBe(1);
@@ -152,7 +153,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
       expect(parsed.statistics.featureCount).toBe(2);
@@ -183,7 +184,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
     });
@@ -199,7 +200,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
   });
@@ -215,7 +216,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors).toHaveLength(1);
       expect(parsed.errors[0].message).toContain(
@@ -234,7 +235,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain('Invalid GeoJSON type');
     });
@@ -250,7 +251,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain(
         'Feature missing "geometry" property'
@@ -271,7 +272,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.warnings).toHaveLength(1);
       expect(parsed.warnings[0].message).toContain(
@@ -289,7 +290,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain(
         'FeatureCollection missing "features" array'
@@ -307,7 +308,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.warnings).toHaveLength(1);
       expect(parsed.warnings[0].message).toContain(
@@ -327,7 +328,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain(
         'missing "coordinates" property'
@@ -345,7 +346,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain('must be an array');
     });
@@ -361,7 +362,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain(
         'must have at least 2 elements'
@@ -379,7 +380,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain('coordinates must be numbers');
     });
@@ -395,7 +396,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.warnings).toHaveLength(1);
       expect(parsed.warnings[0].message).toContain('Longitude');
@@ -413,7 +414,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.warnings).toHaveLength(1);
       expect(parsed.warnings[0].message).toContain('Latitude');
@@ -431,7 +432,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(
         parsed.errors.some((e: any) =>
@@ -457,7 +458,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain(
         'must have at least 4 positions'
@@ -482,7 +483,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.warnings).toHaveLength(1);
       expect(parsed.warnings[0].message).toContain(
@@ -499,7 +500,7 @@ describe('ValidateGeojsonTool', () => {
 
       const result = await tool.run(input);
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Error parsing GeoJSON');
+      expect(textOf(result)).toContain('Error parsing GeoJSON');
     });
   });
 
@@ -519,7 +520,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.statistics.bbox).toEqual([99.0, -1.0, 101.0, 1.0]);
     });
 
@@ -550,7 +551,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.statistics.featureCount).toBe(3);
     });
 
@@ -598,7 +599,7 @@ describe('ValidateGeojsonTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.statistics.geometryTypes).toContain('Point');
       expect(parsed.statistics.geometryTypes).toContain('LineString');
       expect(parsed.statistics.geometryTypes).toContain('Polygon');

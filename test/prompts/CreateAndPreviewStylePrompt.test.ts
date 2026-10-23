@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { CreateAndPreviewStylePrompt } from '../../src/prompts/CreateAndPreviewStylePrompt.js';
+import { promptTextOf } from '../utils/resultTestUtils.js';
 
 describe('CreateAndPreviewStylePrompt', () => {
   const prompt = new CreateAndPreviewStylePrompt();
@@ -44,7 +45,7 @@ describe('CreateAndPreviewStylePrompt', () => {
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content.type).toBe('text');
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Test Style');
     expect(text).toContain('list_tokens_tool');
     expect(text).toContain('create_style_tool');
@@ -53,7 +54,7 @@ describe('CreateAndPreviewStylePrompt', () => {
 
   it('defaults base_style to "standard", not the Classic "streets-v12"', () => {
     const result = prompt.execute({ style_name: 'Test Style' });
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
 
     expect(text).toContain('base_style: "standard"');
     expect(text).not.toContain('streets-v12');
@@ -65,7 +66,7 @@ describe('CreateAndPreviewStylePrompt', () => {
       style_name: 'Test Style',
       base_style: 'streets-v12'
     });
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
 
     expect(text).toContain('base_style: "streets-v12"');
   });
@@ -79,7 +80,7 @@ describe('CreateAndPreviewStylePrompt', () => {
       preview_zoom: '14'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('A beautiful test style');
     expect(text).toContain('dark-v11');
     expect(text).toContain('San Francisco');

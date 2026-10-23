@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CompareStylesTool } from '../../../src/tools/compare-styles-tool/CompareStylesTool.js';
+import { textOf } from '../../utils/resultTestUtils.js';
 
 describe('CompareStylesTool', () => {
   let tool: CompareStylesTool;
@@ -47,7 +48,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(true);
       expect(parsed.differences).toHaveLength(0);
       expect(parsed.summary.totalDifferences).toBe(0);
@@ -75,7 +76,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(false);
       expect(parsed.differences).toHaveLength(1);
       expect(parsed.differences[0].type).toBe('added');
@@ -103,7 +104,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(false);
       expect(parsed.differences).toHaveLength(1);
       expect(parsed.differences[0].type).toBe('removed');
@@ -130,7 +131,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(false);
       expect(parsed.differences).toHaveLength(1);
       expect(parsed.differences[0].type).toBe('modified');
@@ -169,7 +170,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(false);
       expect(
         parsed.differences.some((d: any) => d.path.includes('background'))
@@ -202,7 +203,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(false);
       expect(
         parsed.differences.some(
@@ -244,7 +245,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(false);
       expect(parsed.differences.some((d: any) => d.type === 'modified')).toBe(
         true
@@ -283,7 +284,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(true);
       expect(parsed.differences).toHaveLength(0);
     });
@@ -311,7 +312,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(false);
       expect(parsed.differences).toHaveLength(1);
       expect(parsed.differences[0].path).toBe('id');
@@ -334,7 +335,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(true);
     });
   });
@@ -348,7 +349,7 @@ describe('CompareStylesTool', () => {
 
       const result = await tool.run(input);
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Error parsing style A');
+      expect(textOf(result)).toContain('Error parsing style A');
     });
 
     it('should handle invalid JSON for style B', async () => {
@@ -359,7 +360,7 @@ describe('CompareStylesTool', () => {
 
       const result = await tool.run(input);
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Error parsing style B');
+      expect(textOf(result)).toContain('Error parsing style B');
     });
   });
 
@@ -393,7 +394,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.identical).toBe(false);
       expect(
         parsed.differences.some((d: any) =>
@@ -429,7 +430,7 @@ describe('CompareStylesTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.summary.totalDifferences).toBeGreaterThan(0);
       expect(parsed.summary.added).toBeGreaterThan(0);
       expect(parsed.summary.removed).toBeGreaterThan(0);

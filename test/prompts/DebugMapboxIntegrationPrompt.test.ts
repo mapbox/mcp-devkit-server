@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { DebugMapboxIntegrationPrompt } from '../../src/prompts/DebugMapboxIntegrationPrompt.js';
+import { promptTextOf } from '../utils/resultTestUtils.js';
 
 describe('DebugMapboxIntegrationPrompt', () => {
   const prompt = new DebugMapboxIntegrationPrompt();
@@ -39,7 +40,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content.type).toBe('text');
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Map not loading');
     expect(text).toContain('list_tokens_tool');
     expect(text).toContain('Phase 1');
@@ -51,7 +52,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
       error_message: '401 Unauthorized'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('401 Unauthorized');
   });
 
@@ -61,7 +62,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
       error_message: '401 unauthorized'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('401 Unauthorized');
     expect(text).toContain('Token not set');
     expect(text).toContain('Invalid token');
@@ -73,7 +74,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
       error_message: '403 Forbidden'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('403 Forbidden');
     expect(text).toContain('URL restriction');
     expect(text).toContain('Missing scope');
@@ -85,7 +86,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
       style_id: 'my-style-id'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('my-style-id');
     expect(text).toContain('list_styles_tool');
     expect(text).toContain('Style Verification');
@@ -97,7 +98,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
       environment: 'production'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('production');
   });
 
@@ -107,7 +108,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
       error_message: 'Layer source not found'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Layer/Source Error Solutions');
   });
 
@@ -116,7 +117,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
       issue_description: 'Something is wrong'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('General debugging');
     expect(text).toContain('browser console');
   });
@@ -126,7 +127,7 @@ describe('DebugMapboxIntegrationPrompt', () => {
       issue_description: 'Issue'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Phase 1');
     expect(text).toContain('Phase 2');
     expect(text).toContain('Phase 3');

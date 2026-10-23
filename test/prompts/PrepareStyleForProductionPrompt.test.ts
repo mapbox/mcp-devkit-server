@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { PrepareStyleForProductionPrompt } from '../../src/prompts/PrepareStyleForProductionPrompt.js';
+import { promptTextOf } from '../utils/resultTestUtils.js';
 
 describe('PrepareStyleForProductionPrompt', () => {
   const prompt = new PrepareStyleForProductionPrompt();
@@ -39,7 +40,7 @@ describe('PrepareStyleForProductionPrompt', () => {
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content.type).toBe('text');
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('username/style-id');
     expect(text).toContain('retrieve_style_tool');
     expect(text).toContain('validate_expression_tool');
@@ -53,7 +54,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       style_id_or_json: styleJson
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain(styleJson);
     expect(text).toContain('parse it directly');
     expect(text).not.toContain('retrieve_style_tool');
@@ -64,7 +65,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       style_id_or_json: 'test/style'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('validate_expression_tool');
     expect(text).toContain('validate_geojson_tool');
     expect(text).toContain('check_color_contrast_tool');
@@ -78,7 +79,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       style_id_or_json: 'test/style'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('optimize_style_tool');
     expect(text).toContain('Step 5: Optimize the Style');
     expect(text).not.toContain('Skipped per user request');
@@ -90,7 +91,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       skip_optimization: 'true'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Step 5: Style Optimization');
     expect(text).toContain('Skipped per user request');
     expect(text).not.toContain('optimize_style_tool');
@@ -101,7 +102,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       style_id_or_json: 'test/style'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('WCAG AA');
     expect(text).toContain('level: "AA"');
   });
@@ -112,7 +113,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       wcag_level: 'AAA'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('WCAG AAA');
     expect(text).toContain('level: "AAA"');
   });
@@ -122,7 +123,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       style_id_or_json: 'test/style'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Production Quality Report');
     expect(text).toContain('Expression Validation');
     expect(text).toContain('GeoJSON Validation');
@@ -136,7 +137,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       style_id_or_json: 'test/style'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('If Issues Are Found');
     expect(text).toContain('Expression errors:');
     expect(text).toContain('GeoJSON errors:');
@@ -161,7 +162,7 @@ describe('PrepareStyleForProductionPrompt', () => {
       style_id_or_json: 'test/style'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     const step1Index = text.indexOf('Step 1: Load the Style');
     const step2Index = text.indexOf('Step 2: Validate All Expressions');
     const step3Index = text.indexOf('Step 3: Validate GeoJSON Sources');
