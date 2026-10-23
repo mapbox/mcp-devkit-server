@@ -34,7 +34,7 @@
 
 ### Maintenance
 
-- **Tests are typechecked in CI (#TBD).** `npm run typecheck` checks `src` and `test` together and now runs before the build. The tests had 247 type errors, all already on main: 238 read `.text` off a content block without checking it was text (now `textOf`, `resourceTextOf` and `promptTextOf` in `test/utils/resultTestUtils.ts`, which fail clearly on the wrong content type), the `StyleBuilderTool` tests typed raw input with the parsed type that makes `render_type` required, and one import used a bare `src/` path. `tsconfig.test.json` gets `noEmit` so a plain `tsc` run can't write `.js` files next to the sources.
+- **Tests are typechecked in CI (#143).** `npm run typecheck` checks `src` and `test` together and now runs before the build. The tests had 247 type errors, all already on main: 238 read `.text` off a content block without checking it was text (now `textOf`, `resourceTextOf` and `promptTextOf` in `test/utils/resultTestUtils.ts`, which fail clearly on the wrong content type), the `StyleBuilderTool` tests typed raw input with the parsed type that makes `render_type` required, and one import used a bare `src/` path. `tsconfig.test.json` gets `noEmit` so a plain `tsc` run can't write `.js` files next to the sources.
 
 ### Dependencies
 
