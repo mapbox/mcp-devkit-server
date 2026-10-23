@@ -7,6 +7,7 @@ import {
   assertHeadersSent
 } from '../../utils/httpPipelineUtils.js';
 import { GetFeedbackTool } from '../../../src/tools/get-feedback-tool/GetFeedbackTool.js';
+import { textOf } from '../../utils/resultTestUtils.js';
 
 const mockToken = 'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
@@ -125,10 +126,10 @@ describe('GetFeedbackTool', () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0].type).toBe('text');
-    expect(result.content[0].text).toContain(mockItem.id);
-    expect(result.content[0].text).toContain(mockItem.status);
-    expect(result.content[0].text).toContain(mockItem.category);
-    expect(result.content[0].text).toContain(mockItem.feedback);
+    expect(textOf(result)).toContain(mockItem.id);
+    expect(textOf(result)).toContain(mockItem.status);
+    expect(textOf(result)).toContain(mockItem.category);
+    expect(textOf(result)).toContain(mockItem.feedback);
     expect(result.structuredContent).toEqual(mockItem);
   });
 
@@ -159,7 +160,7 @@ describe('GetFeedbackTool', () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0].type).toBe('text');
-    const parsed = JSON.parse(result.content[0].text as string);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed).toEqual(mockItem);
   });
 
@@ -175,9 +176,9 @@ describe('GetFeedbackTool', () => {
     });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Failed to get feedback');
-    expect(result.content[0].text).toContain('404');
-    expect(result.content[0].text).toContain('Not Found');
+    expect(textOf(result)).toContain('Failed to get feedback');
+    expect(textOf(result)).toContain('404');
+    expect(textOf(result)).toContain('Not Found');
     assertHeadersSent(mockHttpRequest);
   });
 
@@ -229,7 +230,7 @@ describe('GetFeedbackTool', () => {
     // 1. Returning the data as-is (if format succeeds)
     // 2. Returning an error response (if formatting fails)
     // Both are acceptable graceful handling
-    expect(typeof result.content[0].text).toBe('string');
+    expect(typeof textOf(result)).toBe('string');
   });
 
   it('validates feedback_id format', async () => {
@@ -256,7 +257,7 @@ describe('GetFeedbackTool', () => {
 
     // Should fail validation
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('invalid_type');
-    expect(result.content[0].text).toContain('feedback_id');
+    expect(textOf(result)).toContain('invalid_type');
+    expect(textOf(result)).toContain('feedback_id');
   });
 });

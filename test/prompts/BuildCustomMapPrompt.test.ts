@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { BuildCustomMapPrompt } from '../../src/prompts/BuildCustomMapPrompt.js';
+import { promptTextOf } from '../utils/resultTestUtils.js';
 
 describe('BuildCustomMapPrompt', () => {
   const prompt = new BuildCustomMapPrompt();
@@ -37,7 +38,7 @@ describe('BuildCustomMapPrompt', () => {
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content.type).toBe('text');
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('dark cyberpunk');
     expect(text).toContain('style_builder_tool');
     expect(text).toContain('create_style_tool');
@@ -50,7 +51,7 @@ describe('BuildCustomMapPrompt', () => {
       emphasis: 'parks and green spaces'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('parks and green spaces');
     expect(text).toContain('emphasizing');
   });
@@ -62,7 +63,7 @@ describe('BuildCustomMapPrompt', () => {
       preview_zoom: '15'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Tokyo');
     expect(text).toContain('15');
   });
@@ -78,7 +79,7 @@ describe('BuildCustomMapPrompt', () => {
       theme: 'retro 80s neon'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Theme interpretation tips');
     expect(text).toContain('Dark cyberpunk');
     expect(text).toContain('Nature-focused');

@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ValidateExpressionTool } from '../../../src/tools/validate-expression-tool/ValidateExpressionTool.js';
+import { textOf } from '../../utils/resultTestUtils.js';
 
 describe('ValidateExpressionTool', () => {
   let tool: ValidateExpressionTool;
@@ -39,7 +40,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
       expect(parsed.metadata.expressionType).toBe('literal');
@@ -53,7 +54,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
     });
@@ -66,7 +67,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
   });
@@ -80,7 +81,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
       expect(parsed.metadata.expressionType).toBe('get');
@@ -99,7 +100,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
     });
@@ -120,7 +121,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
     });
@@ -133,7 +134,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
 
@@ -145,7 +146,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
 
@@ -157,7 +158,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
 
@@ -169,7 +170,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
 
@@ -181,7 +182,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
 
@@ -193,7 +194,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
   });
@@ -207,7 +208,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain(
         'Expression array cannot be empty'
@@ -222,7 +223,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain(
         'Expression operator must be a string'
@@ -237,7 +238,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain('Unknown expression operator');
     });
@@ -250,7 +251,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain('Expected arguments of type');
     });
@@ -263,7 +264,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(parsed.errors[0].message).toContain('Expected arguments of type');
     });
@@ -289,7 +290,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.errors).toHaveLength(0);
     });
@@ -307,7 +308,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(
         parsed.errors.some((e: any) =>
@@ -331,7 +332,7 @@ describe('ValidateExpressionTool', () => {
       expect(Date.now() - start).toBeLessThan(1000);
 
       expect(result.isError).toBe(false);
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(
         parsed.errors.some((e: any) =>
@@ -353,7 +354,7 @@ describe('ValidateExpressionTool', () => {
       expect(Date.now() - start).toBeLessThan(1000);
 
       expect(result.isError).toBe(false);
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(false);
       expect(
         parsed.errors.some((e: any) =>
@@ -368,7 +369,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run({ expression });
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('exceeds maximum length');
+      expect(textOf(result)).toContain('exceeds maximum length');
     });
   });
 
@@ -385,7 +386,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.metadata.depth).toBeGreaterThan(0);
     });
@@ -402,7 +403,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
       expect(parsed.warnings.length).toBeGreaterThan(0);
       expect(
@@ -425,7 +426,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.valid).toBe(true);
     });
   });
@@ -438,7 +439,7 @@ describe('ValidateExpressionTool', () => {
 
       const result = await tool.run(input);
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Error parsing expression');
+      expect(textOf(result)).toContain('Error parsing expression');
     });
   });
 
@@ -451,7 +452,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.metadata).toBeDefined();
       expect(parsed.metadata.expressionType).toBe('get');
       expect(parsed.metadata.returnType).toBe('any');
@@ -466,7 +467,7 @@ describe('ValidateExpressionTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.metadata.depth).toBe(1);
     });
   });

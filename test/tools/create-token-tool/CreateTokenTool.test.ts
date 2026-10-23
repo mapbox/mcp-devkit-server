@@ -8,7 +8,7 @@ import {
 } from '../../utils/httpPipelineUtils.js';
 import { MapboxApiBasedTool } from '../../../src/tools/MapboxApiBasedTool.js';
 import { CreateTokenTool } from '../../../src/tools/create-token-tool/CreateTokenTool.js';
-import { HttpRequest } from 'src/utils/types.js';
+import type { HttpRequest } from '../../../src/utils/types.js';
 
 // Create a token with username in the payload
 const payload = Buffer.from(JSON.stringify({ u: 'testuser' })).toString(

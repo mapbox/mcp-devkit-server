@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { AnalyzeGeojsonPrompt } from '../../src/prompts/AnalyzeGeojsonPrompt.js';
+import { promptTextOf } from '../utils/resultTestUtils.js';
 
 describe('AnalyzeGeojsonPrompt', () => {
   const prompt = new AnalyzeGeojsonPrompt();
@@ -50,7 +51,7 @@ describe('AnalyzeGeojsonPrompt', () => {
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content.type).toBe('text');
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Analyze the provided GeoJSON');
     expect(text).toContain('bounding_box_tool');
     expect(text).toContain('geojson_preview_tool');
@@ -61,7 +62,7 @@ describe('AnalyzeGeojsonPrompt', () => {
       geojson_data: sampleGeojson
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Calculate bounding box');
     expect(text).toContain('bounding_box_tool');
   });
@@ -72,7 +73,7 @@ describe('AnalyzeGeojsonPrompt', () => {
       show_bounds: 'false'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     // Should still mention visualization but with different step number
     expect(text).toContain('Generate visualization');
   });
@@ -83,7 +84,7 @@ describe('AnalyzeGeojsonPrompt', () => {
       convert_coordinates: 'true'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('coordinate_conversion_tool');
     expect(text).toContain('Web Mercator');
     expect(text).toContain('EPSG:3857');
@@ -94,7 +95,7 @@ describe('AnalyzeGeojsonPrompt', () => {
       geojson_data: sampleGeojson
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain(sampleGeojson);
   });
 
@@ -109,7 +110,7 @@ describe('AnalyzeGeojsonPrompt', () => {
       geojson_data: sampleGeojson
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Analysis guidelines');
     expect(text).toContain('longitude, latitude');
     expect(text).toContain('right-hand rule');

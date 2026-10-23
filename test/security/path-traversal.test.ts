@@ -13,6 +13,7 @@ import { TilequeryTool } from '../../src/tools/tilequery-tool/TilequeryTool.js';
 import { DeleteStyleTool } from '../../src/tools/delete-style-tool/DeleteStyleTool.js';
 import { PreviewStyleTool } from '../../src/tools/preview-style-tool/PreviewStyleTool.js';
 import { setupHttpRequest } from '../utils/httpPipelineUtils.js';
+import { textOf } from '../utils/resultTestUtils.js';
 
 // 25-char alphanumeric — a real Mapbox style ID format
 const VALID_STYLE_ID = 'cmojrmkc9002t01ry96yi6h48';
@@ -206,7 +207,7 @@ describe('path traversal security', () => {
         accessToken: maliciousPublicToken
       });
 
-      const url = result.content[0].text as string;
+      const url = textOf(result);
       expect(url).toContain('user%2Fattacker');
       expect(url).not.toMatch(/\/styles\/v1\/user\/attacker\//);
     });

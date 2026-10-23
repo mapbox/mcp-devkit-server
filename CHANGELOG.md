@@ -32,6 +32,10 @@
   - `style_comparison_tool`'s `StyleComparisonUIResource` is untouched and stays separate — it renders two synced `mapboxgl.Map` instances under a swipe/compare slider, a genuinely different UI shape from "one map, different content," not just another mode to fold in.
   - The GeoJSON-preview path keeps its existing eager map bootstrap (drawing the default Standard style immediately, before any tool result arrives, so an overlay has something to render onto right away); the style-preview path now reuses that same map instance via `setStyle()` when it exists, falling back to constructing its own (as before) when it doesn't. Verified live against the real Mapbox API in a real browser: the GeoJSON overlay path and the style-swap-in-place path (loading a real custom style by name) both work end-to-end on the merged resource.
 
+### Maintenance
+
+- **Tests are typechecked in CI (#143).** `npm run typecheck` checks `src` and `test` together and now runs before the build. The tests had 247 type errors, all already on main: 238 read `.text` off a content block without checking it was text (now `textOf`, `resourceTextOf` and `promptTextOf` in `test/utils/resultTestUtils.ts`, which fail clearly on the wrong content type), the `StyleBuilderTool` tests typed raw input with the parsed type that makes `render_type` required, and one import used a bare `src/` path. `tsconfig.test.json` gets `noEmit` so a plain `tsc` run can't write `.js` files next to the sources.
+
 ### Dependencies
 
 - Bumped `@modelcontextprotocol/sdk` to `1.30.0`. Not adopting the `2026-07-28` spec revision this release covers (stateless request/response model, elicitation replaced by Multi Round-Trip Requests, Sampling deprecated) — that's a separate migration, tracked in #130, given this repo's own elicitation-based features depend on the mechanism being replaced. Regenerated `patches/@modelcontextprotocol+sdk+1.30.0.patch` (previously pinned to `1.29.0`) — same patch content, applies cleanly to the new version, verified live against the built server.

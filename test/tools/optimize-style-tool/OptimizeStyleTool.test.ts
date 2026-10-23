@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { OptimizeStyleTool } from '../../../src/tools/optimize-style-tool/OptimizeStyleTool.js';
+import { textOf } from '../../utils/resultTestUtils.js';
 
 describe('OptimizeStyleTool', () => {
   let tool: OptimizeStyleTool;
@@ -41,7 +42,7 @@ describe('OptimizeStyleTool', () => {
       const result = await tool.run({ style });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle).toBeDefined();
       expect(parsed.optimizations).toBeDefined();
       expect(parsed.summary).toBeDefined();
@@ -57,7 +58,7 @@ describe('OptimizeStyleTool', () => {
       const result = await tool.run({ style: JSON.stringify(style) });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle).toBeDefined();
     });
   });
@@ -85,7 +86,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.sources).toHaveProperty('used-source');
       expect(parsed.optimizedStyle.sources).not.toHaveProperty('unused-source');
       expect(parsed.optimizations).toHaveLength(1);
@@ -111,7 +112,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizations).toHaveLength(0);
     });
   });
@@ -146,7 +147,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers).toHaveLength(2);
       expect(parsed.optimizations[0].count).toBe(1);
     });
@@ -167,7 +168,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers).toHaveLength(2);
       expect(parsed.optimizations).toHaveLength(0);
     });
@@ -194,7 +195,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers[0].filter).toBe(true);
       expect(parsed.optimizations[0].count).toBeGreaterThan(0);
     });
@@ -219,7 +220,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers[0].filter).toBe(false);
     });
 
@@ -243,7 +244,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers[0].filter).toBe(true);
     });
 
@@ -267,7 +268,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers[0].filter).toBe(false);
     });
 
@@ -292,7 +293,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers[0].paint['fill-opacity']).toBe(true);
     });
   });
@@ -323,7 +324,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers).toHaveLength(1);
       expect(parsed.optimizedStyle.layers[0].id).toBe('non-empty-layer');
       expect(parsed.optimizations[0].count).toBe(1);
@@ -349,7 +350,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.optimizedStyle.layers).toHaveLength(1);
       expect(parsed.optimizations).toHaveLength(0);
     });
@@ -382,7 +383,7 @@ describe('OptimizeStyleTool', () => {
       });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       // Should identify the group of layers with identical filters
       expect(parsed.optimizations[0].count).toBeGreaterThan(0);
     });
@@ -423,7 +424,7 @@ describe('OptimizeStyleTool', () => {
       const result = await tool.run({ style });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       // Should have removed unused source, duplicate layer, empty layer, and simplified expressions
       expect(parsed.optimizations.length).toBeGreaterThan(0);
       expect(parsed.summary.totalOptimizations).toBeGreaterThan(0);
@@ -443,7 +444,7 @@ describe('OptimizeStyleTool', () => {
       const result = await tool.run({ style });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.summary.originalSize).toBeGreaterThan(0);
       expect(parsed.summary.optimizedSize).toBeGreaterThan(0);
       expect(parsed.summary.sizeSaved).toBeGreaterThanOrEqual(0);
@@ -464,7 +465,7 @@ describe('OptimizeStyleTool', () => {
       const result = await tool.run({ style });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.summary.percentReduction).toBeGreaterThan(0);
     });
   });
@@ -473,7 +474,7 @@ describe('OptimizeStyleTool', () => {
     it('should handle invalid JSON string', async () => {
       const result = await tool.run({ style: '{invalid json' });
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Error parsing style');
+      expect(textOf(result)).toContain('Error parsing style');
     });
   });
 
@@ -497,7 +498,7 @@ describe('OptimizeStyleTool', () => {
       const result = await tool.run({ style });
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.summary.totalOptimizations).toBe(0);
       expect(parsed.summary.sizeSaved).toBe(0);
     });
