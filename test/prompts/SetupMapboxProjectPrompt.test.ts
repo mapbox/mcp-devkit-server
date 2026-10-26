@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { SetupMapboxProjectPrompt } from '../../src/prompts/SetupMapboxProjectPrompt.js';
+import { promptTextOf } from '../utils/resultTestUtils.js';
 
 describe('SetupMapboxProjectPrompt', () => {
   const prompt = new SetupMapboxProjectPrompt();
@@ -39,7 +40,7 @@ describe('SetupMapboxProjectPrompt', () => {
     expect(result.messages[0].role).toBe('user');
     expect(result.messages[0].content.type).toBe('text');
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('MyApp');
     expect(text).toContain('create_token_tool');
     expect(text).toContain('style_builder_tool');
@@ -50,7 +51,7 @@ describe('SetupMapboxProjectPrompt', () => {
       project_name: 'MyApp'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Development');
     expect(text).toContain('localhost');
   });
@@ -62,7 +63,7 @@ describe('SetupMapboxProjectPrompt', () => {
       production_domain: 'myapp.com'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('myapp.com');
     expect(text).toContain('Production Token');
   });
@@ -73,7 +74,7 @@ describe('SetupMapboxProjectPrompt', () => {
       project_type: 'web'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('No URL Restrictions');
     expect(text).toContain('less secure');
   });
@@ -84,7 +85,7 @@ describe('SetupMapboxProjectPrompt', () => {
       project_type: 'fullstack'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Backend');
     expect(text).toContain('SECRET');
     expect(text).toContain('environment variables');
@@ -96,7 +97,7 @@ describe('SetupMapboxProjectPrompt', () => {
       project_type: 'mobile'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('Mobile');
     expect(text).toContain('vision:read');
   });
@@ -107,7 +108,7 @@ describe('SetupMapboxProjectPrompt', () => {
       style_theme: 'dark'
     });
 
-    const text = result.messages[0].content.text;
+    const text = promptTextOf(result);
     expect(text).toContain('dark');
   });
 

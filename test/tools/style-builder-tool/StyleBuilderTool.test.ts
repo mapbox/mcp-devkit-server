@@ -3,7 +3,12 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { StyleBuilderTool } from '../../../src/tools/style-builder-tool/StyleBuilderTool.js';
-import type { StyleBuilderToolInput } from '../../../src/tools/style-builder-tool/StyleBuilderTool.input.schema.js';
+import type { z } from 'zod';
+import type { StyleBuilderToolSchema } from '../../../src/tools/style-builder-tool/StyleBuilderTool.input.schema.js';
+import { textOf } from '../../utils/resultTestUtils.js';
+
+// Raw tool input, before the schema fills in defaults like render_type.
+type StyleBuilderToolInput = z.input<typeof StyleBuilderToolSchema>;
 
 describe('StyleBuilderTool', () => {
   let tool: StyleBuilderTool;
@@ -37,7 +42,7 @@ describe('StyleBuilderTool', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0].type).toBe('text');
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       expect(text).toContain('Style Built Successfully');
       expect(text).toContain('Test Style');
       expect(text).toContain('"#0066ff"');
@@ -57,7 +62,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       expect(text).toContain('Mode:** dark');
       expect(text).toContain('#000000');
     });
@@ -80,7 +85,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       expect(result.isError).toBe(false);
       expect(text).toContain('#ff0000');
@@ -103,7 +108,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       expect(result.isError).toBe(false);
       expect(text).toContain('Highlighted');
@@ -124,7 +129,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       expect(result.isError).toBe(false);
       expect(text).toContain('Hidden');
@@ -144,7 +149,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       expect(result.isError).toBe(false);
       expect(text).toContain('Shown');
@@ -169,7 +174,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       expect(result.isError).toBe(false);
 
@@ -211,7 +216,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       expect(result.isError).toBe(false);
 
@@ -254,7 +259,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       expect(jsonMatch).toBeTruthy();
@@ -290,7 +295,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -322,7 +327,7 @@ describe('StyleBuilderTool', () => {
 
       // Should return help message, not error
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       expect(text).toContain('not found');
       expect(text).toContain('Available source layers');
     });
@@ -345,7 +350,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -380,7 +385,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -419,7 +424,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -459,7 +464,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -493,7 +498,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -534,7 +539,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const styleJson = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
 
       const transitLayer = styleJson.layers.find((l: any) =>
@@ -570,7 +575,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const styleJson = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
 
       const transitLayer = styleJson.layers.find((l: any) =>
@@ -608,7 +613,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const styleJson = JSON.parse(text.match(/```json\n([\s\S]*?)\n```/)![1]);
 
       const roadsLayer = styleJson.layers.find((l: any) =>
@@ -640,7 +645,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -673,7 +678,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -709,7 +714,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
 
@@ -740,7 +745,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -803,7 +808,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       expect(text).toContain('Standard Config:** 15 properties set');
       expect(text).toContain('Theme: faded');
@@ -845,7 +850,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -897,7 +902,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -938,7 +943,7 @@ describe('StyleBuilderTool', () => {
       };
 
       const result = await tool.run(input);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/);
       const style = JSON.parse(jsonMatch![1]);
@@ -979,7 +984,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       // No longer expecting auto-correction since we're using the correct layer
       expect(text).toContain('Style Built Successfully');
 
@@ -1022,7 +1027,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
       expect(text).toContain(
         'Determined source layer "poi_label" from filter properties'
       );
@@ -1064,7 +1069,7 @@ describe('StyleBuilderTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const text = result.content[0].text as string;
+      const text = textOf(result);
 
       expect(text).toContain('Layers Configured:** 4');
       expect(text).toContain('Set to #0066ff');

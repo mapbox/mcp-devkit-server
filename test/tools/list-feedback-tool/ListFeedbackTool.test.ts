@@ -7,6 +7,7 @@ import {
   assertHeadersSent
 } from '../../utils/httpPipelineUtils.js';
 import { ListFeedbackTool } from '../../../src/tools/list-feedback-tool/ListFeedbackTool.js';
+import { textOf } from '../../utils/resultTestUtils.js';
 
 const mockToken = 'sk.eyJ1IjoidGVzdC11c2VyIiwiYSI6InRlc3QtYXBpIn0.signature';
 
@@ -164,13 +165,9 @@ describe('ListFeedbackTool', () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0].type).toBe('text');
-    expect(result.content[0].text).toContain('Found 2 feedback item(s)');
-    expect(result.content[0].text).toContain(
-      '40eae4c7-b157-4b49-a091-7e1099bba77e'
-    );
-    expect(result.content[0].text).toContain(
-      '8b1eec47-a3f2-4a6d-a2d9-5e8c1f4a9b0c'
-    );
+    expect(textOf(result)).toContain('Found 2 feedback item(s)');
+    expect(textOf(result)).toContain('40eae4c7-b157-4b49-a091-7e1099bba77e');
+    expect(textOf(result)).toContain('8b1eec47-a3f2-4a6d-a2d9-5e8c1f4a9b0c');
     expect(result.structuredContent).toEqual(mockResponse);
   });
 
@@ -186,7 +183,7 @@ describe('ListFeedbackTool', () => {
     const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('No feedback items found');
+    expect(textOf(result)).toContain('No feedback items found');
   });
 
   it('handles list response with pagination info', async () => {
@@ -218,10 +215,10 @@ describe('ListFeedbackTool', () => {
     const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Has previous page');
-    expect(result.content[0].text).toContain('Has next page');
-    expect(result.content[0].text).toContain('cursor1');
-    expect(result.content[0].text).toContain('cursor2');
+    expect(textOf(result)).toContain('Has previous page');
+    expect(textOf(result)).toContain('Has next page');
+    expect(textOf(result)).toContain('cursor1');
+    expect(textOf(result)).toContain('cursor2');
   });
 
   it('returns JSON format when requested', async () => {
@@ -256,7 +253,7 @@ describe('ListFeedbackTool', () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0].type).toBe('text');
-    const parsed = JSON.parse(result.content[0].text);
+    const parsed = JSON.parse(textOf(result));
     expect(parsed).toEqual(mockResponse);
   });
 
@@ -270,9 +267,9 @@ describe('ListFeedbackTool', () => {
     const result = await new ListFeedbackTool({ httpRequest }).run({});
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Failed to list feedback');
-    expect(result.content[0].text).toContain('404');
-    expect(result.content[0].text).toContain('Not Found');
+    expect(textOf(result)).toContain('Failed to list feedback');
+    expect(textOf(result)).toContain('404');
+    expect(textOf(result)).toContain('Not Found');
     assertHeadersSent(mockHttpRequest);
   });
 

@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ValidateStyleTool } from '../../../src/tools/validate-style-tool/ValidateStyleTool.js';
+import { textOf } from '../../utils/resultTestUtils.js';
 
 describe('ValidateStyleTool', () => {
   let tool: ValidateStyleTool;
@@ -38,7 +39,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style: validStyle });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse.valid).toBe(true);
     expect(parsedResponse.errors).toHaveLength(0);
     expect(parsedResponse.summary.layerCount).toBe(1);
@@ -54,7 +55,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style: invalidStyle });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse.valid).toBe(false);
     expect(parsedResponse.errors).toContainEqual(
       expect.objectContaining({
@@ -73,7 +74,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style: invalidStyle });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse.valid).toBe(false);
     expect(parsedResponse.errors).toContainEqual(
       expect.objectContaining({
@@ -99,7 +100,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style: invalidStyle });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse.valid).toBe(false);
     expect(parsedResponse.errors).toContainEqual(
       expect.objectContaining({
@@ -135,7 +136,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style: invalidStyle });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse.valid).toBe(false);
     expect(parsedResponse.errors).toContainEqual(
       expect.objectContaining({
@@ -161,7 +162,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style: invalidStyle });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse.valid).toBe(false);
     expect(parsedResponse.errors).toContainEqual(
       expect.objectContaining({
@@ -183,7 +184,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style: JSON.stringify(validStyle) });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse).toHaveProperty('valid');
     expect(parsedResponse).toHaveProperty('errors');
   });
@@ -192,7 +193,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style: '{ invalid json }' });
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Error parsing style JSON');
+    expect(textOf(result)).toContain('Error parsing style JSON');
   });
 
   it('should provide warnings for missing sprite and glyphs', async () => {
@@ -205,7 +206,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse.info).toContainEqual(
       expect.objectContaining({
         severity: 'info',
@@ -241,7 +242,7 @@ describe('ValidateStyleTool', () => {
     const result = await tool.run({ style });
 
     expect(result.isError).toBe(false);
-    const parsedResponse = JSON.parse(result.content[0].text);
+    const parsedResponse = JSON.parse(textOf(result));
     expect(parsedResponse.summary).toEqual({
       version: 8,
       layerCount: 2,
@@ -281,7 +282,7 @@ describe('ValidateStyleTool', () => {
       const result = await tool.run({ style });
 
       expect(result.isError).toBe(false);
-      const parsedResponse = JSON.parse(result.content[0].text);
+      const parsedResponse = JSON.parse(textOf(result));
       expect(parsedResponse.valid).toBe(false);
       expect(
         parsedResponse.errors.some((e: any) =>
@@ -326,7 +327,7 @@ describe('ValidateStyleTool', () => {
       const result = await tool.run({ style });
 
       expect(result.isError).toBe(false);
-      const parsedResponse = JSON.parse(result.content[0].text);
+      const parsedResponse = JSON.parse(textOf(result));
       expect(parsedResponse.valid).toBe(true);
       expect(parsedResponse.errors).toHaveLength(0);
     });
@@ -355,7 +356,7 @@ describe('ValidateStyleTool', () => {
       expect(Date.now() - start).toBeLessThan(1000);
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('exceeds maximum nesting depth');
+      expect(textOf(result)).toContain('exceeds maximum nesting depth');
     });
 
     it('should reject a style with a wide (shallow but huge) expression instead of exhausting memory', async () => {
@@ -382,7 +383,7 @@ describe('ValidateStyleTool', () => {
       expect(Date.now() - start).toBeLessThan(1000);
 
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('exceeding maximum size');
+      expect(textOf(result)).toContain('exceeding maximum size');
     });
 
     it('should reject a JSON string style exceeding the maximum length', async () => {

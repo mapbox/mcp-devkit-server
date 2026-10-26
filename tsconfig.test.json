@@ -2,6 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "skipLibCheck": true,
+    "noEmit": true,
     "lib": ["ESNext"],
     "resolveJsonModule": true
   },

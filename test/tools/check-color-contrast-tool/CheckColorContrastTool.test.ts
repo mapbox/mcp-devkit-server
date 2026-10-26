@@ -3,6 +3,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { CheckColorContrastTool } from '../../../src/tools/check-color-contrast-tool/CheckColorContrastTool.js';
+import { textOf } from '../../utils/resultTestUtils.js';
 
 describe('CheckColorContrastTool', () => {
   let tool: CheckColorContrastTool;
@@ -40,7 +41,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
       expect(parsed.passes).toBe(true);
       expect(parsed.level).toBe('AA');
@@ -56,7 +57,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
       expect(parsed.passes).toBe(true);
     });
@@ -74,7 +75,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBeGreaterThanOrEqual(4.5);
       expect(parsed.passes).toBe(true);
       expect(parsed.minimumRequired).toBe(4.5);
@@ -91,7 +92,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBeGreaterThanOrEqual(3.0);
       expect(parsed.passes).toBe(true);
       expect(parsed.minimumRequired).toBe(3.0);
@@ -108,7 +109,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBeLessThan(4.5);
       expect(parsed.passes).toBe(false);
       expect(parsed.recommendations).toBeDefined();
@@ -128,7 +129,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBeGreaterThanOrEqual(7.0);
       expect(parsed.passes).toBe(true);
       expect(parsed.minimumRequired).toBe(7.0);
@@ -145,7 +146,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBeGreaterThanOrEqual(4.5);
       expect(parsed.passes).toBe(true);
       expect(parsed.minimumRequired).toBe(4.5);
@@ -162,7 +163,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.passes).toBe(false);
       expect(parsed.recommendations).toBeDefined();
       // Should suggest it meets AA
@@ -182,7 +183,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
     });
 
@@ -195,7 +196,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
     });
 
@@ -208,7 +209,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
     });
 
@@ -221,7 +222,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
     });
 
@@ -234,7 +235,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
     });
 
@@ -247,7 +248,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
     });
 
@@ -260,7 +261,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBe(21);
     });
   });
@@ -274,7 +275,7 @@ describe('CheckColorContrastTool', () => {
 
       const result = await tool.run(input);
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Invalid foreground color');
+      expect(textOf(result)).toContain('Invalid foreground color');
     });
 
     it('should handle invalid background color', async () => {
@@ -285,7 +286,7 @@ describe('CheckColorContrastTool', () => {
 
       const result = await tool.run(input);
       expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Invalid background color');
+      expect(textOf(result)).toContain('Invalid background color');
     });
 
     it('should handle malformed hex colors', async () => {
@@ -309,7 +310,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.level).toBe('AA');
     });
 
@@ -322,7 +323,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.fontSize).toBe('normal');
     });
   });
@@ -337,7 +338,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.recommendations).toBeUndefined();
     });
 
@@ -352,7 +353,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.recommendations).toBeDefined();
       expect(parsed.recommendations.length).toBeGreaterThan(0);
       expect(
@@ -371,7 +372,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       if (!parsed.passes) {
         expect(
           parsed.recommendations.some((r: string) => r.includes('large text'))
@@ -390,7 +391,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.wcagRequirements).toBeDefined();
       expect(parsed.wcagRequirements.AA.normal).toBe(4.5);
       expect(parsed.wcagRequirements.AA.large).toBe(3.0);
@@ -409,7 +410,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBeGreaterThan(1);
     });
 
@@ -422,7 +423,7 @@ describe('CheckColorContrastTool', () => {
       const result = await tool.run(input);
       expect(result.isError).toBe(false);
 
-      const parsed = JSON.parse(result.content[0].text);
+      const parsed = JSON.parse(textOf(result));
       expect(parsed.contrastRatio).toBeGreaterThan(1);
     });
   });
