@@ -10,7 +10,7 @@ import {
   RetrieveStyleInput
 } from './RetrieveStyleTool.input.schema.js';
 import { HttpRequest } from '../../utils/types.js';
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolResult } from '@modelcontextprotocol/server';
 import {
   MapboxStyleOutput,
   MapboxStyleOutputSchema

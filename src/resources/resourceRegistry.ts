@@ -1,7 +1,7 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import type { BaseResource } from './BaseResource.js';
 import { MapboxStyleLayersResource } from './mapbox-style-layers-resource/MapboxStyleLayersResource.js';
 import { MapboxStreetsV8FieldsResource } from './mapbox-streets-v8-fields-resource/MapboxStreetsV8FieldsResource.js';
@@ -30,7 +30,7 @@ export function getAllResources(): readonly ResourceInstance[] {
 /**
  * Registers every resource on `server` via `BaseResource.installTo`, so each
  * read callback receives the request's `extra` (including the caller's
- * `authInfo`). UI resources declare `RESOURCE_MIME_TYPE` themselves, which is
+ * `http.authInfo`). UI resources declare `RESOURCE_MIME_TYPE` themselves, which is
  * all `registerAppResource` would add.
  */
 export function installResources(

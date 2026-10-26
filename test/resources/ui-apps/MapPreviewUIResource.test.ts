@@ -22,7 +22,7 @@ function embeddedToken(html: string): string | null {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function extra(token?: string): any {
-  return token ? { authInfo: { token } } : {};
+  return token ? { http: { authInfo: { token } } } : {};
 }
 
 async function readHtml(

@@ -5,9 +5,8 @@ import { describe, it, expect } from 'vitest';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
-import { LoggingMessageNotificationSchema } from '@modelcontextprotocol/sdk/types.js';
+import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
+import { Client } from '@modelcontextprotocol/client';
 
 /**
  * Spawns the *actual built server* (dist/esm/index.js) as a real child
@@ -46,7 +45,7 @@ describe.skipIf(!existsSync(SERVER_ENTRY))(
 
       const received: unknown[] = [];
       client.setNotificationHandler(
-        LoggingMessageNotificationSchema,
+        'notifications/message',
         async (notification) => {
           received.push(notification.params);
         }

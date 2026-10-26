@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { BaseTool } from '../BaseTool.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { OptimizeStyleInputSchema } from './OptimizeStyleTool.input.schema.js';
 import {
   OptimizeStyleOutputSchema,

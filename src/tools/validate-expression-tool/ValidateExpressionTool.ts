@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { expression as expressionSpec } from '@mapbox/mapbox-gl-style-spec';
 import type { StylePropertySpecification } from '@mapbox/mapbox-gl-style-spec';
 import { BaseTool } from '../BaseTool.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { ValidateExpressionInputSchema } from './ValidateExpressionTool.input.schema.js';
 import {
   ValidateExpressionOutputSchema,

@@ -1,7 +1,7 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import type { PromptMessage } from '@modelcontextprotocol/sdk/types.js';
+import type { PromptMessage } from '@modelcontextprotocol/server';
 import { BasePrompt, type PromptArgument } from './BasePrompt.js';
 
 /**

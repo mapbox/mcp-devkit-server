@@ -10,7 +10,7 @@ import {
   UpdateStyleInputSchema
 } from './UpdateStyleTool.input.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import {
   MapboxStyleOutputSchema,
   MapboxStyleOutput

@@ -10,7 +10,7 @@ import {
   MapboxApiBasedTool,
   redactToken
 } from '../../src/tools/MapboxApiBasedTool.js';
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolResult } from '@modelcontextprotocol/server';
 import type { HttpRequest } from '../../src/utils/types.js';
 import { setupHttpRequest } from '../utils/httpPipelineUtils.js';
 

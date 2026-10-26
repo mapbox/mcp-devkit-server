@@ -8,7 +8,7 @@ import type {
   ValidationError as MapboxValidationError
 } from '@mapbox/mapbox-gl-style-spec';
 import { BaseTool } from '../BaseTool.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import { ValidateStyleInputSchema } from './ValidateStyleTool.input.schema.js';
 import {
   ValidateStyleOutputSchema,

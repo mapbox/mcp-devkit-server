@@ -9,8 +9,8 @@ import { join } from 'node:path';
 import { existsSync } from 'node:fs';
 import { SpanStatusCode } from '@opentelemetry/api';
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { parseToolConfigFromArgs, filterTools } from './config/toolConfig.js';
 import { getCoreTools, getElicitationTools } from './tools/toolRegistry.js';
@@ -104,7 +104,7 @@ prompts.forEach((prompt) => {
     prompt.name,
     {
       description: prompt.description,
-      argsSchema: argsSchema
+      argsSchema: z.object(argsSchema)
     },
     async (args) => {
       // Filter out undefined values from optional arguments

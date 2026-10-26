@@ -1,7 +1,7 @@
 // Copyright (c) Mapbox, Inc.
 // Licensed under the MIT License.
 
-import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolResult } from '@modelcontextprotocol/server';
 import { createUIResource } from '@mcp-ui/server';
 import { createHash, randomUUID } from 'node:crypto';
 import { GeoJSON } from 'geojson';

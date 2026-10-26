@@ -2,10 +2,9 @@
 // Licensed under the MIT License.
 
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
+import { Client } from '@modelcontextprotocol/client';
+import { McpServer, InMemoryTransport } from '@modelcontextprotocol/server';
+import type { JSONRPCMessage } from '@modelcontextprotocol/server';
 import { RESOURCE_MIME_TYPE } from '@modelcontextprotocol/ext-apps/server';
 import {
   getAllResources,
@@ -67,7 +66,7 @@ describe('installResources', () => {
 
     spies.forEach((spy) => {
       expect(spy).toHaveBeenCalledTimes(1);
-      expect(spy.mock.calls[0][1].authInfo?.token).toBe('caller-token');
+      expect(spy.mock.calls[0][1].http?.authInfo?.token).toBe('caller-token');
     });
     await client.close();
   });
