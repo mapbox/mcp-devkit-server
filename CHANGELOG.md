@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.9.0-dev - 2026-10-30
+
 ### Fixed
 
 - **`ui://` resources now receive the request context when read.** `src/index.ts` registered MCP Apps UI resources with a wrapper that called `readCallback` with `{}` instead of the request's `extra`, so `MapPreviewUIResource` never saw the caller's `authInfo.token` and always minted its preview token from `MAPBOX_ACCESS_TOKEN`. All resources are now registered through a new `installResources()` in `resourceRegistry.ts`, which uses `BaseResource.installTo()` and forwards `extra` unchanged. UI resources already declare `RESOURCE_MIME_TYPE`, so the `registerAppResource` wrapper is no longer needed. Covered by regression tests that read every resource through a client that sends `authInfo`. (#141)
