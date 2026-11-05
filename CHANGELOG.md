@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.9.0-dev.2 - 2026-11-05
+
 ### Fixed
 
 - **Map preview and style comparison views ignore `postMessage` events that don't come from the host window.** Before, another frame on the page could send a fake tool result to change what the preview shows or the "Open in browser" link. (#147)
