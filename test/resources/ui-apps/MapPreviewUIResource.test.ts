@@ -176,10 +176,12 @@ async function renderHtml(accessToken?: string): Promise<string> {
 
 function runScriptSandbox(
   scriptSource: string,
-  options: { mapboxglAvailable: boolean }
+  options: { mapboxglAvailable: boolean; answerInitialize?: boolean }
 ) {
   const postMessageCalls: Array<Record<string, unknown>> = [];
-  let messageListener: ((event: { data: unknown }) => void) | undefined;
+  let messageListener:
+    | ((event: { data: unknown; source: unknown }) => void)
+    | undefined;
 
   function fakeElement() {
     return {
@@ -230,16 +232,18 @@ function runScriptSandbox(
       }
     : undefined;
 
+  const parentWindow = {
+    postMessage: (message: Record<string, unknown>) => {
+      postMessageCalls.push(message);
+    }
+  };
+
   const sandbox: Record<string, unknown> = {
     window: {
       addEventListener: (event: string, cb: typeof messageListener) => {
         if (event === 'message') messageListener = cb;
       },
-      parent: {
-        postMessage: (message: Record<string, unknown>) => {
-          postMessageCalls.push(message);
-        }
-      }
+      parent: parentWindow
     },
     document: {
       getElementById: getElementById,
@@ -256,18 +260,33 @@ function runScriptSandbox(
 
   const initId = postMessageCalls.find((m) => m.method === 'ui/initialize')
     ?.id as number | undefined;
-  if (initId !== undefined && messageListener) {
-    messageListener({ data: { jsonrpc: '2.0', id: initId, result: {} } });
+  if (
+    initId !== undefined &&
+    messageListener &&
+    options.answerInitialize !== false
+  ) {
+    messageListener({
+      data: { jsonrpc: '2.0', id: initId, result: {} },
+      source: parentWindow
+    });
   }
 
   return {
-    sendToolResult: (url: string) => {
+    answerInitialize: (source: unknown = parentWindow) => {
+      messageListener?.({
+        data: { jsonrpc: '2.0', id: initId, result: {} },
+        source
+      });
+    },
+    postMessageCalls,
+    sendToolResult: (url: string, source: unknown = parentWindow) => {
       messageListener?.({
         data: {
           jsonrpc: '2.0',
           method: 'ui/notifications/tool-result',
           params: { content: [{ type: 'text', text: url }] }
-        }
+        },
+        source
       });
     },
     mapboxglMock,
@@ -275,7 +294,8 @@ function runScriptSandbox(
     addSourceSpy,
     addLayerSpy,
     setStyleSpy,
-    errorEl: elementsById.error
+    errorEl: elementsById.error,
+    openBtn: elementsById['open-btn']
   };
 }
 
@@ -369,5 +389,43 @@ describe('MapPreviewUIResource — merged tool-result dispatch', () => {
     sendToolResult('https://example.com/not-a-recognized-shape');
 
     expect(errorEl?.textContent).toContain('Could not parse GeoJSON');
+  });
+
+  it('ignores a tool-result posted by a window other than the host', async () => {
+    const html = await renderHtml(
+      'pk.' +
+        Buffer.from(JSON.stringify({ u: 'acct' })).toString('base64') +
+        '.sig'
+    );
+    const script = extractScript(html);
+    const { sendToolResult, setStyleSpy, addSourceSpy, openBtn } =
+      runScriptSandbox(script, { mapboxglAvailable: true });
+
+    sendToolResult(
+      'https://api.mapbox.com/styles/v1/attacker/style.html?access_token=pk.attacker.sig',
+      { postMessage: () => {} }
+    );
+
+    expect(setStyleSpy).not.toHaveBeenCalled();
+    expect(addSourceSpy).not.toHaveBeenCalled();
+    expect(openBtn?.style.display).toBeUndefined();
+  });
+
+  it('ignores a reply to a pending request posted by a window other than the host', async () => {
+    const html = await renderHtml();
+    const { answerInitialize, postMessageCalls } = runScriptSandbox(
+      extractScript(html),
+      { mapboxglAvailable: true, answerInitialize: false }
+    );
+    const initialized = () =>
+      postMessageCalls.some((m) => m.method === 'ui/notifications/initialized');
+
+    answerInitialize({ postMessage: () => {} });
+    await Promise.resolve();
+    expect(initialized()).toBe(false);
+
+    answerInitialize();
+    await Promise.resolve();
+    expect(initialized()).toBe(true);
   });
 });
