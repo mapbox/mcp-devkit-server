@@ -7,6 +7,8 @@
   - **Node:** `engines` is now `>=22.15.0`, the 3.x minimum (it was `>=22`).
   - **Checked:** the built server (ESM and CommonJS) sent `config.load_env`, `tool.tilequery_tool` and the undici `GET` span to a local OTLP endpoint, with the access token in `url.full` still redacted.
 
+## 0.9.0 - 2026-11-06
+
 ## 0.9.0-dev.2 - 2026-11-05
 
 ### Fixed
