@@ -38,13 +38,35 @@ describe('StyleComparisonTool', () => {
       expect(payloadOf(result)).toEqual({
         before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
-        accessToken: 'pk.test.token'
+        accessToken: 'pk.test.token',
+        beforePreviewUrl:
+          'https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?access_token=pk.test.token&fresh=true',
+        afterPreviewUrl:
+          'https://api.mapbox.com/styles/v1/mapbox/outdoors-v12.html?access_token=pk.test.token&fresh=true'
       });
       expect(result.content).toHaveLength(1);
       expect(result.content[0]).toEqual({
         type: 'text',
-        text: 'Comparing mapbox/streets-v12 (before, left) with mapbox/outdoors-v12 (after, right).'
+        text:
+          'Comparing mapbox/streets-v12 (before, left) with mapbox/outdoors-v12 (after, right).\n\n' +
+          'Preview links to open or share each style on its own. They use the access token you supplied.\n' +
+          '- Before: https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?access_token=pk.test.token&fresh=true\n' +
+          '- After: https://api.mapbox.com/styles/v1/mapbox/outdoors-v12.html?access_token=pk.test.token&fresh=true'
       });
+    });
+
+    it('uses the resolved username in the preview URL for a bare style ID', async () => {
+      vi.spyOn(jwtUtils, 'getUserNameFromToken').mockReturnValue('testuser');
+
+      const result = await tool.run({
+        before: 'style-id-1',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token'
+      });
+
+      expect(payloadOf(result).beforePreviewUrl).toContain(
+        '/styles/v1/testuser/style-id-1.html?'
+      );
     });
 
     it('does not link to or embed a hosted comparison page', async () => {
@@ -195,6 +217,12 @@ describe('StyleComparisonTool', () => {
       expect(
         (result.content[0] as { type: 'text'; text: string }).text
       ).toContain('at zoom 5.72, 9.503, -67.473');
+      expect(payloadOf(result).beforePreviewUrl).toMatch(
+        /\.html\?access_token=pk\.test\.token&fresh=true#5\.72\/9\.503\/-67\.473$/
+      );
+      expect(payloadOf(result).afterPreviewUrl).toMatch(
+        /#5\.72\/9\.503\/-67\.473$/
+      );
     });
 
     it('omits the initial map position when coordinates are incomplete', async () => {
@@ -257,6 +285,13 @@ describe('StyleComparisonTool', () => {
         expect(payloadOf(result).accessToken).toBe(
           'tk.eyJ1IjoidGVzdC11c2VyIn0.minted'
         );
+        expect(payloadOf(result).beforePreviewUrl).toContain(
+          'access_token=tk.eyJ1IjoidGVzdC11c2VyIn0.minted'
+        );
+        // The links carry a 1-hour token, so the text warns they expire.
+        expect(
+          (result.content[0] as { type: 'text'; text: string }).text
+        ).toContain('stop working in about an hour');
       } finally {
         if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
         else delete process.env.MAPBOX_ACCESS_TOKEN;
@@ -369,7 +404,7 @@ describe('StyleComparisonTool', () => {
       expect(tool.description).toContain(
         'auto-generates a short-lived scoped preview token'
       );
-      expect(tool.description).not.toContain('share');
+      expect(tool.description).not.toContain('`share`');
     });
   });
 });
