@@ -3,12 +3,15 @@
 
 import { randomUUID } from 'node:crypto';
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { createUIResource } from '@mcp-ui/server';
 import { BaseTool } from '../BaseTool.js';
 import {
   StyleComparisonSchema,
   StyleComparisonInput
-} from './StyleComparisonTool.schema.js';
+} from './StyleComparisonTool.input.schema.js';
+import {
+  StyleComparisonOutputSchema,
+  StyleComparisonOutput
+} from './StyleComparisonTool.output.schema.js';
 import { getUserNameFromToken } from '../../utils/jwtUtils.js';
 import {
   mintScopedPreviewToken,
@@ -17,11 +20,12 @@ import {
 import type { HttpRequest } from '../../utils/types.js';
 
 export class StyleComparisonTool extends BaseTool<
-  typeof StyleComparisonSchema
+  typeof StyleComparisonSchema,
+  typeof StyleComparisonOutputSchema
 > {
   readonly name = 'style_comparison_tool';
   readonly description =
-    'Generate a live side-by-side comparison of two Mapbox styles. By default, auto-generates a scoped preview token so you can compare them right away — no existing token needed. Pass `share: true` with an existing public `accessToken` instead to generate a comparison link using a token you manage yourself.';
+    'Show a live side-by-side comparison of two Mapbox styles with a draggable slider, rendered inline in clients that support MCP Apps. By default, auto-generates a short-lived scoped preview token so you can compare them right away — no existing token needed. Pass an existing public `accessToken` to use a token you manage yourself instead.';
   readonly annotations = {
     readOnlyHint: true,
     destructiveHint: false,
@@ -35,8 +39,7 @@ export class StyleComparisonTool extends BaseTool<
       resourceUri: 'ui://mapbox/style-comparison/index.html',
       csp: {
         connectDomains: ['https://*.mapbox.com'],
-        resourceDomains: ['https://*.mapbox.com'],
-        frameDomains: ['https://*.mapbox.com']
+        resourceDomains: ['https://*.mapbox.com']
       }
     }
   };
@@ -44,7 +47,10 @@ export class StyleComparisonTool extends BaseTool<
   private readonly httpRequest: HttpRequest;
 
   constructor(params: { httpRequest: HttpRequest }) {
-    super({ inputSchema: StyleComparisonSchema });
+    super({
+      inputSchema: StyleComparisonSchema,
+      outputSchema: StyleComparisonOutputSchema
+    });
     this.httpRequest = params.httpRequest;
   }
 
@@ -100,21 +106,7 @@ export class StyleComparisonTool extends BaseTool<
     let publicToken: string;
 
     if (input.accessToken) {
-      // Caller-supplied token — used as-is, for either mode.
       publicToken = input.accessToken;
-    } else if (input.share) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text:
-              '`share: true` requires an existing public token via `accessToken` — a persistent ' +
-              'pk.* token is needed for a durable, shareable link. Get one via list_tokens_tool ' +
-              'or create_token_tool, or omit `share` for a quick inline comparison (no token needed).'
-          }
-        ]
-      };
     } else {
       if (!accessToken) {
         return {
@@ -128,20 +120,14 @@ export class StyleComparisonTool extends BaseTool<
         };
       }
       try {
-        // Unlike the inline style preview, the comparison page this URL
-        // points to (agent.mapbox.com/tools/style-compare) validates the
-        // token prefix itself and hard-rejects anything but pk.* — a
-        // short-lived tk.* token (this repo's usual auto-mint default)
-        // fails there with a "Configuration Error", confirmed live. So
-        // this mints a real, non-expiring pk.* token instead: narrowly
-        // scoped, but it persists on the account until manually revoked.
+        // The comparison renders in our own ui:// panel with GL JS, which
+        // accepts a short-lived tk.* token, so nothing persists on the account.
         publicToken = await mintScopedPreviewToken(
           this.httpRequest,
           accessToken,
           {
             note: 'Style Comparison (auto-generated)',
-            scopes: ['styles:tiles', 'styles:read', 'fonts:read'],
-            expiresInMs: null
+            scopes: ['styles:tiles', 'styles:read', 'fonts:read']
           }
         );
       } catch (error) {
@@ -173,49 +159,31 @@ export class StyleComparisonTool extends BaseTool<
       };
     }
 
-    // Build the comparison URL
-    const params = new URLSearchParams();
-    params.append('access_token', publicToken);
-    params.append('before', beforeStyleId);
-    params.append('after', afterStyleId);
+    const structuredContent: StyleComparisonOutput = {
+      before: beforeStyleId,
+      after: afterStyleId,
+      accessToken: publicToken
+    };
 
-    // Build base URL
-    let url = `https://agent.mapbox.com/tools/style-compare?${params.toString()}`;
-
-    // Add hash fragment for map position if all coordinates are provided
+    let position = '';
     if (
       input.zoom !== undefined &&
       input.latitude !== undefined &&
       input.longitude !== undefined
     ) {
-      // Format: #zoom/latitude/longitude
-      url += `#${input.zoom}/${input.latitude}/${input.longitude}`;
+      structuredContent.center = [input.longitude, input.latitude];
+      structuredContent.zoom = input.zoom;
+      position = ` at zoom ${input.zoom}, ${input.latitude}, ${input.longitude}`;
     }
 
-    // Build content array with URL
-    const content: CallToolResult['content'] = [
-      {
-        type: 'text',
-        text: url
-      }
-    ];
-
-    // Add MCP-UI resource (for legacy MCP-UI clients)
-    const uiResource = createUIResource({
-      uri: `ui://mapbox/style-comparison/${beforeStyleId}/${afterStyleId}`,
-      content: {
-        type: 'externalUrl',
-        iframeUrl: url
-      },
-      encoding: 'text',
-      uiMetadata: {
-        'preferred-frame-size': ['1000px', '700px']
-      }
-    });
-    content.push(uiResource);
-
     return {
-      content,
+      content: [
+        {
+          type: 'text',
+          text: `Comparing ${beforeStyleId} (before, left) with ${afterStyleId} (after, right)${position}.`
+        }
+      ],
+      structuredContent,
       isError: false,
       _meta: {
         viewUUID: randomUUID()

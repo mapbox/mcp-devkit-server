@@ -11,14 +11,7 @@ export const PreviewStyleSchema = z.object({
     )
     .optional()
     .describe(
-      'Existing Mapbox public token (must start with pk.* and have styles:read permission). Required when share is true, to build a durable link with a token you control. Optional otherwise — if omitted, a short-lived (~1 hour) preview token is generated automatically, so no existing token is needed for a quick inline look.'
-    ),
-  share: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe(
-      'Set to true to build a durable, shareable preview link using accessToken (required together with share). Defaults to false: generates a short-lived preview token automatically for viewing the style right now — the returned URL expires in about an hour and is not meant to be bookmarked or shared with others.'
+      'Existing Mapbox public token (must start with pk.* and have styles:read permission). Optional — if omitted, a short-lived (~1 hour) preview token is generated automatically, so no existing token is needed. Pass your own token when you want a preview URL that keeps working after that hour.'
     ),
   title: z
     .boolean()
