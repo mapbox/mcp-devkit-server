@@ -26,18 +26,11 @@ export const StyleComparisonSchema = z.object({
     .string()
     .startsWith(
       'pk.',
-      'Invalid token type. Style comparison requires a public token (pk.*) that can be used in browser URLs. Secret tokens (sk.*) cannot be exposed in client-side applications. Please provide a public token with styles:read permission.'
+      'Invalid token type. Style comparison requires a public token (pk.*) that can be used in the browser. Secret tokens (sk.*) cannot be exposed in client-side applications. Please provide a public token with styles:read permission.'
     )
     .optional()
     .describe(
-      'Existing Mapbox public token (must start with pk.* and have styles:read permission). Required when share is true, to build the comparison link with a token you control. Optional otherwise — if omitted, a scoped preview token is generated automatically, so no existing token is needed for a quick inline comparison.'
-    ),
-  share: z
-    .boolean()
-    .optional()
-    .default(false)
-    .describe(
-      'Set to true to build the comparison link with an existing public token you provide via accessToken (required together with share) — use this for a link you intend to keep or share with someone else. Defaults to false: generates a scoped preview token automatically, tied to this comparison only and not tracked or named by you, so no existing token is needed for a quick look right now.'
+      'Existing Mapbox public token (must start with pk.* and have styles:read permission). Optional — if omitted, a short-lived scoped preview token is generated automatically, so no existing token is needed.'
     ),
   zoom: z
     .number()
