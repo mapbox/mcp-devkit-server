@@ -1,5 +1,15 @@
 ## Unreleased
 
+### Breaking Changes
+
+- **`style_comparison_tool` no longer depends on agent.mapbox.com (#152).** The comparison now runs only in this server's own MCP App panel (`ui://mapbox/style-comparison/index.html`), as part of retiring the old Mapbox Location Agent.
+  - **Removed:** the `share` input, the `agent.mapbox.com/tools/style-compare` link in the result text, the legacy MCP-UI `externalUrl` resource that framed that page, and the panel's "Open in browser" button. Clients without MCP Apps support get the text summary and preview links, with no comparison slider.
+  - **New output:** the tool returns `structuredContent` (`before`, `after`, `accessToken`, `beforePreviewUrl`, `afterPreviewUrl`, and optional `center`/`zoom`) with a matching output schema. The panel reads that payload instead of parsing a URL.
+  - **Sharing:** in place of the hosted comparison link, the result includes a Styles API preview link (`api.mapbox.com/styles/v1/{user}/{id}.html`) for each style, with the map position if one was given. You can open or share them on their own, and clients without MCP Apps support get these links. The links work with the token you pass as `accessToken`. With the auto-generated token they stop after an hour, and the result text says so.
+  - **Auto-generated tokens expire:** when no `accessToken` is passed, the tool now creates a 1-hour `tk.*` token. Before, it created a permanent `pk.*` token on every call, because the hosted page rejected `tk.*`, and each one stayed on the account until revoked. You can still pass your own `pk.*` token as `accessToken`.
+  - **Panel improvements from the hosted page:** styles load with `?fresh=true` so recent edits show up, and a style that fails to load now shows which side failed and why (not found, authentication or access denied). Errors after a style has loaded, such as a missing tile, no longer replace the map. The slider moves only on click and drag.
+- **`preview_style_tool` no longer takes `share` (#152).** `share: true` only checked that an `accessToken` was passed, so passing your own `pk.*` token as `accessToken` does the same thing: the preview link uses that token and keeps working after an hour. Without `accessToken`, the tool still creates a 1-hour `tk.*` token. A call that still sends `share` won't fail; the option is ignored.
+
 ### Maintenance
 
 - **OpenTelemetry JS 3.x (#149, same move as mapbox/mcp-server#325).** `@opentelemetry/sdk-trace-base` is deprecated in every 2.x release and removed in 3.0, and the ox-security scan flags it (mapbox/mcp-server#319). The OpenTelemetry set moves to the 3.0 line: `sdk-trace` 3.0.0 replaces `sdk-trace-base`, along with `resources` 3.0.0, `sdk-node`, `instrumentation` and `exporter-trace-otlp-http` 0.300.0, `auto-instrumentations-node` 0.82.0 and `api` 1.10.0.

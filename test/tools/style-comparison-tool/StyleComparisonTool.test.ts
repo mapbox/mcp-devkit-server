@@ -4,6 +4,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { StyleComparisonTool } from '../../../src/tools/style-comparison-tool/StyleComparisonTool.js';
 import * as jwtUtils from '../../../src/utils/jwtUtils.js';
+import type { StyleComparisonOutput } from '../../../src/tools/style-comparison-tool/StyleComparisonTool.output.schema.js';
+
+function payloadOf(result: { structuredContent?: unknown }) {
+  return result.structuredContent as StyleComparisonOutput;
+}
 
 describe('StyleComparisonTool', () => {
   let tool: StyleComparisonTool;
@@ -20,7 +25,7 @@ describe('StyleComparisonTool', () => {
   });
 
   describe('run', () => {
-    it('should generate comparison URL and MCP-UI resource with provided access token (default)', async () => {
+    it('returns the resolved styles and token as structured content for the comparison view', async () => {
       const input = {
         before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
@@ -30,43 +35,53 @@ describe('StyleComparisonTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      expect(result.content).toHaveLength(2);
-      expect(result.content[0].type).toBe('text');
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('https://agent.mapbox.com/tools/style-compare');
-      expect(url).toContain('access_token=pk.test.token');
-      expect(url).toContain('before=mapbox%2Fstreets-v12');
-      expect(url).toContain('after=mapbox%2Foutdoors-v12');
-
-      // Verify MCP-UI resource is included by default
-      expect(result.content[1]).toMatchObject({
-        type: 'resource',
-        resource: {
-          uri: expect.stringMatching(
-            /^ui:\/\/mapbox\/style-comparison\/mapbox\/streets-v12\/mapbox\/outdoors-v12$/
-          ),
-          mimeType: 'text/html;profile=mcp-app',
-          text: expect.stringContaining(
-            'https://agent.mapbox.com/tools/style-compare'
-          )
-        }
+      expect(payloadOf(result)).toEqual({
+        before: 'mapbox/streets-v12',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token',
+        beforePreviewUrl:
+          'https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?access_token=pk.test.token&fresh=true',
+        afterPreviewUrl:
+          'https://api.mapbox.com/styles/v1/mapbox/outdoors-v12.html?access_token=pk.test.token&fresh=true'
+      });
+      expect(result.content).toHaveLength(1);
+      expect(result.content[0]).toEqual({
+        type: 'text',
+        text:
+          'Comparing mapbox/streets-v12 (before, left) with mapbox/outdoors-v12 (after, right).\n\n' +
+          'Preview links to open or share each style on its own. They use the access token you supplied.\n' +
+          '- Before: https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?access_token=pk.test.token&fresh=true\n' +
+          '- After: https://api.mapbox.com/styles/v1/mapbox/outdoors-v12.html?access_token=pk.test.token&fresh=true'
       });
     });
 
-    it('requires an access token when share is true', async () => {
-      const input = {
+    it('uses the resolved username in the preview URL for a bare style ID', async () => {
+      vi.spyOn(jwtUtils, 'getUserNameFromToken').mockReturnValue('testuser');
+
+      const result = await tool.run({
+        before: 'style-id-1',
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token'
+      });
+
+      expect(payloadOf(result).beforePreviewUrl).toContain(
+        '/styles/v1/testuser/style-id-1.html?'
+      );
+    });
+
+    it('does not link to or embed a hosted comparison page', async () => {
+      const result = await tool.run({
         before: 'mapbox/streets-v12',
-        after: 'mapbox/satellite-v9',
-        share: true
-        // Missing accessToken
-      };
+        after: 'mapbox/outdoors-v12',
+        accessToken: 'pk.test.token'
+      });
 
-      const result = await tool.run(input);
+      expect(JSON.stringify(result)).not.toContain('agent.mapbox.com');
+      expect(result.content.some((c) => c.type === 'resource')).toBe(false);
+    });
 
-      expect(result.isError).toBe(true);
-      expect(
-        (result.content[0] as { type: 'text'; text: string }).text
-      ).toContain('share: true` requires');
+    it('no longer accepts a share option', () => {
+      expect(Object.keys(tool.inputSchema.shape)).not.toContain('share');
     });
 
     it('should handle full style URLs', async () => {
@@ -79,9 +94,8 @@ describe('StyleComparisonTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('before=mapbox%2Fstreets-v12');
-      expect(url).toContain('after=mapbox%2Foutdoors-v12');
+      expect(payloadOf(result).before).toBe('mapbox/streets-v12');
+      expect(payloadOf(result).after).toBe('mapbox/outdoors-v12');
     });
 
     it('should handle just style IDs with valid public token', async () => {
@@ -96,9 +110,8 @@ describe('StyleComparisonTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('before=testuser%2Fstyle-id-1');
-      expect(url).toContain('after=testuser%2Fstyle-id-2');
+      expect(payloadOf(result).before).toBe('testuser/style-id-1');
+      expect(payloadOf(result).after).toBe('testuser/style-id-2');
     });
 
     it('should reject secret tokens', async () => {
@@ -186,23 +199,7 @@ describe('StyleComparisonTool', () => {
       ).toContain('Could not determine username for style ID');
     });
 
-    it('should properly encode URL parameters', async () => {
-      const input = {
-        before: 'user-name/style-id-1',
-        after: 'user-name/style-id-2',
-        accessToken: 'pk.test.token'
-      };
-
-      const result = await tool.run(input);
-
-      expect(result.isError).toBe(false);
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      // Check that forward slashes are URL encoded
-      expect(url).toContain('before=user-name%2Fstyle-id-1');
-      expect(url).toContain('after=user-name%2Fstyle-id-2');
-    });
-
-    it('should include hash fragment with map position when coordinates are provided', async () => {
+    it('includes the initial map position when coordinates are provided', async () => {
       const input = {
         before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
@@ -215,11 +212,20 @@ describe('StyleComparisonTool', () => {
       const result = await tool.run(input);
 
       expect(result.isError).toBe(false);
-      const url = (result.content[0] as { type: 'text'; text: string }).text;
-      expect(url).toContain('#5.72/9.503/-67.473');
+      expect(payloadOf(result).center).toEqual([-67.473, 9.503]);
+      expect(payloadOf(result).zoom).toBe(5.72);
+      expect(
+        (result.content[0] as { type: 'text'; text: string }).text
+      ).toContain('at zoom 5.72, 9.503, -67.473');
+      expect(payloadOf(result).beforePreviewUrl).toMatch(
+        /\.html\?access_token=pk\.test\.token&fresh=true#5\.72\/9\.503\/-67\.473$/
+      );
+      expect(payloadOf(result).afterPreviewUrl).toMatch(
+        /#5\.72\/9\.503\/-67\.473$/
+      );
     });
 
-    it('should not include hash fragment when coordinates are incomplete', async () => {
+    it('omits the initial map position when coordinates are incomplete', async () => {
       // Only zoom provided
       const input1 = {
         before: 'mapbox/streets-v12',
@@ -230,8 +236,8 @@ describe('StyleComparisonTool', () => {
 
       const result1 = await tool.run(input1);
       expect(result1.isError).toBe(false);
-      const url1 = (result1.content[0] as { type: 'text'; text: string }).text;
-      expect(url1).not.toContain('#');
+      expect(payloadOf(result1).center).toBeUndefined();
+      expect(payloadOf(result1).zoom).toBeUndefined();
 
       // Only latitude and longitude, no zoom
       const input2 = {
@@ -244,36 +250,19 @@ describe('StyleComparisonTool', () => {
 
       const result2 = await tool.run(input2);
       expect(result2.isError).toBe(false);
-      const url2 = (result2.content[0] as { type: 'text'; text: string }).text;
-      expect(url2).not.toContain('#');
-    });
-
-    it('should return URL and MCP-UI resource for backward compatibility', async () => {
-      const input = {
-        before: 'mapbox/streets-v12',
-        after: 'mapbox/outdoors-v12',
-        accessToken: 'pk.test.token'
-      };
-
-      const result = await tool.run(input);
-
-      expect(result.isError).toBe(false);
-      // Now returns both URL (for text) and MCP-UI resource (for backward compat)
-      expect(result.content).toHaveLength(2);
-      expect(result.content[0].type).toBe('text');
-      // Second item is MCP-UI resource
-      expect(result.content[1].type).toBe('resource');
+      expect(payloadOf(result2).center).toBeUndefined();
+      expect(payloadOf(result2).zoom).toBeUndefined();
     });
   });
 
-  describe('auto-minted inline comparison (no accessToken, no share)', () => {
+  describe('auto-minted inline comparison (no accessToken)', () => {
     const SERVER_TOKEN = 'sk.eyJ1IjoidGVzdC11c2VyIn0.signature';
 
     function stubMintingFetch() {
       return vi.fn(
         async (_input: string | URL | Request, _init?: RequestInit) =>
           new Response(
-            JSON.stringify({ token: 'pk.eyJ1IjoidGVzdC11c2VyIn0.minted' }),
+            JSON.stringify({ token: 'tk.eyJ1IjoidGVzdC11c2VyIn0.minted' }),
             { status: 200 }
           )
       );
@@ -293,18 +282,23 @@ describe('StyleComparisonTool', () => {
         expect(httpRequest).toHaveBeenCalledTimes(1);
         const [url] = httpRequest.mock.calls[0];
         expect(String(url)).toContain('tokens/v2/test-user');
-        const resultUrl = (result.content[0] as { type: 'text'; text: string })
-          .text;
-        expect(resultUrl).toContain(
-          'access_token=pk.eyJ1IjoidGVzdC11c2VyIn0.minted'
+        expect(payloadOf(result).accessToken).toBe(
+          'tk.eyJ1IjoidGVzdC11c2VyIn0.minted'
         );
+        expect(payloadOf(result).beforePreviewUrl).toContain(
+          'access_token=tk.eyJ1IjoidGVzdC11c2VyIn0.minted'
+        );
+        // The links carry a 1-hour token, so the text warns they expire.
+        expect(
+          (result.content[0] as { type: 'text'; text: string }).text
+        ).toContain('stop working in about an hour');
       } finally {
         if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
         else delete process.env.MAPBOX_ACCESS_TOKEN;
       }
     });
 
-    it('mints a non-expiring token, not the short-lived tk.* the other preview tools use — agent.mapbox.com/tools/style-compare rejects tk.* outright (confirmed live)', async () => {
+    it('mints a short-lived token that expires in about an hour, so nothing persists on the account', async () => {
       const saved = process.env.MAPBOX_ACCESS_TOKEN;
       process.env.MAPBOX_ACCESS_TOKEN = SERVER_TOKEN;
       try {
@@ -316,27 +310,31 @@ describe('StyleComparisonTool', () => {
 
         const [, init] = httpRequest.mock.calls[0];
         const body = JSON.parse((init as RequestInit).body as string);
-        expect(body).not.toHaveProperty('expires');
+        const expiresInMs = Date.parse(body.expires) - Date.now();
+        expect(expiresInMs).toBeGreaterThan(55 * 60 * 1000);
+        expect(expiresInMs).toBeLessThanOrEqual(60 * 60 * 1000);
+        expect(body.scopes).toEqual([
+          'styles:tiles',
+          'styles:read',
+          'fonts:read'
+        ]);
       } finally {
         if (saved !== undefined) process.env.MAPBOX_ACCESS_TOKEN = saved;
         else delete process.env.MAPBOX_ACCESS_TOKEN;
       }
     });
 
-    it('an explicit accessToken is honored even when share is true', async () => {
+    it('uses an explicit accessToken without minting', async () => {
       const httpRequest = stubMintingFetch();
       const result = await new StyleComparisonTool({ httpRequest }).run({
         before: 'mapbox/streets-v12',
         after: 'mapbox/outdoors-v12',
-        share: true,
         accessToken: 'pk.test.token'
       });
 
       expect(result.isError).toBe(false);
       expect(httpRequest).not.toHaveBeenCalled();
-      const resultUrl = (result.content[0] as { type: 'text'; text: string })
-        .text;
-      expect(resultUrl).toContain('access_token=pk.test.token');
+      expect(payloadOf(result).accessToken).toBe('pk.test.token');
     });
 
     it('errors when no server access token is available to mint from', async () => {
@@ -404,8 +402,9 @@ describe('StyleComparisonTool', () => {
     it('should have correct name and description', () => {
       expect(tool.name).toBe('style_comparison_tool');
       expect(tool.description).toContain(
-        'auto-generates a scoped preview token'
+        'auto-generates a short-lived scoped preview token'
       );
+      expect(tool.description).not.toContain('`share`');
     });
   });
 });

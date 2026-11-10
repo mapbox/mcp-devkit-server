@@ -14,10 +14,8 @@ import { getUserNameFromToken, mapboxApiEndpoint } from './jwtUtils.js';
  * short-lived **`tk.*`** temporary token — confirmed live against the real
  * API — which is what GL JS and the Styles API's embeddable HTML preview
  * page both accept. Pass `expiresInMs: null` to mint a genuine, non-expiring
- * **`pk.*`** public token instead — required for any consumer that validates
- * the token prefix itself and rejects non-`pk.*` tokens outright (confirmed
- * live: `agent.mapbox.com/tools/style-compare`, which `style_comparison_tool`
- * embeds, does exactly this and 400s on a `tk.*` token). A `pk.*` token
+ * **`pk.*`** public token instead — only for a consumer that validates the
+ * token prefix itself and rejects non-`pk.*` tokens outright. A `pk.*` token
  * minted this way does not self-expire; it persists on the account (scoped
  * narrowly to `scopes`) until manually revoked.
  *

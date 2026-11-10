@@ -204,7 +204,7 @@ describe('PreviewStyleTool', () => {
     });
   });
 
-  describe('auto-minted inline preview (no accessToken, no share)', () => {
+  describe('auto-minted inline preview (no accessToken)', () => {
     function stubMintingFetch() {
       return vi.fn(
         async (_input: string | URL | Request, _init?: RequestInit) =>
@@ -240,28 +240,18 @@ describe('PreviewStyleTool', () => {
       });
     });
 
-    it('errors clearly when share is true but accessToken is missing', async () => {
-      const httpRequest = stubMintingFetch();
-      const result = await new PreviewStyleTool({ httpRequest }).run({
-        styleId: 'cmojrmkc9002t01ry96yi6h48',
-        share: true,
-        title: false,
-        zoomwheel: false
-      });
-
-      expect(result.isError).toBe(true);
-      expect(httpRequest).not.toHaveBeenCalled();
-      expect(result.content[0]).toMatchObject({
-        type: 'text',
-        text: expect.stringContaining('share: true` requires')
-      });
+    it('no longer accepts a share option', () => {
+      expect(
+        Object.keys(
+          new PreviewStyleTool({ httpRequest: vi.fn() }).inputSchema.shape
+        )
+      ).not.toContain('share');
     });
 
-    it('an explicit accessToken is honored even when share is true', async () => {
+    it('uses an explicit accessToken without minting', async () => {
       const httpRequest = stubMintingFetch();
       const result = await new PreviewStyleTool({ httpRequest }).run({
         styleId: 'cmojrmkc9002t01ry96yi6h48',
-        share: true,
         accessToken: TEST_ACCESS_TOKEN,
         title: false,
         zoomwheel: false
