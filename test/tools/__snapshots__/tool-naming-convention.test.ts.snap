@@ -149,7 +149,7 @@ If a layer type is not recognized, the tool will provide helpful suggestions sho
   },
   {
     "className": "StyleComparisonTool",
-    "description": "Show a live side-by-side comparison of two Mapbox styles with a draggable slider, rendered inline in clients that support MCP Apps. By default, auto-generates a short-lived scoped preview token so you can compare them right away — no existing token needed. Pass an existing public \`accessToken\` to use a token you manage yourself instead.",
+    "description": "Show a live side-by-side comparison of two Mapbox styles with a draggable slider, rendered inline in clients that support MCP Apps. By default, auto-generates a short-lived scoped preview token so you can compare them right away — no existing token needed. Also returns a Styles API preview link for each style, to open or share on its own. Pass an existing public \`accessToken\` to use a token you manage yourself, so those links keep working after the hour.",
     "toolName": "style_comparison_tool",
   },
   {

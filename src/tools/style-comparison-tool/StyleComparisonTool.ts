@@ -12,7 +12,10 @@ import {
   StyleComparisonOutputSchema,
   StyleComparisonOutput
 } from './StyleComparisonTool.output.schema.js';
-import { getUserNameFromToken } from '../../utils/jwtUtils.js';
+import {
+  getUserNameFromToken,
+  mapboxApiEndpoint
+} from '../../utils/jwtUtils.js';
 import {
   mintScopedPreviewToken,
   describeAutoMintFailure
@@ -25,7 +28,7 @@ export class StyleComparisonTool extends BaseTool<
 > {
   readonly name = 'style_comparison_tool';
   readonly description =
-    'Show a live side-by-side comparison of two Mapbox styles with a draggable slider, rendered inline in clients that support MCP Apps. By default, auto-generates a short-lived scoped preview token so you can compare them right away — no existing token needed. Pass an existing public `accessToken` to use a token you manage yourself instead.';
+    'Show a live side-by-side comparison of two Mapbox styles with a draggable slider, rendered inline in clients that support MCP Apps. By default, auto-generates a short-lived scoped preview token so you can compare them right away — no existing token needed. Also returns a Styles API preview link for each style, to open or share on its own. Pass an existing public `accessToken` to use a token you manage yourself, so those links keep working after the hour.';
   readonly annotations = {
     readOnlyHint: true,
     destructiveHint: false,
@@ -159,28 +162,49 @@ export class StyleComparisonTool extends BaseTool<
       };
     }
 
-    const structuredContent: StyleComparisonOutput = {
-      before: beforeStyleId,
-      after: afterStyleId,
-      accessToken: publicToken
-    };
-
     let position = '';
+    let hash = '';
+    let view: Pick<StyleComparisonOutput, 'center' | 'zoom'> = {};
     if (
       input.zoom !== undefined &&
       input.latitude !== undefined &&
       input.longitude !== undefined
     ) {
-      structuredContent.center = [input.longitude, input.latitude];
-      structuredContent.zoom = input.zoom;
       position = ` at zoom ${input.zoom}, ${input.latitude}, ${input.longitude}`;
+      hash = `#${input.zoom}/${input.latitude}/${input.longitude}`;
+      view = { center: [input.longitude, input.latitude], zoom: input.zoom };
     }
+
+    // Standalone Styles API preview pages for each side, so the styles can
+    // be opened or shared outside the inline comparison panel.
+    const previewUrl = (styleId: string) =>
+      `${mapboxApiEndpoint()}styles/v1/${styleId}.html?${new URLSearchParams({
+        access_token: publicToken,
+        fresh: 'true'
+      }).toString()}${hash}`;
+
+    const structuredContent: StyleComparisonOutput = {
+      before: beforeStyleId,
+      after: afterStyleId,
+      accessToken: publicToken,
+      beforePreviewUrl: previewUrl(beforeStyleId),
+      afterPreviewUrl: previewUrl(afterStyleId),
+      ...view
+    };
+
+    const expiry = input.accessToken
+      ? 'They use the access token you supplied.'
+      : 'They use an auto-generated token and stop working in about an hour; pass your own public accessToken for links that last.';
 
     return {
       content: [
         {
           type: 'text',
-          text: `Comparing ${beforeStyleId} (before, left) with ${afterStyleId} (after, right)${position}.`
+          text:
+            `Comparing ${beforeStyleId} (before, left) with ${afterStyleId} (after, right)${position}.\n\n` +
+            `Preview links to open or share each style on its own. ${expiry}\n` +
+            `- Before: ${structuredContent.beforePreviewUrl}\n` +
+            `- After: ${structuredContent.afterPreviewUrl}`
         }
       ],
       structuredContent,
