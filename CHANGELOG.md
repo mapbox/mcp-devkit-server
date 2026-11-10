@@ -2,7 +2,7 @@
 
 ### Maintenance
 
-- **Security updates for dependencies (#PR).** Clears the open Dependabot alerts, including the critical `proxy-addr` one. Most came from `@mcp-ui/server`, which depends on the v1 MCP SDK and through it Express: the refresh moves that SDK from 1.30.0 to 1.32.2, which brings `fast-uri` 3.1.9, `body-parser` 2.4.0, `proxy-addr` 2.0.8 and `hono` 4.13.17. The server itself runs on SDK v2, so the v1 HTTP code was installed but never handled requests. `npm audit --omit=dev` now finds nothing.
+- **Security updates for dependencies (#151).** Clears the open Dependabot alerts, including the critical `proxy-addr` one. Most came from `@mcp-ui/server`, which depends on the v1 MCP SDK and through it Express: the refresh moves that SDK from 1.30.0 to 1.32.2, which brings `fast-uri` 3.1.9, `body-parser` 2.4.0, `proxy-addr` 2.0.8 and `hono` 4.13.17. The server itself runs on SDK v2, so the v1 HTTP code was installed but never handled requests. `npm audit --omit=dev` now finds nothing.
   - **`zod` 4.6.7:** fixes memory exhaustion when validating oversized constrained collections, which applies to every tool call's input.
   - **`gaxios` override (`^7.3.1`):** `gcp-metadata` pins `gaxios` to 7.1.3, which pulls in `rimraf` and a `glob` and `minimatch` with moderate advisories. 7.3.1 is the same major without `rimraf`. It reaches us through OpenTelemetry's GCP resource detector.
   - **Lockfile refresh:** everything else moved within its existing range, including `@mapbox/mapbox-gl-style-spec` 14.34.2. Prettier stays on 3.8, since 3.9 reformats union types across the code.
