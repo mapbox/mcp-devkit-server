@@ -2,6 +2,11 @@
 
 ### Maintenance
 
+- **Security updates for dependencies (#PR).** Clears the open Dependabot alerts, including the critical `proxy-addr` one. Most came from `@mcp-ui/server`, which depends on the v1 MCP SDK and through it Express: the refresh moves that SDK from 1.30.0 to 1.32.2, which brings `fast-uri` 3.1.9, `body-parser` 2.4.0, `proxy-addr` 2.0.8 and `hono` 4.13.17. The server itself runs on SDK v2, so the v1 HTTP code was installed but never handled requests. `npm audit --omit=dev` now finds nothing.
+  - **`zod` 4.6.7:** fixes memory exhaustion when validating oversized constrained collections, which applies to every tool call's input.
+  - **`gaxios` override (`^7.3.1`):** `gcp-metadata` pins `gaxios` to 7.1.3, which pulls in `rimraf` and a `glob` and `minimatch` with moderate advisories. 7.3.1 is the same major without `rimraf`. It reaches us through OpenTelemetry's GCP resource detector.
+  - **Lockfile refresh:** everything else moved within its existing range, including `@mapbox/mapbox-gl-style-spec` 14.34.2. Prettier stays on 3.8, since 3.9 reformats union types across the code.
+  - **Left as is:** a moderate `minimatch` advisory in the `typescript-eslint` lint tooling, which is dev-only and never ships.
 - **OpenTelemetry JS 3.x (#149, same move as mapbox/mcp-server#325).** `@opentelemetry/sdk-trace-base` is deprecated in every 2.x release and removed in 3.0, and the ox-security scan flags it (mapbox/mcp-server#319). The OpenTelemetry set moves to the 3.0 line: `sdk-trace` 3.0.0 replaces `sdk-trace-base`, along with `resources` 3.0.0, `sdk-node`, `instrumentation` and `exporter-trace-otlp-http` 0.300.0, `auto-instrumentations-node` 0.82.0 and `api` 1.10.0.
   - **Code:** `ReadableSpan` and `SpanExporter` (the token-redacting exporter) now come from `sdk-trace`, and the exporter test uses `TracerProvider` (was `BasicTracerProvider`) and `new SimpleSpanProcessor({ exporter })`.
   - **Node:** `engines` is now `>=22.15.0`, the 3.x minimum (it was `>=22`).

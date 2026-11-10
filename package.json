@@ -63,7 +63,7 @@
     "@opentelemetry/sdk-node": "^0.300.0",
     "@opentelemetry/sdk-trace": "^3.0.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
-    "zod": "^4.3.6"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.27.0",
@@ -161,5 +161,8 @@
       }
     }
   },
-  "types": "./dist/commonjs/index.d.ts"
+  "types": "./dist/commonjs/index.d.ts",
+  "overrides": {
+    "gaxios": "^7.3.1"
+  }
 }
