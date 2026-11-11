@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.10.0 - 2026-11-11
+
 ### Maintenance
 
 - **Security updates for dependencies (#151).** Clears the open Dependabot alerts, including the critical `proxy-addr` one. Most came from `@mcp-ui/server`, which depends on the v1 MCP SDK and through it Express: the refresh moves that SDK from 1.30.0 to 1.32.2, which brings `fast-uri` 3.1.9, `body-parser` 2.4.0, `proxy-addr` 2.0.8 and `hono` 4.13.17. The server itself runs on SDK v2, so the v1 HTTP code was installed but never handled requests. `npm audit --omit=dev` now finds nothing.
