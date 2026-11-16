@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Maintenance
+
+- **Declare dependencies npm was only hoisting (#154, same as mapbox/mcp-server#337).** `@opentelemetry/core`, whose types the redacting span exporter uses, was imported but never declared, and only resolved because npm hoists it from `@opentelemetry/sdk-trace`. pnpm, which the MCP monorepo will use, can't resolve undeclared packages. Also types the `setupHttpRequest` test helper's mock so its return type can be named under pnpm. No change under npm.
+
 ## 0.10.0 - 2026-11-11
 
 ### Maintenance
