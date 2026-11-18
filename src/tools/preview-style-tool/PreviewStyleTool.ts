@@ -17,7 +17,7 @@ import type { HttpRequest } from '../../utils/types.js';
 export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
   readonly name = 'preview_style_tool';
   readonly description =
-    'Generate a live preview of a Mapbox style. By default, auto-generates a short-lived preview token so you can view it right away — no existing token needed. Pass `share: true` with an existing public `accessToken` instead to generate a durable, shareable preview link.';
+    'Generate a live preview of a Mapbox style. By default, auto-generates a short-lived preview token so you can view it right away — no existing token needed. Pass an existing public `accessToken` instead to get a preview link that keeps working after the hour.';
   readonly annotations = {
     readOnlyHint: true,
     destructiveHint: false,
@@ -52,7 +52,7 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
     let publicToken: string;
 
     if (input.accessToken) {
-      // Caller-supplied token — used as-is, for either mode.
+      // Caller-supplied token — used as-is.
       try {
         userName = getUserNameFromToken(input.accessToken);
       } catch (error) {
@@ -67,19 +67,6 @@ export class PreviewStyleTool extends BaseTool<typeof PreviewStyleSchema> {
         };
       }
       publicToken = input.accessToken;
-    } else if (input.share) {
-      return {
-        isError: true,
-        content: [
-          {
-            type: 'text',
-            text:
-              '`share: true` requires an existing public token via `accessToken` — a persistent ' +
-              'pk.* token is needed for a durable, shareable link. Get one via list_tokens_tool ' +
-              'or create_token_tool, or omit `share` for a quick inline preview (no token needed).'
-          }
-        ]
-      };
     } else {
       if (!accessToken) {
         return {

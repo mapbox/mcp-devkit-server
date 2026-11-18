@@ -15,6 +15,8 @@ const COMPARE_VERSION = '0.4.0';
  * Serves UI App HTML for Mapbox Style Comparison using mapbox-gl-compare.
  * Renders two synced GL maps with a draggable reveal slider inline —
  * no inner iframe needed, so frame-src CSP is not an issue.
+ * Reads the styles, token and initial position from the tool result's
+ * structuredContent; it does not depend on any hosted comparison page.
  * Implements MCP Apps pattern with ui:// scheme.
  */
 export class StyleComparisonUIResource extends BaseResource {
@@ -63,15 +65,6 @@ export class StyleComparisonUIResource extends BaseResource {
     }
     #before-label { left: 12px; }
     #after-label { right: 12px; }
-    #open-btn {
-      position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-      z-index: 10; display: none;
-      color: #fff; background: rgba(0,0,0,0.6);
-      font-size: 13px; padding: 5px 12px;
-      border: 1px solid rgba(255,255,255,0.4); border-radius: 4px;
-      cursor: pointer; font-family: inherit;
-    }
-    #open-btn:hover { background: rgba(0,0,0,0.8); }
     #fullscreen-btn {
       position: absolute; top: 10px; right: 10px; z-index: 10;
       display: none;
@@ -94,21 +87,19 @@ export class StyleComparisonUIResource extends BaseResource {
   <div id="error" style="display:none"></div>
   <div id="before-label" class="style-label"></div>
   <div id="after-label" class="style-label"></div>
-  <button id="open-btn">↗ Open in browser</button>
   <button id="fullscreen-btn" title="Toggle fullscreen">⛶</button>
 
   <script>
     var beforeMap = null;
     var afterMap = null;
     var compare = null;
-    var currentPreviewUrl = '';
     var currentDisplayMode = 'inline';
+    var STYLE_ID_PATTERN = /^[a-zA-Z0-9_-]+[/][a-zA-Z0-9_-]+$/;
 
     var loadingEl = document.getElementById('loading');
     var errorEl = document.getElementById('error');
     var beforeLabel = document.getElementById('before-label');
     var afterLabel = document.getElementById('after-label');
-    var openBtn = document.getElementById('open-btn');
     var fullscreenBtn = document.getElementById('fullscreen-btn');
 
     var messageId = 0;
@@ -131,6 +122,12 @@ export class StyleComparisonUIResource extends BaseResource {
       sendNotification('ui/notifications/size-changed', { height: 600 });
     }
 
+    function showError(message) {
+      loadingEl.style.display = 'none';
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+    }
+
     fullscreenBtn.addEventListener('click', function() {
       var newMode = currentDisplayMode === 'fullscreen' ? 'inline' : 'fullscreen';
       sendRequest('ui/request-display-mode', { mode: newMode }).then(function(result) {
@@ -139,23 +136,6 @@ export class StyleComparisonUIResource extends BaseResource {
         if (beforeMap) setTimeout(function() { beforeMap.resize(); afterMap.resize(); }, 100);
         if (currentDisplayMode === 'inline') requestSizeToFit();
       }).catch(function() {});
-    });
-
-    openBtn.addEventListener('click', function() {
-      if (!currentPreviewUrl) return;
-      sendRequest('ui/open-link', { url: currentPreviewUrl }).catch(function() {
-        try {
-          var ta = document.createElement('textarea');
-          ta.value = currentPreviewUrl;
-          ta.style.cssText = 'position:fixed;opacity:0';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          openBtn.textContent = '✓ URL copied';
-          setTimeout(function() { openBtn.textContent = '↗ Open in browser'; }, 2000);
-        } catch (err) {}
-      });
     });
 
     window.addEventListener('message', function(event) {
@@ -199,81 +179,93 @@ export class StyleComparisonUIResource extends BaseResource {
       sendNotification('ui/notifications/initialized', {});
     });
 
+    // Turns a GL JS error event into a message naming the side that failed.
+    function describeStyleError(side, styleId, e) {
+      var status = e && e.error && e.error.status;
+      var message = 'Failed to load the "' + side + '" style (' + styleId + ').';
+      if (status === 404) return message + ' The style was not found. Make sure it exists and is accessible with this token.';
+      if (status === 401) return message + ' Authentication failed. Check that the access token is valid.';
+      if (status === 403) return message + ' Access denied. The token may not have permission to read this style.';
+      var detail = e && e.error && e.error.message;
+      if (detail) return message + ' ' + String(detail).slice(0, 120);
+      return message;
+    }
+
     function handleToolResult(result) {
-      const textContent = result.content?.find(c => c.type === 'text');
-      if (!textContent?.text) {
-        loadingEl.style.display = 'none';
-        errorEl.textContent = 'No URL found in tool result';
-        errorEl.style.display = 'block';
+      if (beforeMap) return;
+
+      var data = result && result.structuredContent;
+      if (!data || typeof data.accessToken !== 'string' ||
+          !STYLE_ID_PATTERN.test(data.before) || !STYLE_ID_PATTERN.test(data.after)) {
+        showError('No style comparison found in tool result');
         return;
       }
 
-      const url = textContent.text;
-      currentPreviewUrl = url;
-      openBtn.style.display = 'block';
-
-      if (typeof mapboxgl === 'undefined') {
-        loadingEl.style.display = 'none';
+      if (typeof mapboxgl === 'undefined' || typeof mapboxgl.Compare === 'undefined') {
+        showError('Could not load Mapbox GL JS');
         return;
+      }
+
+      var center = [0, 20];
+      var zoom = 1.5;
+      if (data.center && data.center.length === 2 && typeof data.zoom === 'number') {
+        center = [data.center[0], data.center[1]];
+        zoom = data.zoom;
       }
 
       try {
-        const parsed = new URL(url);
-        const token = parsed.searchParams.get('access_token');
-        const before = parsed.searchParams.get('before');
-        const after = parsed.searchParams.get('after');
-        if (!token || !before || !after) throw new Error('Missing required params');
+        mapboxgl.accessToken = data.accessToken;
 
-        // Parse optional initial position from hash (#zoom/lat/lng)
-        var center = [0, 20];
-        var zoom = 1.5;
-        if (parsed.hash) {
-          var parts = parsed.hash.replace('#', '').split('/');
-          if (parts.length >= 3) {
-            zoom = parseFloat(parts[0]) || 1.5;
-            center = [parseFloat(parts[2]) || 0, parseFloat(parts[1]) || 20];
-          }
-        }
-
-        mapboxgl.accessToken = token;
-
+        // fresh=true bypasses the style CDN cache so recent edits show up.
         beforeMap = new mapboxgl.Map({
           container: 'before',
-          style: 'mapbox://styles/' + before,
+          style: 'mapbox://styles/' + data.before + '?fresh=true',
           center: center,
           zoom: zoom
         });
 
         afterMap = new mapboxgl.Map({
           container: 'after',
-          style: 'mapbox://styles/' + after,
+          style: 'mapbox://styles/' + data.after + '?fresh=true',
           center: center,
           zoom: zoom
         });
 
-        // Show style names once both styles have loaded
+        var loaded = { before: false, after: false };
         var loadedCount = 0;
-        function onStyleLoad(map, labelEl) {
+        var failed = false;
+
+        function onStyleLoad(map, side, labelEl, styleId) {
+          loaded[side] = true;
           var style = map.getStyle();
-          if (style && style.name) {
-            labelEl.textContent = style.name;
-            labelEl.style.display = 'block';
-          }
+          labelEl.textContent = style && style.name ? style.name + ' (' + styleId + ')' : styleId;
+          labelEl.title = labelEl.textContent;
+          labelEl.style.display = 'block';
           loadedCount++;
-          if (loadedCount === 2) {
+          if (loadedCount === 2 && !failed) {
             loadingEl.style.display = 'none';
-            compare = new mapboxgl.Compare(beforeMap, afterMap, '#comparison-container', {});
+            compare = new mapboxgl.Compare(beforeMap, afterMap, '#comparison-container', {
+              mousemove: false,
+              orientation: 'vertical'
+            });
             requestSizeToFit();
           }
         }
 
-        beforeMap.on('style.load', function() { onStyleLoad(beforeMap, beforeLabel); });
-        afterMap.on('style.load', function() { onStyleLoad(afterMap, afterLabel); });
+        // Only errors before a style has loaded are fatal; later ones (a
+        // missing tile, say) leave the comparison usable.
+        function onError(side, styleId, e) {
+          if (failed || loaded[side]) return;
+          failed = true;
+          showError(describeStyleError(side, styleId, e));
+        }
 
+        beforeMap.on('style.load', function() { onStyleLoad(beforeMap, 'before', beforeLabel, data.before); });
+        afterMap.on('style.load', function() { onStyleLoad(afterMap, 'after', afterLabel, data.after); });
+        beforeMap.on('error', function(e) { onError('before', data.before, e); });
+        afterMap.on('error', function(e) { onError('after', data.after, e); });
       } catch (e) {
-        loadingEl.style.display = 'none';
-        errorEl.textContent = 'Could not load style comparison';
-        errorEl.style.display = 'block';
+        showError('Could not load style comparison');
       }
     }
   </script>
