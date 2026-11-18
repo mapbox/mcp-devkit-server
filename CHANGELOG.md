@@ -2,7 +2,7 @@
 
 ### Maintenance
 
-- **Dev dependency audit fix (#PR).** `npm audit` flagged `minimatch` 10.2.6 (GHSA-g3hv-75wg-m249, a moderate denial-of-service via brace patterns), pulled in by `typescript-eslint`. The lockfile now has `typescript-eslint` 8.73.0 and `minimatch` 11.0.9, and `tshy` uses that copy instead of its own 11.0.5. Lockfile only, all dev dependencies; nothing in the published package changes. `npm audit` now finds nothing.
+- **Dev dependency audit fix (#155).** `npm audit` flagged `minimatch` 10.2.6 (GHSA-g3hv-75wg-m249, a moderate denial-of-service via brace patterns), pulled in by `typescript-eslint`. The lockfile now has `typescript-eslint` 8.73.0 and `minimatch` 11.0.9, and `tshy` uses that copy instead of its own 11.0.5. Lockfile only, all dev dependencies; nothing in the published package changes. `npm audit` now finds nothing.
 - **Declare dependencies npm was only hoisting (#154, same as mapbox/mcp-server#337).** `@opentelemetry/core`, whose types the redacting span exporter uses, was imported but never declared, and only resolved because npm hoists it from `@opentelemetry/sdk-trace`. pnpm, which the MCP monorepo will use, can't resolve undeclared packages. Also types the `setupHttpRequest` test helper's mock so its return type can be named under pnpm. No change under npm.
 
 ## 0.10.0 - 2026-11-11
